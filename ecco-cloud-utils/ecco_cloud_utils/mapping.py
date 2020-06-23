@@ -7,12 +7,65 @@ Created on Sun Jun 21 19:28:40 2020
 import numpy as np
 import pyresample as pr
 
+
+#%%
+
+
+#%%
+def transform_to_target_grid(source_indices_within_target_radius_i,
+                             num_source_indices_within_target_radius_i,
+                             nearest_source_index_to_target_index_i,
+                             source_field, target_grid_shape,\
+                             operation='mean', allow_nearest_neighbor=True):
+                            
+    # source_indices_within_target_radius_i
+    # num_source_indices_within_target_radius_i
+    # nearest_source_index_to_target_index_i
+    # source field: 2D field
+    # target_grid_shape : shape of target grid array (2D)
+    # operation : mean or median
+    
+
+    source_field_r = source_field.ravel()
+    
+    # define array that will contain source_field mapped to target_grid
+    source_on_target_grid = np.zeros((target_grid_shape))*np.nan
+    
+    # get a 1D version of source_on_target_grid
+    tmp_r = source_on_target_grid.ravel()
+ 
+    # loop through every target grid point
+    for i in range(len(tmp_r)):
+        
+        # if the number of source_field points at target grid cell i > 0
+        if num_source_indices_within_target_radius_i[i] > 0:
+            
+            # average these values
+            if operation == 'mean':
+                tmp_r[i] = \
+                    np.mean(source_field_r[source_indices_within_target_radius_i[i]])
+            # median of these values 
+            elif operation == 'median':
+                tmp_r[i] = \
+                    np.median(source_field_r[source_indices_within_target_radius_i[i]])
+      
+        # if there aren't any source grid cells within the target grid cell
+        # search radius then we would use the nearest neighbor, if available
+        elif i in nearest_source_index_to_target_index_i.keys():
+            # just because we have a nearest neighbor doesn't mean use it
+            if allow_nearest_neighbor == True:
+                tmp_r[i] = source_field_r[nearest_source_index_to_target_index_i[i]]
+                           
+     
+    return source_on_target_grid
+
+
+
 #%%
 def find_mappings_from_source_to_target(source_grid, target_grid,\
                                         target_grid_radius, \
                                         source_grid_min_L, source_grid_max_L):
-                                    
-    #%%
+       
     # source grid, target_grid : area or grid defintion objects from pyresample
     
     # target_grid_radius       : a vector indicating the radius of each
@@ -31,8 +84,9 @@ def find_mappings_from_source_to_target(source_grid, target_grid,\
     # the maximum number of neighbors to consider when doing the bin averaging
     # assuming that we have the largets target grid radius and the smallest
     # source grid length. (upper bound)
-    neighbours = (max_target_grid_radius*2/source_grid_min_L)**2
-    
+    neighbours = np.ceil((max_target_grid_radius*2/source_grid_min_L)**2)
+    neighbours = int(neighbours)
+    print(neighbours)
     # for now hard limit to 100 neighbours
     if neighbours > 100:
         print('more than 100 neighbors indicated.  limiting to 100 for memory')
@@ -145,7 +199,6 @@ def find_mappings_from_source_to_target(source_grid, target_grid,\
         if i in debug_is:
             print(str(int(i/len_target_grid*100)) + ' %')
 
-    #%%
     return source_indices_within_target_radius_i,\
            num_source_indices_within_target_radius_i,\
            nearest_source_index_to_target_index_i

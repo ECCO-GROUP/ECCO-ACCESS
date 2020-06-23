@@ -10,5 +10,6 @@ from .records import make_empty_record
 from .records import save_to_disk
 
 from .mapping import find_mappings_from_source_to_target
+from .mapping import transform_to_target_grid
 
 __all__ = ['date_time', 'llc_array_conversion', 'records', 'mapping']
