@@ -45,10 +45,13 @@ def find_mappings_from_source_to_target(source_grid, target_grid,\
     # since you dont need more neighbours than exists within a cell.
     if neighbours > neighbours_upper_bound:
         print('using more neighbours than upper bound.  limiting to the upper bound ' \
-              f'of {neighbours_upper_bound} neighbours')
+              f'of {int(neighbours_upper_bound)} neighbours')
         neighbours = neighbours_upper_bound
         
-   
+    # make sure neighbours is an int for pyresample
+    # neighbours_upper_bound is float, and user input can be float
+    neighbours = int(neighbours)
+    
     ## FIRST FIND THE SET OF SOURCE GRID CELLS THAT FALL WITHIN THE SERACH
     ## RADIUS OF EACH TARGET GRID CELL
     
