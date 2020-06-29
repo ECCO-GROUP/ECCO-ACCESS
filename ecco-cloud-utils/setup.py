@@ -5,7 +5,7 @@ from distutils.core import setup
 setup(
   name = 'ecco-cloud-utils',
   packages = ['ecco-cloud-utils'], # this must be the same as the name above
-  version = '0.0.1',
+  version = '0.0.2',
   description = 'Estimating the Circulation and Climate of the Ocean (ECCO) - Cloud Package',
   author = 'Ian Fenty',
   author_email = 'ian.fenty@jpl.nasa.gov',
