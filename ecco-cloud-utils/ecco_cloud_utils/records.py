@@ -68,72 +68,79 @@ def save_to_disk(data_DA, \
                  output_filename, \
                  binary_fill_value, netcdf_fill_value,\
                  netcdf_output_dir,binary_output_dir, binary_output_dtype,\
-                 model_grid_type) :  
-    
-    # define binary file output filetype    
-    dt_out = np.dtype(binary_output_dtype)
+                 model_grid_type, save_binary = True, save_netcdf = True) :  
 
-    # create directories
-    netcdf_output_dir.mkdir(exist_ok=True)
-    binary_output_dir.mkdir(exist_ok=True)
-
-    
-    netcdf_output_filename = netcdf_output_dir / Path(output_filename + '.nc')
-    binary_output_filename = binary_output_dir / output_filename
+    if save_binary:
+        # define binary file output filetype    
+        dt_out = np.dtype(binary_output_dtype)
         
-    # replace nans with the binary fill value (something like -9999)
-    tmp_fields = np.where(np.isnan(data_DA.values), \
-                          binary_fill_value, data_DA.values)
-
-
-    ### SAVE FLAT BINARY
-    # loop through each record of the year, save binary fields one at a time
-    # appending each record as we go
-    fd1 = open(str(binary_output_filename),'wb')
-    fd1 = open(str(binary_output_filename),'ab')
-
-    for i in range(len(data_DA.time)):
-        print ('saving record: ', str(i))
+        # create directory
+        binary_output_dir.mkdir(exist_ok=True)
         
-        # if we have an llc grid, then we have to reform to compact
-        if model_grid_type == 'llc':
-            tmp_field = llc_tiles_to_compact(tmp_fields[i,:], less_output=True)
+        # define binary output filename
+        binary_output_filename = binary_output_dir / output_filename
+        
+        # replace nans with the binary fill value (something like -9999)
+        tmp_fields = np.where(np.isnan(data_DA.values), \
+                              binary_fill_value, data_DA.values)
+        
+        ### SAVE FLAT BINARY
+        # loop through each record of the year, save binary fields one at a time
+        # appending each record as we go
+        fd1 = open(str(binary_output_filename),'wb')
+        fd1 = open(str(binary_output_filename),'ab')
+    
+        for i in range(len(data_DA.time)):
+            print ('saving binary record: ', str(i))
             
-        # otherwise assume grid is x,y (2 dimensions)
-        elif model_grid_type == 'latlon':
-            tmp_field  = tmp_fields[i,:]
-            
-        else:
-            print('unknown model grid type!')
-            tmp_field = []
-            return []
+            # if we have an llc grid, then we have to reform to compact
+            if model_grid_type == 'llc':
+                tmp_field = llc_tiles_to_compact(tmp_fields[i,:], less_output=True)
+                
+            # otherwise assume grid is x,y (2 dimensions)
+            elif model_grid_type == 'latlon':
+                tmp_field  = tmp_fields[i,:]
+                
+            else:
+                print('unknown model grid type!')
+                tmp_field = []
+                return []
+               
+            # make sure we have something to save...
+            if len(tmp_field) > 0:
+                # if this is the first record, create new binary file
+                    tmp_field.astype(dt_out).tofile(fd1)
+                    
+        # close the file at the end of the operation
+        fd1.close()
            
-        # make sure we have something to save...
-        if len(tmp_field) > 0:
-            # if this is the first record, create new binary file
-                tmp_field.astype(dt_out).tofile(fd1)
-                
-    # close the file at the end of the operation
-    fd1.close()
-                
-    ### SAVE NETCDF
-    # replace the binary fill value (-9999) with the netcdf fill value
-    # which is much more interesting
+    if save_netcdf:
+        print('saving netcdf record')
+        
+        # create directory
+        netcdf_output_dir.mkdir(exist_ok=True)
     
-    # replace nans with the binary fill value (something like -9999)
-    data_DA.values = \
-        np.where(np.isnan(data_DA.values),\
-                 netcdf_fill_value, data_DA.values)
-    
-    encoding_each = {'zlib':True, \
-                     'complevel':9,\
-                     'fletcher32':True,\
-                     '_FillValue':netcdf_fill_value}
-    
-    data_DS = data_DA.to_dataset()
-    
-    encoding = {var:encoding_each for var in data_DS.data_vars}
-  
-    # the actual saving (so easy with xarray!)    
-    data_DS.to_netcdf(netcdf_output_filename,  encoding=encoding)
-    data_DS.close()
+        # define netcdf output filename
+        netcdf_output_filename = netcdf_output_dir / Path(output_filename + '.nc')
+        
+        ### SAVE NETCDF
+        # replace the binary fill value (-9999) with the netcdf fill value
+        # which is much more interesting
+        
+        # replace nans with the binary fill value (something like -9999)
+        data_DA.values = \
+            np.where(np.isnan(data_DA.values),\
+                     netcdf_fill_value, data_DA.values)
+        
+        encoding_each = {'zlib':True, \
+                         'complevel':9,\
+                         'fletcher32':True,\
+                         '_FillValue':netcdf_fill_value}
+        
+        data_DS = data_DA.to_dataset()
+        
+        encoding = {var:encoding_each for var in data_DS.data_vars}
+      
+        # the actual saving (so easy with xarray!)    
+        data_DS.to_netcdf(netcdf_output_filename,  encoding=encoding)
+        data_DS.close()
