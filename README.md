@@ -16,3 +16,6 @@
 2. /src/harvesters/podaac_harvester/podaac_harvester_local.py
 3. /src/preprocessing/sst/grid_transformation/grid_transformation_local.py
 4. /src/preprocessing/sst/aggregation_by_year/aggregation_local.py
+
+___
+Harvest data files and generated output files and/or directories are not tracked on this repo.
