@@ -1,0 +1,18 @@
+# netCDF data files
+*.nc
+
+# factors pickled files
+/src/grids/*_factors_*
+
+# Editors
+.vscode/
+
+# Mac/OSX
+.DS_Store
+
+__pycache__/
+*.py[cod]
+*$py.class
+
+# output directory
+output/
