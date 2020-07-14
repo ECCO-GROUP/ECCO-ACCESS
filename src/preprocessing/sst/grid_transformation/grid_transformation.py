@@ -22,15 +22,14 @@ def md5(fname):
     return hash_md5.hexdigest()
 
 
-def solr_query(config, fq, fl=None):
+def solr_query(config, fq):
     solr_host = config['solr_host']
     solr_collection_name = config['solr_collection_name']
 
     getVars = {'q': '*:*',
                'fq': fq,
                'rows': 300000}
-    if fl:
-        getVars['fl'] = fl
+
     url = solr_host + solr_collection_name + '/select?'
     response = requests.get(url, params=getVars)
     return response.json()['response']['docs']
@@ -50,6 +49,8 @@ def run_locally_wrapper(system_path, source_file_path, remaining_transformations
         run_locally(system_path, source_file_path,
                     remaining_transformations, output_dir)
     except:
+        run_locally(system_path, source_file_path,
+                    remaining_transformations, output_dir)
         print('Unable to run local transformation')
 
 
@@ -91,7 +92,9 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
 
         # Query Solr for grid path
         fq = ['type_s:grid', f'grid_name_s:{grid_name}']
-        grid_path = solr_query(config, fq)[0]['grid_path_s']
+        grid_metadata = solr_query(config, fq)[0]
+        grid_path = grid_metadata['grid_path_s']
+        grid_type = grid_metadata['grid_type_s']
         grid_dir = grid_path.rsplit('/', 1)[0] + '/'
 
         # =====================================================
@@ -116,7 +119,6 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
             # Load factors
             with open(factors_path, "rb") as f:
                 factors = pickle.load(f)
-            # factors = pickle.load(open("factors_path.p", "rb"))
 
         else:
             print("===creating grid factors===")
@@ -126,10 +128,10 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
             ## BEGIN GRID PRODUCT                                ##
 
             fq = [f'dataset_s:{dataset}', 'type_s:dataset']
-            product_name = solr_query(config, fq)[0]['product_name_s']
+            short_name = dataset_metadata['short_name_s']
 
             source_grid_min_L, source_grid_max_L, source_grid, \
-                data_grid_lons, data_grid_lats = ea.generalized_grid_product(product_name,
+                data_grid_lons, data_grid_lats = ea.generalized_grid_product(short_name,
                                                                              config['data_res'],
                                                                              config['data_max_lat'],
                                                                              config['area_extent'],
@@ -151,7 +153,8 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
                 pr.geometry.SwathDefinition(lons=model_grid.XC.values.ravel(),
                                             lats=model_grid.YC.values.ravel())
 
-            # TODO look if rA exists in grid model, otherwise use the line below
+            # TODO look if target_grid_radius exists in grid model, otherwise use the line below
+            # TODO ask Ian!
             target_grid_radius = 0.5*np.sqrt(model_grid.rA.values.ravel())
 
             # Compute the mapping between the data and model grid
@@ -200,7 +203,7 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
 
         for field in fields:
             # Query if entry exists
-            query_fq = [f'dataset_s:{dataset}', 'type_s:transformation', f'grid_type_s:{grid_name}',
+            query_fq = [f'dataset_s:{dataset}', 'type_s:transformation', f'grid_name_s:{grid_name}',
                         f'field_s:{field["name_s"]}', f'pre_transformation_file_path_s:"{source_file_path}"']
 
             docs = solr_query(config, query_fq)
@@ -209,14 +212,10 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
             update_body = []
             transform = {}
             if updating:
-                transform = {}
                 transform['id'] = docs[0]['id']
                 transform['transformation_in_progress_b']: {"set": True}
                 transform['success_b']: {"set": False}
-                update_body.append(transform)
-                solr_update(config, update_body)
             else:
-                transform = {}
                 transform['type_s'] = 'transformation'
                 transform['date_s'] = date
                 transform['dataset_s'] = dataset
@@ -226,13 +225,13 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
                 transform['field_s'] = field["name_s"]
                 transform['transformation_in_progress_b'] = True
                 transform['success_b'] = False
-                update_body.append(transform)
-                solr_update(config, update_body)
+            update_body.append(transform)
+            solr_update(config, update_body)
 
         # Returns list of DAs, one for each field in fields
         print("===Running transformations for " + file_name + "===")
         field_DAs = run_in_any_env(
-            model_grid, grid_name, fields, factors, ds, date, config)
+            model_grid, grid_name, grid_type, fields, factors, ds, date, config)
 
         # =====================================================
         # Save the output in netCDF format
@@ -268,22 +267,27 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
                              'fletcher32': True,
                              '_FillValue': netcdf_fill_value}
 
-            field_DS = field_DA.to_dataset()
+            field_DA.to_netcdf(output_path + output_filename)
 
-            encoding = {var: encoding_each for var in field_DS.data_vars}
+            # TODO: ask ian about encoding - messes up aggregation (saving as dataset/opening as dataarray)
 
-            coord_encoding_each = {'zlib': True,
-                                   'complevel': 5,
-                                   'fletcher32': True,
-                                   '_FillValue': False}
+            # field_DS = field_DA.to_dataset()
 
-            encoding_coords = {
-                var: coord_encoding_each for var in field_DS.dims}
+            # encoding = {var: encoding_each for var in field_DS.data_vars}
 
-            encoding_2 = {**encoding_coords, **encoding}
-            field_DS.to_netcdf(output_path + output_filename,
-                               encoding=encoding_2)
-            field_DS.close()
+            # coord_encoding_each = {'zlib': True,
+            #                        'complevel': 5,
+            #                        'fletcher32': True,
+            #                        '_FillValue': False}
+
+            # encoding_coords = {
+            #     var: coord_encoding_each for var in field_DS.dims}
+
+            # encoding_2 = {**encoding_coords, **encoding}
+
+            # field_DS.to_netcdf(output_path + output_filename,
+            #                    encoding=encoding_2)
+            # field_DS.close()
 
             # update with new info in solr
             transformed_location = output_path + output_filename
@@ -315,7 +319,7 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
         print("======saving output DONE=======")
 
 
-def run_in_any_env(model_grid, model_grid_type, fields, factors, ds, record_date, config):
+def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors, ds, record_date, config):
     #
     # Code to import ecco utils locally... #
     from pathlib import Path
@@ -339,6 +343,7 @@ def run_in_any_env(model_grid, model_grid_type, fields, factors, ds, record_date
     array_precision = getattr(np, config['array_precision'])
     record_file_name = ds.attrs['original_file_name']
     extra_information = config['extra_information']
+    time_zone_included_with_time = config['time_zone_included_with_time']
 
     # Get dataset metadata. Used for dataarray attributes
     fq = ['type_s:dataset', f'dataset_s:{config["dataset_name"]}']
@@ -346,8 +351,17 @@ def run_in_any_env(model_grid, model_grid_type, fields, factors, ds, record_date
 
     field_DAs = []
 
+    original_dataset_metadata = {
+        key: dataset_metadata[key] for key in dataset_metadata.keys() if 'original' in key}
+
     # fields is a list of dictionaries
     for data_field_info in fields:
+
+        # field_DA = ea.generalized_transform_to_model_grid_solr(data_field_info, record_date, model_grid, model_grid_type,
+        #                                                        array_precision, record_file_name, original_dataset_metadata,
+        #                                                        extra_information, ds, factors, time_zone_included_with_time,
+        #                                                        model_grid_name)
+
         # initialize notes for this record
         record_notes = ''
 
@@ -376,11 +390,12 @@ def run_in_any_env(model_grid, model_grid_type, fields, factors, ds, record_date
         data_DA.time.attrs['long_name'] = 'center time of averaging period'
 
         data_DA.attrs['original_dataset_title'] = dataset_metadata['original_dataset_title_s']
+        data_DA.attrs['original_dataset_short_name'] = dataset_metadata['original_dataset_short_name_s']
         data_DA.attrs['original_dataset_url'] = dataset_metadata['original_dataset_url_s']
         data_DA.attrs['original_dataset_reference'] = dataset_metadata['original_dataset_reference_s']
-        data_DA.attrs['original_dataset_product_id'] = dataset_metadata['original_dataset_product_id_s']
-        data_DA.attrs['interpolated_grid_id'] = model_grid_type
-        data_DA.name = f'{data_field}_interpolated_to_{model_grid_type}'
+        data_DA.attrs['original_dataset_doi'] = dataset_metadata['original_dataset_doi_s']
+        data_DA.attrs['interpolated_grid_id'] = model_grid_name
+        data_DA.name = f'{data_field}_interpolated_to_{model_grid_name}'
 
         # load the file, do the mapping and update the record times
         print('reading ', record_file_name)

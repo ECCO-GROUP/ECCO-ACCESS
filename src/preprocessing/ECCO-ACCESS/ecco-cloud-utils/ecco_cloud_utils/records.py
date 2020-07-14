@@ -37,7 +37,7 @@ def make_empty_record(standard_name, long_name, units,
         data_DA = data_DA.assign_coords({dim: model_grid[dim]})
 
     # create XC and YC coordinates of empty record from XC YC of model_grid
-    if model_grid_type == 'llc' or model_grid_type == 'llc90':
+    if model_grid_type == 'llc':
         # llc grid has 'tile dimension'
         data_DA = data_DA.assign_coords(
             {'XC': (('tile', 'j', 'i'), model_grid.XC)})

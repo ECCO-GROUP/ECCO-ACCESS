@@ -89,8 +89,9 @@ def run_aggregation(system_path, output_dir):
     fq = ['type_s:dataset', f'dataset_s:{dataset}']
     dataset_metadata = solr_query(config, fq)[0]
 
-    product_name = dataset_metadata['product_name_s']
-    years = dataset_metadata['years_updated_s'].split(",")
+    short_name = dataset_metadata['short_name_s']
+    # years = dataset_metadata['years_updated_s'].split(",")
+    years = ['1992']
     data_time_scale = dataset_metadata['data_time_scale_s']
 
     # Define precision of output files, float32 is standard
@@ -126,8 +127,11 @@ def run_aggregation(system_path, output_dir):
                     dates_in_year = np.arange(
                         f'{year}-01-01', f'{int(year)+1}-01-01', dtype='datetime64[D]')
                 elif data_time_scale == 'monthly':
-                    dates_in_year = np.arange(
+                    months_in_year = np.arange(
                         f'{year}-01', f'{int(year)+1}-01', dtype='datetime64[M]')
+                    dates_in_year = []
+                    for month in months_in_year:
+                        dates_in_year.append(f'{month}')
 
                 for field in fields:
                     field_name = field['name_s']
@@ -139,6 +143,7 @@ def run_aggregation(system_path, output_dir):
 
                     print("===creating empty records for missing days===")
                     for date in dates_in_year:
+                        print('dates_in_year: ', date)
                         # Query for date
                         fq = [f'dataset_s:{dataset}', 'type_s:transformation',
                               f'grid_name_s:{grid_name}', f'field_s:{field_name}', f'date_s:{date}*']
@@ -148,9 +153,12 @@ def run_aggregation(system_path, output_dir):
                         if docs:
                             data_DA = xr.open_dataarray(
                                 docs[0]['transformation_file_path_s'], decode_times=True)
+                            print('data DA: ', data_DA)
+
                         else:
                             data_DA = ea.make_empty_record(field['standard_name_s'], field['long_name_s'], field['units_s'],
-                                                           date, model_grid, grid_name, array_precision)
+                                                           date, model_grid, grid_type, array_precision)
+                            print('empty DA: ', data_DA)
 
                         daily_DA_year.append(data_DA)
 
@@ -167,14 +175,15 @@ def run_aggregation(system_path, output_dir):
 
                     new_data_attr = {}
                     new_data_attr['original_dataset_title'] = dataset_metadata['original_dataset_title_s']
+                    new_data_attr['original_dataset_short_name'] = dataset_metadata['original_dataset_short_name_s']
                     new_data_attr['original_dataset_url'] = dataset_metadata['original_dataset_url_s']
                     new_data_attr['original_dataset_reference'] = dataset_metadata['original_dataset_reference_s']
-                    new_data_attr['original_dataset_product_id'] = dataset_metadata['original_dataset_product_id_s']
+                    new_data_attr['original_dataset_doi'] = dataset_metadata['original_dataset_doi_s']
                     new_data_attr['new_name'] = f'{field_name}_interpolated_to_{grid_name}'
                     new_data_attr['interpolated_grid_id'] = grid_name
 
-                    shortest_filename = f'{product_name}_{grid_name}_DAILY_{year}_{field_name}'
-                    monthly_filename = f'{product_name}_{grid_name}_MONTHLY_{year}_{field_name}'
+                    shortest_filename = f'{short_name}_{grid_name}_DAILY_{year}_{field_name}'
+                    monthly_filename = f'{short_name}_{grid_name}_MONTHLY_{year}_{field_name}'
 
                     output_filenames = {'shortest': shortest_filename,
                                         'monthly': monthly_filename}
@@ -195,6 +204,8 @@ def run_aggregation(system_path, output_dir):
                     # generalized_aggregate_and_save expects Paths
                     output_dirs = {'binary': Path(bin_output_dir),
                                    'netcdf': Path(netCDF_output_dir)}
+
+                    print(daily_DA_year_merged)
 
                     ea.generalized_aggregate_and_save(daily_DA_year_merged,
                                                       new_data_attr,

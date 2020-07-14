@@ -12,8 +12,6 @@ import requests
 import json
 import yaml
 
-# get md5 checksum of file
-
 
 def md5(fname):
     hash_md5 = hashlib.md5()
@@ -312,16 +310,17 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
         ds_meta = {}
         ds_meta['type_s'] = 'dataset'
         ds_meta['dataset_s'] = config['ds_name']
-        ds_meta['product_name_s'] = config['product_name']
+        ds_meta['short_name_s'] = config['short_name']
         ds_meta['source_s'] = f'{config["host"]}&datasetId={config["podaac_id"]}'
         ds_meta['data_time_scale_s'] = config['data_time_scale']
         ds_meta['date_format_s'] = config['date_format']
         ds_meta['last_checked_dt'] = chk_time
         ds_meta['years_updated_s'] = ', '.join(years_updated)
         ds_meta['original_dataset_title_s'] = config['original_dataset_title']
+        ds_meta['original_dataset_short_name_s'] = config['original_dataset_short_name']
         ds_meta['original_dataset_url_s'] = config['original_dataset_url']
         ds_meta['original_dataset_reference_s'] = config['original_dataset_reference']
-        ds_meta['original_dataset_product_id_s'] = config['original_dataset_product_id']
+        ds_meta['original_dataset_doi_s'] = config['original_dataset_doi']
         if overall_start != None:
             ds_meta['start_date_dt'] = overall_start.strftime(
                 "%Y-%m-%dT%H:%M:%SZ")
@@ -339,8 +338,8 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
         body = []
         body.append(ds_meta)
 
-        # TODO: incinerate and rewrite
-        # construct child document for new_data_attrs and each field
+        # TODO: update for changes in yaml (incinerate and rewrite)
+        # modify updating variable to account for updates in config and then incinerate and rewrite
         for field in config['fields']:
             field_obj = {}
             field_obj['type_s'] = 'field'

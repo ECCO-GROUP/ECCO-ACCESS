@@ -20,8 +20,8 @@ proj_info:
 # REMEMBER, REPLACE LOCAL PATHS SO THEY POINT TO YOUR /SRC/ DIRECTORY
 solr_host: http://localhost:8983/solr/
 solr_collection_name: ecco_datasets
-grid_path: /Users/kevinmarlis/Developer/JPL/src/grids/
-output_dir: /Users/kevinmarlis/Developer/JPL/src/output/
+grid_path: /Users/kevinmarlis/Developer/JPL/ecco-preprocessing/src/grids/
+output_dir: /Users/kevinmarlis/Developer/JPL/ecco-preprocessing/src/output/
 # AWS
 # solr_host: http://ec2-3-16-187-19.us-east-2.compute.amazonaws.com:8983/solr/
 # solr_collection_name: ecco_datasets

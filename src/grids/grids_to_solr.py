@@ -37,13 +37,15 @@ grids = []
 for grid_file in grid_files:
     ds = xr.open_dataset(path_to_file_dir + grid_file)
 
-    if 'model_grid_type' in ds.attrs.keys():
-        model_grid_type = ds.attrs['model_grid_type']
-        grids.append((model_grid_type, grid_file))
-
-    # ECCO-GRID.nc does not currently conform, so manually set model_grid_type
     if grid_file == 'ECCO-GRID.nc':
-        grids.append(('llc90', grid_file))
+        grid_name = 'llc90_bad'
+        grid_type = 'llc'
+        grids.append((grid_name, grid_type, grid_file))
+        continue
+
+    grid_name = ds.attrs['name']
+    grid_type = ds.attrs['type']
+    grids.append((grid_name, grid_type, grid_file))
 
 
 # =====================================================
@@ -68,12 +70,11 @@ if len(docs) > 0:
 # -----------------------------------------------------
 # Create Solr grid-type document for each missing grid type
 # -----------------------------------------------------
-for grid_name, grid_file in grids:
+for grid_name, grid_type, grid_file in grids:
     if grid_name not in grids_in_solr:
         grid_meta = {}
         grid_meta['type_s'] = 'grid'
-        grid_meta['grid_type_s'] = 'llc'
-
+        grid_meta['grid_type_s'] = grid_type
         grid_meta['grid_name_s'] = grid_name
         grid_meta['grid_path_s'] = path_to_file_dir + grid_file
         grid_meta['date_added_dt'] = datetime.utcnow().strftime(
