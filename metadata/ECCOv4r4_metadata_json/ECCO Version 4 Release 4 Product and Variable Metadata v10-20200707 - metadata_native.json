@@ -1,0 +1,40 @@
+
+
+[
+   {
+      "name": "geospatial_lat_resolution",
+      "type": "s",
+      "value": "variable"
+   },
+   {
+      "name": "geospatial_lon_resolution",
+      "type": "s",
+      "value": "variable"
+   },
+   {
+      "name": "grid_mapping_name",
+      "type": "s",
+      "value": "lat-lon-cap 90"
+   },
+   {
+      "name": "ntile",
+      "type": "i",
+      "value": 13
+   },
+   {
+      "name": "ni",
+      "type": "i",
+      "value": 90
+   },
+   {
+      "name": "nj",
+      "type": "i",
+      "value": 90
+   },
+   {
+      "name": "nz",
+      "type": "i",
+      "value": 50
+   }
+]
+

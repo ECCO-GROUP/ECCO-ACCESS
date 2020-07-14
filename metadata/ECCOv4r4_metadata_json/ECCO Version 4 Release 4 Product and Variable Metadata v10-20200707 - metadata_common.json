@@ -1,0 +1,235 @@
+
+
+[
+   {
+      "name": "acknowledgment",
+      "type": "s",
+      "value": "This research was carried out by the Jet Propulsion Laboratory, managed by the California Institute of Technology under a contract with the National Aeronautics and Space Administration."
+   },
+   {
+      "name": "author",
+      "type": "s",
+      "value": "Ian Fenty and Ou Wang"
+   },
+   {
+      "name": "cdm_data_type",
+      "type": "s",
+      "value": "grid"
+   },
+   {
+      "name": "comment",
+      "type": "s",
+      "value": "These fields are provided on a regular lat-lon grid. They have been mapped to the regular lat-lon grid from the original ECCO lat-lon-cap 90 (llc90) native model grid."
+   },
+   {
+      "name": "conventions",
+      "type": "s",
+      "value": "CF-1.8, Unidata Dataset Discovery v1.0, ACDD 1.3"
+   },
+   {
+      "name": "creator_email",
+      "type": "s",
+      "value": "ecco-group@mit.edu"
+   },
+   {
+      "name": "creator_institution",
+      "type": "s",
+      "value": "NASA Jet Propulsion Laboratory (JPL)"
+   },
+   {
+      "name": "creator_name",
+      "type": "s",
+      "value": "ECCO Consortium"
+   },
+   {
+      "name": "creator_type",
+      "type": "s",
+      "value": "group"
+   },
+   {
+      "name": "creator_url",
+      "type": "s",
+      "value": "TBD_DATASET https://doi.org/xxxxx"
+   },
+   {
+      "name": "date_created",
+      "type": "s",
+      "value": "TBD_DATASET"
+   },
+   {
+      "name": "GCMD_keywords",
+      "type": "s",
+      "value": "TBD_DATASET"
+   },
+   {
+      "name": "geospatial_lat_max",
+      "type": "f",
+      "value": 90
+   },
+   {
+      "name": "geospatial_lat_min",
+      "type": "f",
+      "value": -90
+   },
+   {
+      "name": "geospatial_lat_units",
+      "type": "s",
+      "value": "degrees_north"
+   },
+   {
+      "name": "geospatial_lon_max",
+      "type": "f",
+      "value": 180
+   },
+   {
+      "name": "geospatial_lon_min",
+      "type": "f",
+      "value": -180
+   },
+   {
+      "name": "geospatial_lon_units",
+      "type": "s",
+      "value": "degrees_east"
+   },
+   {
+      "name": "geospatial_vertical_max",
+      "type": "f",
+      "value": "0"
+   },
+   {
+      "name": "geospatial_vertical_min",
+      "type": "f",
+      "value": 6134.5
+   },
+   {
+      "name": "geospatial_vertical_positive",
+      "type": "s",
+      "value": "up"
+   },
+   {
+      "name": "geospatial_vertical_resolution",
+      "type": "s",
+      "value": "variable"
+   },
+   {
+      "name": "geospatial_vertical_units",
+      "type": "s",
+      "value": "meter"
+   },
+   {
+      "name": "history",
+      "type": "s",
+      "value": "Inagural release of an ECCO \"Central Estimate\" solution to PO.DAAC"
+   },
+   {
+      "name": "institution",
+      "type": "s",
+      "value": "NASA Jet Propulsion Laboratory (JPL)"
+   },
+   {
+      "name": "instrument_vocabulary",
+      "type": "s",
+      "value": "GCMD instrument keywords"
+   },
+   {
+      "name": "keywords_vocabulary",
+      "type": "s",
+      "value": "NASA Global Change Master Directory (GCMD) Science Keywords"
+   },
+   {
+      "name": "license",
+      "type": "s",
+      "value": "Public Domain"
+   },
+   {
+      "name": "naming_authority",
+      "type": "s",
+      "value": "gov.nasa.jpl"
+   },
+   {
+      "name": "platform_vocabulary",
+      "type": "s",
+      "value": "GCMD platform keywords"
+   },
+   {
+      "name": "processing_level",
+      "type": "s",
+      "value": "L4"
+   },
+   {
+      "name": "product_name",
+      "type": "s",
+      "value": "TBD_FILENAME"
+   },
+   {
+      "name": "product_time_coverage_end",
+      "type": "s",
+      "value": "2017-12-31T12:00:00"
+   },
+   {
+      "name": "product_time_coverage_start",
+      "type": "s",
+      "value": "1992-01-01T12:00:00"
+   },
+   {
+      "name": "product_version",
+      "type": "s",
+      "value": "Version 4, Release 4"
+   },
+   {
+      "name": "program",
+      "type": "s",
+      "value": "NASA Physical Oceanography, Cryosphere, MAP"
+   },
+   {
+      "name": "project",
+      "type": "s",
+      "value": "Estimating the Circulation and Climate of the Ocean"
+   },
+   {
+      "name": "publisher_email",
+      "type": "s",
+      "value": "podaac@podaac.jpl.nasa.gov"
+   },
+   {
+      "name": "publisher_name",
+      "type": "s",
+      "value": "Physical Oceanography Distributed Active Archive Center (PO.DAAC)"
+   },
+   {
+      "name": "reference",
+      "type": "s",
+      "value": "DOI TBD"
+   },
+   {
+      "name": "source",
+      "type": "s",
+      "value": "ERS-1/2, TOPEX/Poseidon, GFO, ENVISAT, Jason-1, Jason-2, CryoSat-2, SARAL/AltiKa, Jason-3, AVHRR, Aquarius, SSM/I, SSMIS, GRACE, DTU17MDT, Argo, WOCE, GO-SHIP, MEOP, ITP"
+   },
+   {
+      "name": "standard_name_vocabulary",
+      "type": "s",
+      "value": "NetCDF Climate and Forecast (CF) Metadata Convention"
+   },
+   {
+      "name": "time_coverage_end",
+      "type": "s",
+      "value": "TBD_DATASET"
+   },
+   {
+      "name": "time_coverage_start",
+      "type": "s",
+      "value": "TBD_DATASET"
+   },
+   {
+      "name": "title",
+      "type": "s",
+      "value": "TBD_DATASET"
+   },
+   {
+      "name": "uuid",
+      "type": "s",
+      "value": "TBD_DATASET"
+   }
+]
+

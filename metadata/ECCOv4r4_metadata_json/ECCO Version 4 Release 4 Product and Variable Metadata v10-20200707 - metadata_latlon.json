@@ -1,0 +1,35 @@
+
+
+[
+   {
+      "name": "geospatial_lat_resolution",
+      "type": "f",
+      "value": 0.5
+   },
+   {
+      "name": "geospatial_lon_resolution",
+      "type": "f",
+      "value": 0.5
+   },
+   {
+      "name": "grid_mapping_name",
+      "type": "s",
+      "value": "latitude_longitude"
+   },
+   {
+      "name": "nx",
+      "type": "i",
+      "value": 720
+   },
+   {
+      "name": "ny",
+      "type": "i",
+      "value": 360
+   },
+   {
+      "name": "nz",
+      "type": "i",
+      "value": 50
+   }
+]
+
