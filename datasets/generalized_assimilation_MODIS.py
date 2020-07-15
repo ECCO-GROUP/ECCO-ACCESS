@@ -71,10 +71,6 @@ import netCDF4 as nc4
 #                              -- time_var --------- Uses Time[0] for time value
 #                              -- no_time ---------- No time given in data
 #                              -- no_time_dashes --- No dashes given in the time values
-#                              -- sea_ice_mask ----- Mask out data where there is sea ice
-#                                                 -- Assumes sea_ice_fraction, lat, and lon
-#                                                 -- values exist as named in dataset
-#                                                 -- Must send target_grid to process_loop()
 # 
 # start_year ---------- Year to start reading data from
 # end_year_exclusive -- Year to stop reading data from (exclusive)
@@ -178,6 +174,7 @@ if __name__== "__main__":
     # Location of original net (easier if all fields are softlinked to one spot)
     data_dir = Path('../Data/MODIS/data')
     
+    # Save data booleans
     save_binary = True
     save_netcdf = True
     
