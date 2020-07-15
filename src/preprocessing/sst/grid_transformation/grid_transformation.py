@@ -154,7 +154,7 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
                                             lats=model_grid.YC.values.ravel())
 
             if 'effective_grid_radius' in model_grid:
-                target_grid_radius = model_grid.effective_grid_radius
+                target_grid_radius = model_grid.effective_grid_radius.values.ravel()
             elif 'rA' in model_grid:
                 target_grid_radius = 0.5*np.sqrt(model_grid.rA.values.ravel())
             else:

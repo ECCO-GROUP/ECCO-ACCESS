@@ -63,7 +63,10 @@ def make_empty_record(standard_name, long_name, units,
 
     # add some metadata
     data_DA.attrs = []
-    data_DA.attrs['interpolated_grid'] = model_grid.title
+    if 'title' in model_grid:
+        data_DA.attrs['interpolated_grid'] = model_grid.title
+    else:
+        data_DA.attrs['interpolated_grid'] = model_grid.name
     data_DA.attrs['model_grid_type'] = model_grid_type
     data_DA.attrs['long_name'] = long_name
     data_DA.attrs['standard_name'] = standard_name

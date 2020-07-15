@@ -17,6 +17,7 @@ from .geometry import area_of_latlon_grid
 
 from .generalized_functions import generalized_grid_product
 from .generalized_functions import generalized_aggregate_and_save
+from .generalized_functions import generalized_transform_to_model_grid_solr
 
 __all__ = ['date_time', 'llc_array_conversion',
            'records', 'mapping', 'geometry', 'generalized_functions']
