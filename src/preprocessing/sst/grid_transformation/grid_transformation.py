@@ -357,99 +357,11 @@ def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors
     # fields is a list of dictionaries
     for data_field_info in fields:
 
-        # field_DA = ea.generalized_transform_to_model_grid_solr(data_field_info, record_date, model_grid, model_grid_type,
-        #                                                        array_precision, record_file_name, original_dataset_metadata,
-        #                                                        extra_information, ds, factors, time_zone_included_with_time,
-        #                                                        model_grid_name)
-
-        # initialize notes for this record
-        record_notes = ''
-
-        # set data info values
-        data_field = data_field_info['name_s']
-        standard_name = data_field_info['standard_name_s']
-        long_name = data_field_info['long_name_s']
-        units = data_field_info['units_s']
-
-        # create empty data array
-        data_DA = ea.make_empty_record(standard_name, long_name, units,
-                                       record_date,
-                                       model_grid, model_grid_type,
-                                       array_precision, variable_name=data_field)
-
-        print(data_DA)
-
-        # add some metadata to the newly formed data array object
-        data_DA.attrs['original_filename'] = record_file_name
-        data_DA.attrs['original_field_name'] = data_field
-        data_DA.attrs['interplation_parameters'] = 'bin averaging'
-        data_DA.attrs['interplation_code'] = 'pyresample'
-        data_DA.attrs['interpolation_date'] = \
-            str(np.datetime64(datetime.now(), 'D'))
-
-        data_DA.time.attrs['long_name'] = 'center time of averaging period'
-
-        data_DA.attrs['original_dataset_title'] = dataset_metadata['original_dataset_title_s']
-        data_DA.attrs['original_dataset_short_name'] = dataset_metadata['original_dataset_short_name_s']
-        data_DA.attrs['original_dataset_url'] = dataset_metadata['original_dataset_url_s']
-        data_DA.attrs['original_dataset_reference'] = dataset_metadata['original_dataset_reference_s']
-        data_DA.attrs['original_dataset_doi'] = dataset_metadata['original_dataset_doi_s']
-        data_DA.attrs['interpolated_grid_id'] = model_grid_name
-        data_DA.name = f'{data_field}_interpolated_to_{model_grid_name}'
-
-        # load the file, do the mapping and update the record times
-        print('reading ', record_file_name)
-
-        if 'transpose' in extra_information:
-            orig_data = ds[data_field].values[0, :].T
-        else:
-            orig_data = ds[data_field].values
-
-        # see if we have any valid data
-        if np.sum(~np.isnan(orig_data)) > 0:
-
-            data_model_projection = ea.transform_to_target_grid(source_indices_within_target_radius_i,
-                                                                num_source_indices_within_target_radius_i,
-                                                                nearest_source_index_to_target_index_i,
-                                                                orig_data, model_grid.XC.shape)
-
-            # put the new data values into the data_DA array.
-            # --where the mapped data are not nan, replace the original values
-            # --where they are nan, just leave the original values alone
-            data_DA.values = np.where(~np.isnan(data_model_projection),
-                                      data_model_projection, data_DA.values)
-
-        else:
-            print('file loaded but empty')
-            record_notes = record_notes + ' -- empty record -- '
-
-        # update time values
-        if 'time_bounds_var' in extra_information:
-            data_DA.time_start.values[0] = ds.Time_bounds[0][0].values
-            data_DA.time_end.values[0] = ds.Time_bounds[0][1].values
-        elif 'no_time' in extra_information:
-            data_DA.time_start.values[0] = record_date
-            data_DA.time_end.values[0] = record_date
-        elif 'no_time_dashes' in extra_information:
-            new_start_time = f'{ds.time_coverage_start[0:4]}-{ds.time_coverage_start[4:6]}-{ds.time_coverage_start[6:8]}'
-            new_end_time = f'{ds.time_coverage_end[0:4]}-{ds.time_coverage_end[4:6]}-{ds.time_coverage_end[6:8]}'
-            data_DA.time_start.values[0] = new_start_time
-            data_DA.time_end.values[0] = new_end_time
-        elif config['time_zone_included_with_time']:
-            data_DA.time_start.values[0] = ds.time_coverage_start[:-1]
-            data_DA.time_end.values[0] = ds.time_coverage_end[:-1]
-        else:
-            data_DA.time_start.values[0] = ds.time_coverage_start
-            data_DA.time_end.values[0] = ds.time_coverage_end
-
-        if 'time_var' in extra_information:
-            data_DA.time.values[0] = ds.Time[0].values
-        else:
-            data_DA.time.values[0] = record_date
-
-        data_DA.attrs['notes'] = record_notes
-
-        field_DAs.append(data_DA)
+        field_DA = ea.generalized_transform_to_model_grid_solr(data_field_info, record_date, model_grid, model_grid_type,
+                                                               array_precision, record_file_name, original_dataset_metadata,
+                                                               extra_information, ds, factors, time_zone_included_with_time,
+                                                               model_grid_name)
+        field_DAs.append(field_DA)
 
     return field_DAs
 
