@@ -153,9 +153,12 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
                 pr.geometry.SwathDefinition(lons=model_grid.XC.values.ravel(),
                                             lats=model_grid.YC.values.ravel())
 
-            # TODO look if target_grid_radius exists in grid model, otherwise use the line below
-            # TODO ask Ian!
-            target_grid_radius = 0.5*np.sqrt(model_grid.rA.values.ravel())
+            if 'effective_grid_radius' in model_grid:
+                target_grid_radius = model_grid.effective_grid_radius
+            elif 'rA' in model_grid:
+                target_grid_radius = 0.5*np.sqrt(model_grid.rA.values.ravel())
+            else:
+                print(f'{grid_name} grid not supported')
 
             # Compute the mapping between the data and model grid
             source_indices_within_target_radius_i,\
