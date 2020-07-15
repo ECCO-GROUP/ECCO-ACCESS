@@ -28,6 +28,31 @@ def getdate(regex, fname):
     return date
 
 
+def solr_query(config, fq):
+    solr_host = config['solr_host']
+    solr_collection_name = config['solr_collection_name']
+
+    getVars = {'q': '*:*',
+               'fq': fq,
+               'rows': 300000}
+
+    url = solr_host + solr_collection_name + '/select?'
+    response = requests.get(url, params=getVars)
+    return response.json()['response']['docs']
+
+
+def solr_update(config, update_body, r=False):
+    solr_host = config['solr_host']
+    solr_collection_name = config['solr_collection_name']
+
+    url = solr_host + solr_collection_name + '/update?commit=true'
+
+    if r:
+        return requests.post(url, json=update_body)
+    else:
+        requests.post(url, json=update_body)
+
+
 def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
     # =====================================================
     # Read configurations from YAML file
@@ -58,11 +83,9 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
 
     print("======downloading files========")
     if config['aggregated']:
-        url = "{host}&datasetId={dataset}".format(
-            host=config['host'], dataset=config['podaac_id'])
+        url = f'{config["host"]}&datasetId={config["podaac_id"]}'
     else:
-        url = "{host}&datasetId={dataset}&endTime={endTime}&startTime={startTime}".format(
-            host=config['host'], dataset=config['podaac_id'], endTime=config['end'], startTime=config['start'])
+        url = f'{config["host"]}&datasetId={config["podaac_id"]}&endTime={config["end"]}&startTime={config["start"]}'
 
     namespace = {"podaac": "http://podaac.jpl.nasa.gov/opensearch/",
                  "opensearch": "http://a9.com/-/spec/opensearch/1.1/",
@@ -89,13 +112,12 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
     # get old data if exists
     docs = {}
 
-    r = requests.get(url="{host}{collection}/select?fq=type_s%3Aharvested&rows=300000&q=dataset_s:{ds}".format(
-        host=config['solr_host'], collection=config['solr_collection_name'], ds=config['ds_name']))
-    resp = json.loads(r.text)
+    fq = ['type_s:harvested', f'dataset_s:{config["ds_name"]}']
+    query_docs = solr_query(config, fq)
 
-    if resp['response']['numFound'] > 0:
-        for e in resp['response']['docs']:
-            docs[e['filename_s']] = e
+    if len(query_docs) > 0:
+        for doc in query_docs:
+            docs[doc['filename_s']] = doc
 
     # setup metadata
     meta = []
@@ -172,9 +194,7 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
 
                 # if no granule metadata or download time less than modified time, download new file
                 if updating:
-                    local_fp = folder + \
-                        config['ds_name'] + \
-                        '_granule.nc' if on_aws else target_dir + newfile
+                    local_fp = f'{folder}{config["ds_name"]}_granule.nc' if on_aws else target_dir + newfile
 
                     # check if file is already downloaded
                     # useful for local development when clearing Solr
@@ -292,14 +312,10 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
     # Query for Solr Dataset-level Document
     # =====================================================
 
-    getVars = {'q': '*:*',
-               'fq': ['type_s:dataset', 'dataset_s:'+config['ds_name']],
-               'rows': 300000}
+    fq = ['type_s:dataset', 'dataset_s:'+config['ds_name']]
+    docs = solr_query(config, fq)
 
-    url = config['solr_host'] + config['solr_collection_name'] + '/select?'
-    response = requests.get(url, params=getVars)
-
-    update = (response.json()['response']['numFound'] == 1)
+    update = (len(docs) == 1)
 
     # if no dataset-level entry in Solr, create one
     if not update:
@@ -338,8 +354,17 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
         body = []
         body.append(ds_meta)
 
+        # Post document
+        r = solr_update(config, body, r=True)
+
+        if r.status_code == 200:
+            print('Successfully created Solr dataset document')
+        else:
+            print('Failed to create Solr dataset document')
+
         # TODO: update for changes in yaml (incinerate and rewrite)
         # modify updating variable to account for updates in config and then incinerate and rewrite
+        body = []
         for field in config['fields']:
             field_obj = {}
             field_obj['type_s'] = 'field'
@@ -351,22 +376,19 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
             body.append(field_obj)
 
         # post document
-        url = f'{config["solr_host"]}{config["solr_collection_name"]}/update?commit=true'
-
-        ds_meta_json = json.dumps(ds_meta)
-        r = requests.post(url, json=body)
+        r = solr_update(config, body, r=True)
 
         if r.status_code == 200:
-            print('Successfully created Solr dataset document')
+            print('Successfully created Solr field documents')
         else:
-            print('Failed to create Solr dataset document')
+            print('Failed to create Solr field documents')
 
     # if record exists, update download time, converage start date, coverage end date
     else:
         # =====================================================
         # Check start and end date coverage
         # =====================================================
-        doc = response.json()['response']['docs'][0]
+        doc = docs[0]
         old_start = datetime.strptime(
             doc['start_date_dt'], "%Y-%m-%dT%H:%M:%SZ") if 'start_date_dt' in doc.keys() else None
         old_end = datetime.strptime(
@@ -380,7 +402,6 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
         update_doc['status_s'] = {"set": "harvested"}
         if years_updated:
             update_doc['years_updated_s'] = {"set": ', '.join(years_updated)}
-        # update_doc['files_to_transform_i'] = dl_count
 
         if updating:
             # only update to "harvested" if there is further preprocessing to do
@@ -396,29 +417,17 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
                 update_doc['end_date_dt'] = {
                     "set": overall_end.strftime("%Y-%m-%dT%H:%M:%SZ")}
 
-        update = [update_doc]
-        ds_post_lnk = '{}{}/update?commit=true'.format(
-            config['solr_host'], config['solr_collection_name'])
-        ds_meta_json = json.dumps(update)
-        r = requests.post(
-            url=ds_post_lnk,
-            headers=headers,
-            data=ds_meta_json
-        )
+        body = [update_doc]
+        r = solr_update(config, body, r=True)
+
         if r.status_code == 200:
             print('Successfully updated Solr dataset document')
         else:
             print('Failed to update Solr dataset document')
 
     # post granule metadata documents for downloaded granules
-    lnk = '{}{}/update/json/docs?commit=true&f=/**'.format(
-        config['solr_host'], config['solr_collection_name'])
-    meta_json = json.dumps(meta)
-    r = requests.post(
-        url=lnk,
-        headers=headers,
-        data=meta_json
-    )
+    r = solr_update(config, meta, r=True)
+
     if r.status_code == 200:
         print('granule metadata post to Solr success')
     else:

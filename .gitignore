@@ -1,6 +1,9 @@
 # netCDF data files
 *.nc
 
+# json output
+*.json
+
 # factors pickled files
 /src/grids/*_factors_*
 
