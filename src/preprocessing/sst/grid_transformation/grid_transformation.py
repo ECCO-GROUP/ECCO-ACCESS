@@ -109,8 +109,8 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
         # Check for model grid factors
         # =====================================================
         grid_factors = grid_name + '_factors_path_s'
-        fq = [f'dataset_s:{dataset}', 'type_s:dataset']
 
+        fq = [f'dataset_s:{dataset}', 'type_s:dataset']
         dataset_metadata = solr_query(config, fq)[0]
 
         if grid_factors in dataset_metadata.keys():

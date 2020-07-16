@@ -7,7 +7,7 @@ import requests
 from collections import defaultdict
 import itertools
 import os
-from grid_transformation import run_locally_wrapper, solr_query
+from grid_transformation import run_locally_wrapper, solr_query, solr_update
 
 
 def get_remaining_transformations(config, source_file_path):
@@ -98,3 +98,13 @@ if __name__ == "__main__":
                 system_path, f, remaining_transformations, output_dir)
         else:
             print(f'No new transformations for {item["date_s"]}')
+
+    # Update Solr dataset entry status to transformed
+    fq = [f'dataset_s:{config["dataset_name"]}', 'type_s:dataset']
+    dataset_metadata = solr_query(config, fq)[0]
+
+    update_body = [{
+        "id": dataset_metadata['id'],
+        "status_s": {"set": 'transformed'}
+    }]
+    solr_update(config, update_body)

@@ -2,7 +2,7 @@
 
 # PODAAC explicitely expects this date format
 start: "19920101T00:00:01Z"
-end: "19920104T23:59:59Z"
+end: "19920105T23:59:59Z"
 podaac_id: PODAAC-GHAAO-4BC02
 user: anonymous
 host: https://podaac.jpl.nasa.gov/ws/search/granule/?format=atom&pretty=false&itemsPerPage=300000

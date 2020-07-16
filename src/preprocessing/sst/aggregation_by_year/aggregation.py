@@ -116,6 +116,7 @@ def run_aggregation(system_path, output_dir, s3=None):
 
     short_name = dataset_metadata['short_name_s']
     years = dataset_metadata['years_updated_ss']
+    print(years)
     # years = ['1992']
     data_time_scale = dataset_metadata['data_time_scale_s']
 
@@ -319,7 +320,9 @@ def run_aggregation(system_path, output_dir, s3=None):
 
         # Clear out years updated in dataset level Solr object
         update_body = [
-            {"id": dataset_metadata['id'],
+            {
+                "id": dataset_metadata['id'],
+                "status_s": {"set": 'aggregated'},
                 "years_updated_ss": {"set": []}}
         ]
 
