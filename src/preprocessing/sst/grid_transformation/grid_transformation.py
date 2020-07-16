@@ -62,7 +62,8 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
     import sys
 
     p = Path(__file__).parents[2]
-    generalized_functions_path = Path(f'{p}/ECCO-ACCESS/ecco-cloud-utils/')
+    generalized_functions_path = Path(
+        f'{p}/ecco-access/ECCO-ACCESS/ecco-cloud-utils/')
     sys.path.append(str(generalized_functions_path))
     import ecco_cloud_utils as ea
     # NOTE: generalized functions added to ecco_cloud_utils __init__.py
@@ -265,32 +266,33 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
             if not os.path.exists(output_path):
                 os.makedirs(output_path)
 
+            # TODO: ask ian about encoding - messes up aggregation (saving as dataset/opening as dataarray)
+
+            field_DS = field_DA.to_dataset()
+
             encoding_each = {'zlib': True,
                              'complevel': 5,
                              'fletcher32': True,
                              '_FillValue': netcdf_fill_value}
 
-            field_DA.to_netcdf(output_path + output_filename)
+            encoding = {var: encoding_each for var in field_DS.data_vars}
 
-            # TODO: ask ian about encoding - messes up aggregation (saving as dataset/opening as dataarray)
+            coord_encoding_each = {'zlib': True,
+                                   'complevel': 5,
+                                   'fletcher32': True,
+                                   '_FillValue': False}
 
-            # field_DS = field_DA.to_dataset()
+            encoding_coords = {
+                var: coord_encoding_each for var in field_DS.dims}
 
-            # encoding = {var: encoding_each for var in field_DS.data_vars}
+            encoding_2 = {**encoding_coords, **encoding}
 
-            # coord_encoding_each = {'zlib': True,
-            #                        'complevel': 5,
-            #                        'fletcher32': True,
-            #                        '_FillValue': False}
-
-            # encoding_coords = {
-            #     var: coord_encoding_each for var in field_DS.dims}
-
-            # encoding_2 = {**encoding_coords, **encoding}
+            field_DS.to_netcdf(output_path + output_filename)
 
             # field_DS.to_netcdf(output_path + output_filename,
             #                    encoding=encoding_2)
-            # field_DS.close()
+
+            field_DS.close()
 
             # update with new info in solr
             transformed_location = output_path + output_filename
@@ -329,15 +331,12 @@ def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors
     import sys
 
     p = Path(__file__).parents[2]
-    generalized_functions_path = Path(f'{p}/ECCO-ACCESS/ecco-cloud-utils/')
+    generalized_functions_path = Path(
+        f'{p}/ecco-access/ECCO-ACCESS/ecco-cloud-utils/')
     sys.path.append(str(generalized_functions_path))
     import ecco_cloud_utils as ea
     # END Code to import ecco utils locally... #
     #
-
-    source_indices_within_target_radius_i, \
-        num_source_indices_within_target_radius_i, \
-        nearest_source_index_to_target_index_i = factors
 
     # Check if ends in z and Drop if it does
     if record_date[-1] == 'Z':

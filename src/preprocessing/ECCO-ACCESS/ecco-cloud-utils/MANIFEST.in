@@ -1,2 +1,0 @@
-graft ecco-cloud-utils
-global-exclude *py[cod] __pycache__ *so
