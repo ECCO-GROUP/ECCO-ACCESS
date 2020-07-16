@@ -10,6 +10,30 @@ import hashlib
 np.warnings.filterwarnings('ignore')
 
 
+def find_bucket_key(s3_path):
+    """
+    This is a helper function that given an s3 path such that the path is of
+    the form: bucket/key
+    It will return the bucket and the key represented by the s3 path
+    """
+    s3_components = s3_path.split('/')
+    bucket = s3_components[0]
+    s3_key = ""
+    if len(s3_components) > 1:
+        s3_key = '/'.join(s3_components[1:])
+    return bucket, s3_key
+
+
+def split_s3_bucket_key(s3_path):
+    """Split s3 path into bucket and key prefix.
+    This will also handle the s3:// prefix.
+    :return: Tuple of ('bucketname', 'keyname')
+    """
+    if s3_path.startswith('s3://'):
+        s3_path = s3_path[5:]
+    return find_bucket_key(s3_path)
+
+
 def export_lineage(outfile, config):
     host = config['solr_host']
     collection_name = config['solr_collection_name']
@@ -58,7 +82,7 @@ def solr_update(config, update_body):
     requests.post(url, json=update_body)
 
 
-def run_aggregation(system_path, output_dir):
+def run_aggregation(system_path, output_dir, s3=None):
     #
     # Code to import ecco utils locally... #
     # NOTE: assumes /src/preprocessing/ECCO-ACCESS
@@ -152,8 +176,18 @@ def run_aggregation(system_path, output_dir):
                         docs = solr_query(config, fq)
 
                         if docs:
-                            data_DA = xr.open_dataarray(
-                                docs[0]['transformation_file_path_s'], decode_times=True)
+                            if docs[0]['transformation_file_path_s'][:5] == 's3://':
+                                source_bucket_name, key_name = split_s3_bucket_key(
+                                    docs[0]['transformation_file_path_s'])
+                                obj = s3.Object(source_bucket_name, key_name)
+                                data_DA = xr.open_dataarray(
+                                    obj, decode_times=True)
+                                # f = obj.get()['Body'].read()
+                                # data = np.frombuffer(f, dtype=dt, count=-1)
+                            else:
+                                data_DA = xr.open_dataarray(
+                                    docs[0]['transformation_file_path_s'], decode_times=True)
+
                             print('data DA: ', data_DA)
 
                         else:
@@ -221,13 +255,27 @@ def run_aggregation(system_path, output_dir):
                                                       save_binary=config['save_binary'],
                                                       save_netcdf=config['save_netcdf'])
 
+                    # Upload files to s3
+                    if s3:
+                        target_bucket_name = config['target_bucket_name']
+                        s3_aggregated_path = config['s3_aggregated_path']
+                        s3_output_dir = s3_aggregated_path + \
+                            config['dataset'] + '_transformed_by_year'
+                        target_bucket = s3.Bucket(target_bucket_name)
+
+                        # Upload shortest and monthly aggregated files to target bucket
+                        for filename in output_filenames:
+                            target_bucket.upload_file(
+                                bin_output_dir, filename)
+
+                        s3_path = "s3://" + target_bucket_name + '/' + s3_output_dir
+
                     # Check if aggregation already exists
                     fq = [f'dataset_s:{dataset}', 'type_s:aggregation',
                           f'grid_name_s:{grid_name}', f'field_s:{field_name}', f'year_s:{year}']
                     docs = solr_query(config, fq)
 
                     if len(docs) > 0:
-                        print(docs)
                         doc_id = docs[0]['id']
                         update_body = [
                             {
@@ -240,6 +288,10 @@ def run_aggregation(system_path, output_dir):
                                 "aggregation_version_s": {"set": config['version']}
                             }
                         ]
+
+                        if s3:
+                            update_body[0]['s3_path'] = s3_path
+
                         solr_update(config, update_body)
 
                     else:
@@ -259,12 +311,16 @@ def run_aggregation(system_path, output_dir):
                                 "aggregation_version_s": config['version'],
                             }
                         ]
+
+                        if s3:
+                            update_body[0]['s3_path'] = s3_path
+
                         solr_update(config, update_body)
 
         # Clear out years updated in dataset level Solr object
         update_body = [
             {"id": dataset_metadata['id'],
-                "years_updated_s": {"set": ''}}
+                "years_updated_ss": {"set": []}}
         ]
 
         solr_update(config, update_body)
