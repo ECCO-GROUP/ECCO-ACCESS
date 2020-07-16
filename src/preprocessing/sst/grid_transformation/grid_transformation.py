@@ -364,6 +364,14 @@ def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors
                                                                extra_information, ds, factors, time_zone_included_with_time,
                                                                model_grid_name)
         field_DAs.append(field_DA)
+        
+    extra_transformations = config['extra_transformation_steps']
+    if extra_transformations:
+        for func_to_run in extra_transformations:
+            callable_func = getattr(ea, func_to_run)
+            for i, da in enumerate(field_DAs):
+                new_da = callable_func(da)
+                field_DAs[i] = new_da
 
     return field_DAs
 
