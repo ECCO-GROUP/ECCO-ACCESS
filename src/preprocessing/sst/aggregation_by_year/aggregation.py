@@ -91,7 +91,7 @@ def run_aggregation(system_path, output_dir):
     dataset_metadata = solr_query(config, fq)[0]
 
     short_name = dataset_metadata['short_name_s']
-    years = dataset_metadata['years_updated_s'].split(",")
+    years = dataset_metadata['years_updated_ss']
     # years = ['1992']
     data_time_scale = dataset_metadata['data_time_scale_s']
 
