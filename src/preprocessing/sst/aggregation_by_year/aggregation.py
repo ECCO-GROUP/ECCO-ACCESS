@@ -66,7 +66,8 @@ def run_aggregation(system_path, output_dir):
     import sys
 
     p = Path(__file__).parents[2]
-    generalized_functions_path = Path(f'{p}/ECCO-ACCESS/ecco-cloud-utils/')
+    generalized_functions_path = Path(
+        f'{p}/ecco-access/ECCO-ACCESS/ecco-cloud-utils/')
     sys.path.append(str(generalized_functions_path))
     import ecco_cloud_utils as ea
     # NOTE: generalized functions added to ecco_cloud_utils __init__.py
@@ -90,8 +91,8 @@ def run_aggregation(system_path, output_dir):
     dataset_metadata = solr_query(config, fq)[0]
 
     short_name = dataset_metadata['short_name_s']
-    # years = dataset_metadata['years_updated_s'].split(",")
-    years = ['1992']
+    years = dataset_metadata['years_updated_s'].split(",")
+    # years = ['1992']
     data_time_scale = dataset_metadata['data_time_scale_s']
 
     # Define precision of output files, float32 is standard
