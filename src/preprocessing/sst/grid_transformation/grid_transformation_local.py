@@ -39,16 +39,22 @@ def get_remaining_transformations(config, source_file_path):
         for (grid, field) in grid_field_combinations:
             field_name = field['name_s']
 
-            # Compare origin checksum for transformed file
-            # If it is the same as the harvested checksum,
-            # harvested file has not been updated and no new transformation is needed
+            # If transformation exists, must compare checksums and versions for updates
             if (grid, field_name) in existing_transformations:
+                # Compare origin checksum for transformed file
+                # If it is the same as the harvested checksum,
+                # harvested file has not been updated and no new transformation is needed
                 fq = [f'dataset_s:{dataset_name}', 'type_s:harvested',
                       f'pre_transformation_file_path_s:"{source_file_path}"']
                 harvested_checksum = solr_query(config, fq)[0]['checksum_s']
                 origin_checksum = existing_transformations[(grid, field_name)]
 
-                if origin_checksum == harvested_checksum:
+                # Compare if transformation version number matches config version
+                fq = [f'dataset_s:{dataset_name}', 'type_s:transformation',
+                      f'pre_transformation_file_path_s:"{source_file_path}"']
+                existing_transformation = solr_query(config, fq)[0]
+
+                if existing_transformation['transformation_version_f'] == config['version'] and origin_checksum == harvested_checksum:
                     drop_list.append((grid, field))
 
         grid_field_combinations = [
@@ -81,7 +87,6 @@ if __name__ == "__main__":
     # Get all harvested granule for this dataset
     fq = [f'dataset_s:{config["dataset_name"]}', 'type_s:harvested']
     harvested_granules = solr_query(config, fq)
-    print("num of granules:", len(harvested_granules))
 
     for item in harvested_granules:
         f = item.get('pre_transformation_file_path_s', '')

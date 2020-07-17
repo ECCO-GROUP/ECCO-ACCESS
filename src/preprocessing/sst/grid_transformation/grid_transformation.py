@@ -7,6 +7,8 @@ import json
 import os
 import hashlib
 import pickle
+import traceback
+
 from datetime import datetime
 from netCDF4 import default_fillvals  # pylint: disable=import-error
 
@@ -48,9 +50,10 @@ def run_locally_wrapper(system_path, source_file_path, remaining_transformations
     try:
         run_locally(system_path, source_file_path,
                     remaining_transformations, output_dir)
-    except:
-        run_locally(system_path, source_file_path,
-                    remaining_transformations, output_dir)
+    except Exception:
+        traceback.print_exc()
+        # run_locally(system_path, source_file_path,
+        #             remaining_transformations, output_dir)
         print('Unable to run local transformation')
 
 
@@ -156,6 +159,8 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
 
             if 'effective_grid_radius' in model_grid:
                 target_grid_radius = model_grid.effective_grid_radius.values.ravel()
+            elif 'effective_radius' in model_grid:
+                target_grid_radius = model_grid.effective_radius.values.ravel()
             elif 'rA' in model_grid:
                 target_grid_radius = 0.5*np.sqrt(model_grid.rA.values.ravel())
             else:
@@ -206,6 +211,7 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
         update_body = []
 
         for field in fields:
+
             # Query if entry exists
             query_fq = [f'dataset_s:{dataset}', 'type_s:transformation', f'grid_name_s:{grid_name}',
                         f'field_s:{field["name_s"]}', f'pre_transformation_file_path_s:"{source_file_path}"']
@@ -215,11 +221,15 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
 
             update_body = []
             transform = {}
+
             if updating:
+                # Reset status fields
                 transform['id'] = docs[0]['id']
                 transform['transformation_in_progress_b']: {"set": True}
                 transform['success_b']: {"set": False}
+                solr_update(config, transform)
             else:
+                # Create new transformation entry
                 transform['type_s'] = 'transformation'
                 transform['date_s'] = date
                 transform['dataset_s'] = dataset
@@ -229,19 +239,21 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
                 transform['field_s'] = field["name_s"]
                 transform['transformation_in_progress_b'] = True
                 transform['success_b'] = False
-            update_body.append(transform)
-            solr_update(config, update_body)
+                update_body.append(transform)
+                solr_update(config, update_body)
 
         # Returns list of DAs, one for each field in fields
         print("===Running transformations for " + file_name + "===")
         field_DAs = run_in_any_env(
             model_grid, grid_name, grid_type, fields, factors, ds, date, config)
+        print(grid_name, len(field_DAs))
 
         # =====================================================
         # Save the output in netCDF format
         # =====================================================
         print("=========saving output=========")
-        # field is list of dictionaries
+        # fields is list of dictionaries
+
         for field, field_DA in zip(fields, field_DAs):
 
             output_filename = f'{grid_name}_{field["name_s"]}_{file_name}'
@@ -301,6 +313,7 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
             query_fq = [f'dataset_s:{dataset}', 'type_s:transformation', f'grid_name_s:{grid_name}',
                         f'field_s:{field["name_s"]}', f'pre_transformation_file_path_s:"{source_file_path}"']
 
+            docs = solr_query(config, query_fq)
             doc_id = solr_query(config, query_fq)[0]['id']
 
             # Then update the new metadata
@@ -315,7 +328,7 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
                     "transformation_in_progress_b": {"set": False},
                     "success_b": {"set": success},
                     "transformation_checksum_s": {"set": md5(transformed_location)},
-                    "transformation_version_s": {"set": config['version']}
+                    "transformation_version_f": {"set": config['version']}
                 }
             ]
 
@@ -364,7 +377,7 @@ def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors
                                                                extra_information, ds, factors, time_zone_included_with_time,
                                                                model_grid_name)
         field_DAs.append(field_DA)
-        
+
     extra_transformations = config['extra_transformation_steps']
     if extra_transformations:
         for func_to_run in extra_transformations:

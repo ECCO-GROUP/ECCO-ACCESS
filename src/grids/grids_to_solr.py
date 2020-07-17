@@ -26,7 +26,8 @@ solr_collection_name = config['solr_collection_name']
 grid_files = [f for f in os.listdir(path_to_file_dir)
               if os.path.isfile(os.path.join(path_to_file_dir, f))
               and 'factors' not in f
-              and f[-2:] == 'nc']
+              and f[-2:] == 'nc'
+              ]
 
 # =====================================================
 # Extract grid names from netCDF
@@ -36,12 +37,6 @@ grids = []
 # Assumes grids conform to metadata standard (model_grid_type)
 for grid_file in grid_files:
     ds = xr.open_dataset(path_to_file_dir + grid_file)
-
-    if grid_file == 'ECCO-GRID.nc':
-        grid_name = 'llc90_bad'
-        grid_type = 'llc'
-        grids.append((grid_name, grid_type, grid_file))
-        continue
 
     grid_name = ds.attrs['name']
     grid_type = ds.attrs['type']
