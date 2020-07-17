@@ -40,8 +40,10 @@ def make_empty_record(standard_name, long_name, units,
     if model_grid_type == 'llc':
         # llc grid has 'tile dimension'
         if 'i' in model_grid and 'j' in model_grid and 'tile' in model_grid:
-            data_DA = data_DA.assign_coords({'XC': (('tile', 'j', 'i'), model_grid.XC)})
-            data_DA = data_DA.assign_coords({'YC': (('tile', 'j', 'i'), model_grid.YC)})
+            data_DA = data_DA.assign_coords(
+                {'XC': (('tile', 'j', 'i'), model_grid.XC)})
+            data_DA = data_DA.assign_coords(
+                {'YC': (('tile', 'j', 'i'), model_grid.YC)})
         else:
             print('Unsupported model grid format')
             return []
@@ -49,11 +51,15 @@ def make_empty_record(standard_name, long_name, units,
     # some grids have j i dims, and some have lon lat dims
     elif model_grid_type == 'latlon':
         if 'i' in model_grid and 'j' in model_grid:
-            data_DA = data_DA.assign_coords({'XC': (('j', 'i'), model_grid.XC)})
-            data_DA = data_DA.assign_coords({'YC': (('j', 'i'), model_grid.YC)})
+            data_DA = data_DA.assign_coords(
+                {'XC': (('j', 'i'), model_grid.XC)})
+            data_DA = data_DA.assign_coords(
+                {'YC': (('j', 'i'), model_grid.YC)})
         elif 'lat' in model_grid and 'lon' in model_grid:
-            data_DA = data_DA.assign_coords({'XC': (('lon', 'lat'), model_grid.XC)})
-            data_DA = data_DA.assign_coords({'YC': (('lon', 'lat'), model_grid.YC)})
+            data_DA = data_DA.assign_coords(
+                {'XC': (('lat', 'lon'), model_grid.XC)})
+            data_DA = data_DA.assign_coords(
+                {'YC': (('lat', 'lon'), model_grid.YC)})
         else:
             print('Unsupported model grid format')
             return []
