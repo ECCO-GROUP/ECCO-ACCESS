@@ -4,7 +4,6 @@ version: 1.0
 remove_nan_days_from_data: False
 do_monthly_aggregation: True
 skipna_in_mean: True
-combine_hemis: True
 save_binary: True
 save_netcdf: True
 array_precision: float32

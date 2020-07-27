@@ -145,14 +145,17 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
                 data_res = float(num) / float(den)
 
             hemi_dim = config[f'dims_{hemi}']
+            hemi_area_extent = config[f'area_extent_{hemi}']
+            hemi_proj_info = config[f'proj_info_{hemi}']
+            hemi_data_max_lat = config[f'data_max_lat_{hemi}']
 
             source_grid_min_L, source_grid_max_L, source_grid, \
                 data_grid_lons, data_grid_lats = ea.generalized_grid_product(short_name,
-                                                                            data_res,
-                                                                             config['data_max_lat'],
-                                                                             config['area_extent'],
+                                                                             data_res,
+                                                                             hemi_data_max_lat,
+                                                                             hemi_area_extent,
                                                                              hemi_dim,
-                                                                             config['proj_info'])
+                                                                             hemi_proj_info)
 
             ## END GRID PRODUCT                                  ##
             #######################################################

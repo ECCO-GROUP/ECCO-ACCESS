@@ -36,7 +36,7 @@ grids = []
 
 # Assumes grids conform to metadata standard (model_grid_type)
 for grid_file in grid_files:
-    if grid_file == '2x2deg_demo.nc':
+    if grid_file in config['grids_to_use']:
         ds = xr.open_dataset(path_to_file_dir + grid_file)
 
         grid_name = ds.attrs['name']

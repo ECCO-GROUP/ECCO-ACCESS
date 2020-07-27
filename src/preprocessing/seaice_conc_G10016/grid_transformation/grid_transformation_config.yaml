@@ -5,19 +5,28 @@ array_precision: float32
 time_zone_included_with_time: True
 extra_information: []
 data_res: 25/111
-data_max_lat: 90.0
+data_max_lat_nh: 90.0
+data_max_lat_sh: -90.0
+
 # Make NH/SH area_extent
-area_extent: [-3950000.0, -3950000.0, 3950000.0, 4350000.0]
+area_extent_nh: [-3850000.0, -5350000.0, 3750000.0, 5850000.0]
+area_extent_sh: [-3950000.0, -3950000.0, 3950000.0, 4350000.0]
 dims_nh: [304, 448]
 dims_sh: [316, 332]
 # Make NH/SH proj_info (3412 for SH)
 
 
-proj_info:
+proj_info_nh:
   {'area_id':'3411',
    'area_name':'polar_stereographic',
    'proj_id':'3411',
-   'proj4_args':'+proj=stere +lat_0=90 +lat_ts=70 +lon_0=-45 +k=1 +x_0=0 +y_0=0 +a=6378273 +b=6356889.449 +units=m +no_defs'} 
+   'proj4_args':'+init=EPSG:3411'} 
+proj_info_sh:
+  {'area_id':'3412',
+   'area_name':'polar_stereographic',
+   'proj_id':'3412',
+   'proj4_args':'+init=EPSG:3412'} 
+
 
 extra_transformation_steps: []
 
