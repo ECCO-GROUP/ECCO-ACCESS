@@ -1,0 +1,48 @@
+# Harvesting
+
+# PODAAC explicitely expects this date format
+start: "19930701T00:00:01Z"
+end: "19930815T23:59:59Z"
+podaac_id: PODAAC-SLREF-CDRV2
+user: anonymous
+host: https://podaac.jpl.nasa.gov/ws/search/granule/?format=atom&pretty=false&itemsPerPage=300000
+aggregated: false
+# Provide date format from filename
+date_regex: "%Y-%m-%dT%H:%M:%SZ"
+
+# Dataset
+ds_name: sla_MEaSUREs
+short_name: SEA_SURFACE_HEIGHT_ALT_GRIDS_L4_2SATS_5DAY_6THDEG_V_JPL1812
+data_time_scale: daily
+date_format: yyyymmdd
+fields:
+  [
+    {
+      name: SLA,
+      long_name: Sea Level Anomaly Estimate,
+      standard_name: sea_surface_height_above_sea_level,
+      units: m,
+    },
+    {
+      name: SLA_ERR,
+      long_name: "Sea Level Anomaly Error Estimate",
+      standard_name: " ",
+      units: m,
+    },
+  ]
+# new_data_attrs:
+original_dataset_title: MEaSUREs Gridded Sea Surface Height Anomalies Version 1812
+original_dataset_short_name: SEA_SURFACE_HEIGHT_ALT_GRIDS_L4_2SATS_5DAY_6THDEG_V_JPL1812
+original_dataset_url: https://podaac.jpl.nasa.gov/dataset/SEA_SURFACE_HEIGHT_ALT_GRIDS_L4_2SATS_5DAY_6THDEG_V_JPL1812
+original_dataset_reference: " "
+original_dataset_doi: 10.5067/SLREF-CDRV2
+
+# Local
+# REMEMBER, REPLACE LOCAL PATHS SO THEY POINT TO YOUR /SRC/ DIRECTORY
+solr_host: http://localhost:8983/solr/
+solr_collection_name: ecco_datasets
+target_dir: /Users/kevinmarlis/Developer/JPL/ecco-preprocessing/src/harvesters/podaac_harvester/harvested_granule/SLA_MEASURES_DAILY
+
+
+# AWS
+# target_bucket_name: ecco-preprocess

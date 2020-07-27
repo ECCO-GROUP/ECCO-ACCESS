@@ -1,0 +1,36 @@
+# Dataset
+dataset_name: seaice_G10016
+version: 1.0
+array_precision: float32
+time_zone_included_with_time: True
+extra_information: []
+data_res: 25/111
+data_max_lat: 90.0
+# Make NH/SH area_extent
+area_extent: [-3950000.0, -3950000.0, 3950000.0, 4350000.0]
+dims_nh: [304, 448]
+dims_sh: [316, 332]
+# Make NH/SH proj_info (3412 for SH)
+
+
+proj_info:
+  {'area_id':'3411',
+   'area_name':'polar_stereographic',
+   'proj_id':'3411',
+   'proj4_args':'+proj=stere +lat_0=90 +lat_ts=70 +lon_0=-45 +k=1 +x_0=0 +y_0=0 +a=6378273 +b=6356889.449 +units=m +no_defs'} 
+
+extra_transformation_steps: []
+
+# Local
+# REMEMBER, REPLACE LOCAL PATHS SO THEY POINT TO YOUR /SRC/ DIRECTORY
+solr_host: http://localhost:8983/solr/
+solr_collection_name: ecco_datasets
+output_dir: /Users/kevinmarlis/Developer/JPL/ecco-preprocessing/src/output/
+# AWS
+# solr_host: http://ec2-3-16-187-19.us-east-2.compute.amazonaws.com:8983/solr/
+# solr_collection_name: ecco_datasets
+# source_bucket: ecco-preprocess
+# target_bucket: ecco-ames
+# aws_output_dir: sst_AVHRR_transformed/
+# aws_lon_grid_path: ECCO_grid_blank_model/XC.data
+# aws_lat_grid_path: ECCO_grid_blank_model/YC.data

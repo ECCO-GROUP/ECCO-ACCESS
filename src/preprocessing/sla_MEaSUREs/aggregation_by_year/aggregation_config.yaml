@@ -1,0 +1,20 @@
+# Dataset
+dataset: sla_MEaSUREs
+version: 1.0
+remove_nan_days_from_data: True
+do_monthly_aggregation: True
+skipna_in_mean: False
+save_binary: True
+save_netcdf: True
+array_precision: float32
+
+
+# Local
+# REMEMBER, REPLACE LOCAL PATHS SO THEY POINT TO YOUR /SRC/ DIRECTORY
+solr_host: http://localhost:8983/solr/
+solr_collection_name: ecco_datasets
+output_dir: /Users/kevinmarlis/Developer/JPL/ecco-preprocessing/src/output/
+# AWS
+source_bucket: ecco-ames
+target_bucket: ecco-ames
+s3_aggregated_path: aggregated/

@@ -36,11 +36,12 @@ grids = []
 
 # Assumes grids conform to metadata standard (model_grid_type)
 for grid_file in grid_files:
-    ds = xr.open_dataset(path_to_file_dir + grid_file)
+    if grid_file == '2x2deg_demo.nc':
+        ds = xr.open_dataset(path_to_file_dir + grid_file)
 
-    grid_name = ds.attrs['name']
-    grid_type = ds.attrs['type']
-    grids.append((grid_name, grid_type, grid_file))
+        grid_name = ds.attrs['name']
+        grid_type = ds.attrs['type']
+        grids.append((grid_name, grid_type, grid_file))
 
 
 # =====================================================

@@ -1,0 +1,47 @@
+# Harvesting
+
+# PODAAC explicitely expects this date format
+start: "20020628T00:00:01Z"
+end: "20020705T23:59:59Z"
+podaac_id: PODAAC-MODSA-1D9D9
+user: anonymous
+host: https://podaac.jpl.nasa.gov/ws/search/granule/?format=atom&pretty=false&itemsPerPage=300000
+aggregated: false
+# Provide date format from filename
+regex: '\d{8}'
+date_regex: "%Y-%m-%dT%H:%M:%SZ"
+
+# Dataset
+ds_name: sst_MODIS
+short_name: MODIS_AQUA_L3_SST_THERMAL_DAILY_9KM_DAYTIME_V2019.0
+data_time_scale: daily
+date_format: yyyymmdd
+fields:
+  [
+    {
+      name: sst,
+      long_name: Sea Surface Temperature,
+      standard_name: sea_surface_temperature,
+      units: degree_C,
+    },
+    {
+      name: qual_sst,
+      long_name: "Quality Levels, Sea Surface Temperature",
+      standard_name: " ",
+      units: " ",
+    },
+  ]
+# new_data_attrs:
+original_dataset_title: MODIS Aqua Level 3 SST Thermal IR Daily 9km Daytime V2019.0
+original_dataset_short_name: MODIS_AQUA_L3_SST_THERMAL_DAILY_9KM_DAYTIME_V2019.0
+original_dataset_url: https://podaac.jpl.nasa.gov/dataset/MODIS_AQUA_L3_SST_THERMAL_DAILY_9KM_DAYTIME_V2019.0
+original_dataset_reference: http://oceancolor.gsfc.nasa.gov
+original_dataset_doi: 10.5067/MODSA-1D9D9
+
+# Local
+# REMEMBER, REPLACE LOCAL PATHS SO THEY POINT TO YOUR /SRC/ DIRECTORY
+solr_host: http://localhost:8983/solr/
+solr_collection_name: ecco_datasets
+target_dir: /Users/kevinmarlis/Developer/JPL/ecco-preprocessing/src/harvesters/podaac_harvester/harvested_granule/SST_MODIS_DAILY
+# AWS
+# target_bucket_name: ecco-preprocess

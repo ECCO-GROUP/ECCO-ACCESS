@@ -115,9 +115,12 @@ def run_aggregation(system_path, output_dir, s3=None):
     dataset_metadata = solr_query(config, fq)[0]
 
     short_name = dataset_metadata['short_name_s']
-    years = dataset_metadata['years_updated_ss']
-    print(years)
-    # years = ['1992']
+    if 'years_updated_ss' in dataset_metadata.keys():
+        years = dataset_metadata['years_updated_ss']
+    else:
+        print('No updated years to aggregate')
+        return
+
     data_time_scale = dataset_metadata['data_time_scale_s']
 
     # Define precision of output files, float32 is standard
@@ -198,16 +201,8 @@ def run_aggregation(system_path, output_dir, s3=None):
 
                         daily_DA_year.append(data_DA)
 
-                    if config['remove_nan_days_from_data']:
-                        nonnan_days = []
-                        for i in range(len(daily_DA_year)):
-                            if(np.count_nonzero(~np.isnan(daily_DA_year[i].values)) > 0):
-                                nonnan_days.append(daily_DA_year[i])
-                        daily_DA_year_merged = xr.concat(
-                            (nonnan_days), dim='time')
-                    else:
-                        daily_DA_year_merged = xr.concat(
-                            (daily_DA_year), dim='time')
+                    
+                    daily_DA_year_merged = xr.concat((daily_DA_year), dim='time')
 
                     new_data_attr = {}
                     new_data_attr['original_dataset_title'] = dataset_metadata['original_dataset_title_s']
@@ -254,7 +249,8 @@ def run_aggregation(system_path, output_dir, s3=None):
                                                       binary_dtype,
                                                       grid_type,
                                                       save_binary=config['save_binary'],
-                                                      save_netcdf=config['save_netcdf'])
+                                                      save_netcdf=config['save_netcdf'],
+                                                      remove_nan_days_from_data=config['remove_nan_days_from_data'])
 
                     # Upload files to s3
                     if s3:

@@ -1,0 +1,46 @@
+# Harvesting
+
+# PODAAC explicitely expects this date format
+start: "20120101T00:00:01Z"
+end: "20121231T23:59:59Z"
+podaac_id: PODAAC-AQR50-3SMCS
+user: anonymous
+host: https://podaac.jpl.nasa.gov/ws/search/granule/?format=atom&pretty=false&itemsPerPage=300000
+aggregated: false
+# Provide date format from filename
+date_regex: "%Y-%m-%dT%H:%M:%SZ"
+
+# Dataset
+ds_name: sss_Aquarius
+short_name: AQUARIUS_L3_SSS_SMI_MONTHLY_V5
+data_time_scale: monthly
+date_format: yyyymm
+fields:
+  [
+    {
+      name: SSS,
+      long_name: Sea Surface Salinity,
+      standard_name: sea_surface_salinity,
+      units: " ",
+    },
+    {
+      name: SSS_sys_unc,
+      long_name: Sea Surface Salinity Uncertainty (systematic),
+      standard_name: " ",
+      units: " ",
+    },
+  ]
+# new_data_attrs:
+original_dataset_title: Aquarius Official Release Level 3 Sea Surface Salinity Standard Mapped Image Monthly Data V5.0
+original_dataset_short_name: AQUARIUS_L3_SSS_SMI_MONTHLY_V5
+original_dataset_url: https://podaac.jpl.nasa.gov/dataset/AQUARIUS_L3_SSS_SMI_MONTHLY_V5
+original_dataset_reference: https://aquarius.nasa.gov/
+original_dataset_doi: 10.5067/AQR50-3SMCS
+
+# Local
+# REMEMBER, REPLACE LOCAL PATHS SO THEY POINT TO YOUR /SRC/ DIRECTORY
+solr_host: http://localhost:8983/solr/
+solr_collection_name: ecco_datasets
+target_dir: /Users/kevinmarlis/Developer/JPL/ecco-preprocessing/src/harvesters/podaac_harvester/harvested_granule/SSS_AQUARIUS_MONTHLY
+# AWS
+# target_bucket_name: ecco-preprocess

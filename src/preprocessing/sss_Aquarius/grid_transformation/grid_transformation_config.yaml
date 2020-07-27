@@ -1,0 +1,33 @@
+# Dataset
+dataset_name: sss_Aquarius
+version: 1.0
+array_precision: float32
+time_zone_included_with_time: True
+extra_information: []
+data_res: 1
+data_max_lat: 90.0
+area_extent: [-180, -90, 180, 90]
+dims: [360, 180]
+proj_info:
+  {
+    "area_id": "longlat",
+    "area_name": "Plate Carree",
+    "proj_id": "EPSG:4326",
+    "proj4_args": "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs",
+  }
+
+extra_transformation_steps: []
+
+# Local
+# REMEMBER, REPLACE LOCAL PATHS SO THEY POINT TO YOUR /SRC/ DIRECTORY
+solr_host: http://localhost:8983/solr/
+solr_collection_name: ecco_datasets
+output_dir: /Users/kevinmarlis/Developer/JPL/ecco-preprocessing/src/output/
+# AWS
+# solr_host: http://ec2-3-16-187-19.us-east-2.compute.amazonaws.com:8983/solr/
+# solr_collection_name: ecco_datasets
+# source_bucket: ecco-preprocess
+# target_bucket: ecco-ames
+# aws_output_dir: sst_AVHRR_transformed/
+# aws_lon_grid_path: ECCO_grid_blank_model/XC.data
+# aws_lat_grid_path: ECCO_grid_blank_model/YC.data
