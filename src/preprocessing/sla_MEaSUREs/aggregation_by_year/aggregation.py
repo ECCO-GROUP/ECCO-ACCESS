@@ -198,7 +198,7 @@ def run_aggregation(system_path, output_dir, s3=None):
                             print('data DA: ', data_DA)
 
                             # TODO: ask ian...why?
-                            data_DA.values = np.where(data_DA.values == netcdf_fill_value, np.nan, data_DA.values)
+                            # data_DA.values = np.where(data_DA.values == netcdf_fill_value, np.nan, data_DA.values)
 
 
                         else:

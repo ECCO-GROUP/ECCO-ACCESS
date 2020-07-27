@@ -276,9 +276,9 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
             elif array_precision == np.float64:
                 netcdf_fill_value = default_fillvals['f8']
 
-            field_DA.values = np.where(np.isnan(field_DA.values),
-                                       netcdf_fill_value,
-                                       field_DA.values)
+            # field_DA.values = np.where(np.isnan(field_DA.values),
+            #                            netcdf_fill_value,
+            #                            field_DA.values)
 
             output_path = f'{output_dir}{config["dataset_name"]}/{grid_name}/transformed/{field["name_s"]}/'
 
