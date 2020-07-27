@@ -1,20 +1,20 @@
 # Dataset
-dataset_name: seaice_G10016
+ds_name: seaice_G10016
 version: 1.0
 array_precision: float32
 time_zone_included_with_time: True
 extra_information: []
 data_res: 25/111
+
 data_max_lat_nh: 90.0
 data_max_lat_sh: -90.0
 
 # Make NH/SH area_extent
 area_extent_nh: [-3850000.0, -5350000.0, 3750000.0, 5850000.0]
 area_extent_sh: [-3950000.0, -3950000.0, 3950000.0, 4350000.0]
+
 dims_nh: [304, 448]
 dims_sh: [316, 332]
-# Make NH/SH proj_info (3412 for SH)
-
 
 proj_info_nh:
   {'area_id':'3411',
@@ -26,7 +26,6 @@ proj_info_sh:
    'area_name':'polar_stereographic',
    'proj_id':'3412',
    'proj4_args':'+init=EPSG:3412'} 
-
 
 extra_transformation_steps: []
 

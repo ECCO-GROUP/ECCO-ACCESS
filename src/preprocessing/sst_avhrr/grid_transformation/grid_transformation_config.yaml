@@ -1,5 +1,5 @@
 # Dataset
-dataset_name: sst_AVHRR
+ds_name: sst_AVHRR
 version: 1.0
 array_precision: float32
 time_zone_included_with_time: True

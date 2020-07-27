@@ -3,15 +3,14 @@
 # PODAAC explicitely expects this date format
 start: "20120101T00:00:01Z"
 end: "20121231T23:59:59Z"
-podaac_id: PODAAC-AQR50-3SMCS
 user: anonymous
 host: https://podaac.jpl.nasa.gov/ws/search/granule/?format=atom&pretty=false&itemsPerPage=300000
-aggregated: false
-# Provide date format from filename
 date_regex: "%Y-%m-%dT%H:%M:%SZ"
 
 # Dataset
 ds_name: sss_Aquarius
+podaac_id: PODAAC-AQR50-3SMCS
+aggregated: false
 short_name: AQUARIUS_L3_SSS_SMI_MONTHLY_V5
 data_time_scale: monthly
 date_format: yyyymm

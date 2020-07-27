@@ -1,5 +1,5 @@
 # Dataset
-dataset_name: sla_MEaSUREs
+ds_name: sla_MEaSUREs
 version: 1.0
 array_precision: float32
 time_zone_included_with_time: False

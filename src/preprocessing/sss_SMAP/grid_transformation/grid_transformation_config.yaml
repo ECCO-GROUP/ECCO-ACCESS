@@ -1,5 +1,5 @@
 # Dataset
-dataset_name: sss_SMAP
+ds_name: sss_SMAP
 version: 1.0
 array_precision: float32
 time_zone_included_with_time: True

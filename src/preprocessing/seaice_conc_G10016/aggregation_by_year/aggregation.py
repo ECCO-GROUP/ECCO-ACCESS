@@ -37,7 +37,7 @@ def split_s3_bucket_key(s3_path):
 def export_lineage(outfile, config):
     host = config['solr_host']
     collection_name = config['solr_collection_name']
-    dataset = config['dataset']
+    dataset = config['ds_name']
 
     url = host + collection_name + \
         '/select?q=dataset_name_s%3A{dataset}%20OR%20dataset_s%3A{dataset}&rows=30000'
@@ -103,7 +103,7 @@ def run_aggregation(system_path, output_dir, s3=None):
     with open(path_to_yaml, "r") as stream:
         config = yaml.load(stream)
 
-    dataset = config['dataset']
+    dataset = config['ds_name']
 
     fq = ['type_s:grid']
     grids = [grid for grid in solr_query(config, fq)]
@@ -275,7 +275,7 @@ def run_aggregation(system_path, output_dir, s3=None):
                         target_bucket_name = config['target_bucket_name']
                         s3_aggregated_path = config['s3_aggregated_path']
                         s3_output_dir = s3_aggregated_path + \
-                            config['dataset'] + '_transformed_by_year'
+                            config['ds_name'] + '_transformed_by_year'
                         target_bucket = s3.Bucket(target_bucket_name)
 
                         # Upload shortest and monthly aggregated files to target bucket

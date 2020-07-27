@@ -1,5 +1,5 @@
 # Dataset
-dataset: sst_MODIS
+ds_name: sst_MODIS
 version: 1.0
 remove_nan_days_from_data: False
 do_monthly_aggregation: True

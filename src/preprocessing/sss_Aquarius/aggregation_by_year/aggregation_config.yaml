@@ -1,5 +1,5 @@
 # Dataset
-dataset: sss_Aquarius
+ds_name: sss_Aquarius
 version: 1.0
 remove_nan_days_from_data: True
 do_monthly_aggregation: False

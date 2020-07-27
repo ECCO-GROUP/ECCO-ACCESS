@@ -1,5 +1,5 @@
 # Dataset
-dataset_name: sst_MODIS
+ds_name: sst_MODIS
 version: 1.0
 array_precision: float32
 time_zone_included_with_time: False

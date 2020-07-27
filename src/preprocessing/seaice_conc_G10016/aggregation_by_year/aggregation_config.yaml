@@ -1,5 +1,5 @@
 # Dataset
-dataset: seaice_G10016
+ds_name: seaice_G10016
 version: 1.0
 remove_nan_days_from_data: False
 do_monthly_aggregation: True

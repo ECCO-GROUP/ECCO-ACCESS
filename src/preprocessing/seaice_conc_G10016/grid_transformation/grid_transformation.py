@@ -82,7 +82,7 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
         config = yaml.load(stream)
 
     file_name = source_file_path.split('/')[-1]
-    dataset = config['dataset_name']
+    dataset = config['ds_name']
     if '_nh_' in file_name:
         hemi = 'nh'
     else:
@@ -202,7 +202,7 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
                 pickle.dump(factors, f)
 
             print('===Updating Solr with factors===')
-            query_fq = [f'dataset_s:{config["dataset_name"]}',
+            query_fq = [f'dataset_s:{config["ds_name"]}',
                         'type_s:dataset']
             update_body = [
                 {
@@ -290,7 +290,7 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
                                        netcdf_fill_value,
                                        field_DA.values)
 
-            output_path = f'{output_dir}{config["dataset_name"]}/{grid_name}/transformed/{field["name_s"]}/'
+            output_path = f'{output_dir}{config["ds_name"]}/{grid_name}/transformed/{field["name_s"]}/'
 
             if not os.path.exists(output_path):
                 os.makedirs(output_path)
@@ -378,7 +378,7 @@ def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors
     time_zone_included_with_time = config['time_zone_included_with_time']
 
     # Get dataset metadata. Used for dataarray attributes
-    fq = ['type_s:dataset', f'dataset_s:{config["dataset_name"]}']
+    fq = ['type_s:dataset', f'dataset_s:{config["ds_name"]}']
     dataset_metadata = solr_query(config, fq)[0]
 
     field_DAs = []
