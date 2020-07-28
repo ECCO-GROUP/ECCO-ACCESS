@@ -1,21 +1,26 @@
 [
    {
-      "name": "lon",
+      "name": "longitude",
       "long_name": "longitude",
       "units": "degrees_east",
       "standard_name": "longitude",
       "comments_1": "uniform grid spacing from -179.75 to 179.75 by 0.5",
       "axis": "X",
-      "bounds": "lon_bnds"
+      "bounds": "lon_bnds",
+	   "grid_dimension":"2D",
+      "coverage_content_type": "coordinate"
    },
    {
-      "name": "lat",
+      "name": "latitude",
       "long_name": "latitude",
       "units": "degrees_north",
       "standard_name": "latitude",
       "comments_1": "uniform grid spacing from -89.75 to 89.75 by 0.5",
       "axis": "Y",
-      "bounds": "lat_bnds"
+      "bounds": "lat_bnds",
+	   "grid_dimension":"2D",
+      "coverage_content_type": "coordinate"
+
    },
    {
       "name": "Z",
@@ -24,27 +29,44 @@
       "standard_name": "depth",
       "comments_1": "depth at center of model grid cell.  non-uniform vertical spacing",
       "axis": "Z",
-      "bounds": "Z_bnds"
+      "bounds": "Z_bnds",
+	   "grid_dimension":"3D",
+	   "coverage_content_type": "coordinate"
    },
    {
-   	  "name": "time_bounds",
-	  "long_name": "time averaging time bounds"
+     "name": "time_bounds",
+  	  "long_name": "start and stop time of period or time of snapshot",
+     "grid_dimension":"1D",
+	  "coverage_content_type": "coordinate"
    },
    {
-   	  "name": "lat_bnds",
-      "units": "degrees_north",
-	  "long_name": "latitude bounds of lat-lon grid cells"
+     "name": "latitude_bounds",
+     "units": "degrees_north",
+	  "long_name": "latitude bounds of lat-lon grid cells",
+	  "grid_dimension":"2D",
+	  "coverage_content_type": "coordinate"
    },
    {
-   	  "name": "lon_bnds",
-      "units": "degrees_east",
-	  "long_name": "longitude bounds of lat-lon grid cells"
+  	  "name": "longitude_bounds",
+     "units": "degrees_east",
+	  "long_name": "longitude bounds of lat-lon grid cells",
+  	  "grid_dimension":"2D",
+	  "coverage_content_type": "coordinate"
    },
    {
-   	  "name": "Z_bnds",
+  	  "name": "Z_bounds",
 	  "long_name": "depth bounds of grid cells",
-      "units": "m",
-	  "comment": "identical to model grid depth bounds"
+     "units": "m",
+	  "comment": "identical to model grid depth bounds",
+	  "grid_dimension":"3D",
+	  "coverage_content_type": "coordinate"
+   },   
+   {
+  	  "name": "time",
+	  "standard_name": "time",
+	  "long_name": "center time of averaging period or time of snapshot",
+	  "grid_dimension":"1D",
+	  "coverage_content_type": "coordinate"
    }
 ]
 
