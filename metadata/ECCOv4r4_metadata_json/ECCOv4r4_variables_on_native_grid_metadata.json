@@ -1017,5 +1017,38 @@
       "grid_dimension":"3D",
       "coverage_content_type": "modelResult"
    }
+   {
+      "name": "SIaaflux",
+      "long_name": "Conservative ocean and sea-ice advective heat flux adjustment",
+      "units": "W m-2",
+      "comments_1": "Heat flux associated with the temperature difference between sea surface temperature and sea-ice (assume 0 degree C in the model)",
+      "comments_2": "Note: heat flux needed to melt/freeze sea-ice at 0 degC to sea water at the ocean surface (at sea surface temperature), excluding the latent heat of fusion.",
+      "direction": ">0 decrease potential temperature (THETA)",
+      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; SEA ICE; SNOW/ICE; HEAT FLUX",
+      "grid_dimension":"2D",
+      "coverage_content_type": "modelResult"
+   }
+   {
+      "name": "SIrsSubl",
+      "long_name": "Residual sublimation freshwater flux",
+      "units": "kg m-2 s-1",
+      "comments_1": "Residual freshwater flux by sublimation to remove water from or add water to ocean. When implied sublimation freshwater flux 'SIacSubl' is larger than availabe sea-ice/snow, 'SIrsSubl' is positive and water is removed from ocean",
+      "comments_2": "Note: freshwater flux by sublimation that is to remove water from the ocean when it is positive.",
+      "direction": ">0 decreases ocean volume",
+      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; SEA ICE; SNOW/ICE; FRESH WATER FLUX",
+      "grid_dimension":"2D",
+      "coverage_content_type": "modelResult"
+   }
+   {
+      "name": "SIfwThru",
+      "long_name": "Precipitation through sea-ice",
+      "units": "kg m-2 s-1",
+      "comments_1": "Precipitation over sea-ice covered regions reaching ocean through sea-ice",
+      "comments_2": "Note: Precipitation over sea-ice covered regions that directly reaches ocean through the sea-ice. It is not due to melt of sea-ice/snow.",
+      "direction": ">0 increases ocean volume",
+      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; ATMOSPHERE; OCEANS; SEA ICE; SNOW/ICE; FRESH WATER FLUX; PRECIPITATION; PRECIPITATION RATE; TOTAL SURFACE PRECIPITATION RATE",
+      "grid_dimension":"2D",
+      "coverage_content_type": "modelResult"
+   }
 ]
 

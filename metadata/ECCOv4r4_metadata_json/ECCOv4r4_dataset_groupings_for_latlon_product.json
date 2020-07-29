@@ -25,7 +25,7 @@
    },
    {
       "name": "ocean and sea-ice surface freshwater fluxes",
-      "fields": "EXFpreci, EXFevap, EXFroff, SIsnPrcp ,EXFempmr, oceFWflx, SIatmFW, SFLUX",
+      "fields": "EXFpreci, EXFevap, EXFroff, SIsnPrcp ,EXFempmr, oceFWflx, SIatmFW, SFLUX, SIacSubl, SIrsSubl, SIfwThru",
       "product": "latlon",
       "dataset_description" : "ocean and sea-ice surface freshwater fluxes",
       "filename" : "OCEAN_SURFACE_FRESHWATER_FLUXES",
@@ -33,7 +33,7 @@
    },
    {
      "name": "ocean and sea-ice surface heat fluxes",
-     "fields":"EXFhl, EXFhs, EXFlwdn, EXFswdn, EXFqnet, oceQnet, SIatmQnt, TFLUX, EXFswnet, EXFlwnet,oceQsw",
+     "fields":"EXFhl, EXFhs, EXFlwdn, EXFswdn, EXFqnet, oceQnet, SIatmQnt, TFLUX, EXFswnet, EXFlwnet, oceQsw, SIaaflux",
      "product": "latlon",
      "dataset_description" : "ocean and sea-ice surface heat fluxes",
      "filename" : "SURFACE_HEAT_FLUXES",
