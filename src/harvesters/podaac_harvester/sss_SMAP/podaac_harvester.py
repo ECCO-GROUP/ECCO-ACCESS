@@ -126,7 +126,6 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
     last_success_item = {}
     start = []
     end = []
-    years_updated = set()
     chk_time = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
     dl_count = 0    # track how many new files to transform and wait for
     now = datetime.utcnow()
@@ -229,7 +228,7 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
 
                     else:
                         print('File already downloaded and up to date')
-                        
+
                     item['checksum_s'] = md5(local_fp)
 
                     # =====================================================
@@ -252,8 +251,6 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
                     item['harvest_success_b'] = True
                     item['filename_s'] = newfile
                     item['file_size_l'] = os.path.getsize(local_fp)
-
-                    years_updated.add(start_str[:4])
 
             except:
                 if updating:
@@ -344,7 +341,6 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
         ds_meta['data_time_scale_s'] = config['data_time_scale']
         ds_meta['date_format_s'] = config['date_format']
         ds_meta['last_checked_dt'] = chk_time
-        ds_meta['years_updated_ss'] = list(years_updated)
         ds_meta['original_dataset_title_s'] = config['original_dataset_title']
         ds_meta['original_dataset_short_name_s'] = config['original_dataset_short_name']
         ds_meta['original_dataset_url_s'] = config['original_dataset_url']
@@ -413,8 +409,6 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
         update_doc['id'] = doc_id
         update_doc['last_checked_dt'] = {"set": chk_time}
         update_doc['status_s'] = {"set": "harvested"}
-        if years_updated:
-            update_doc['years_updated_ss'] = {"set": list(years_updated)}
 
         if updating:
             # only update to "harvested" if there is further preprocessing to do

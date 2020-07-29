@@ -11,7 +11,7 @@ from grid_transformation import run_locally_wrapper, solr_query, solr_update
 
 
 def get_remaining_transformations(config, source_file_path):
-    dataset_name = config['dataset_name']
+    dataset_name = config['ds_name']
 
     # Query for grids
     fq = ['type_s:grid']
@@ -85,8 +85,10 @@ if __name__ == "__main__":
         os.mkdir(output_dir)
 
     # Get all harvested granule for this dataset
-    fq = [f'dataset_s:{config["dataset_name"]}', 'type_s:harvested']
+    fq = [f'dataset_s:{config["ds_name"]}', 'type_s:harvested']
     harvested_granules = solr_query(config, fq)
+
+    years_updated = []
 
     for item in harvested_granules:
         f = item.get('pre_transformation_file_path_s', '')
@@ -101,15 +103,27 @@ if __name__ == "__main__":
         if remaining_transformations:
             run_locally_wrapper(
                 system_path, f, remaining_transformations, output_dir)
+            year = item['date_s'][:4]
+            if year not in years_updated:
+                years_updated.append(year)
         else:
             print(f'No new transformations for {item["date_s"]}')
 
-    # Update Solr dataset entry status to transformed
-    fq = [f'dataset_s:{config["dataset_name"]}', 'type_s:dataset']
+    # Update Solr dataset entry status to transformed and years_updated list
+    fq = [f'dataset_s:{config["ds_name"]}', 'type_s:dataset']
     dataset_metadata = solr_query(config, fq)[0]
+
+    if 'years_updated_ss' in dataset_metadata.keys():
+        dataset_years_updated = dataset_metadata['years_updated_ss']
+        for year in years_updated:
+            if year not in dataset_years_updated:
+                dataset_years_updated.append(year)
+    else:
+        dataset_years_updated = years_updated
 
     update_body = [{
         "id": dataset_metadata['id'],
-        "status_s": {"set": 'transformed'}
+        "status_s": {"set": 'transformed'},
+        "years_updated_ss": {"set": dataset_years_updated}
     }]
     solr_update(config, update_body)

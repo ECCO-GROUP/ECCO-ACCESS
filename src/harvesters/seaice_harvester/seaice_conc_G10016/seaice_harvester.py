@@ -17,8 +17,6 @@ from dateutil import parser
 import numpy as np
 
 
-
-
 def md5(fname):
     hash_md5 = hashlib.md5()
     with open(fname, 'rb') as f:
@@ -85,7 +83,6 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
     ftp = FTP(config['host'])
     ftp.login(config['user'])
 
-
     # if not on_aws:
     #     print("!!downloading files to "+target_dir)
     # else:
@@ -93,7 +90,6 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
     #           target_bucket_name+"/"+config['ds_name'])
 
     print("======downloading files========")
-
 
     # if target path doesn't exist, make it
     # if tmp folder for downloaded files doesn't exist, create it in temp lambda storage
@@ -113,10 +109,8 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
         for doc in query_docs:
             docs[doc['filename_s']] = doc
 
-
     fq = ['type_s:dataset', f'dataset_s:{config["ds_name"]}']
     query_docs = solr_query(config, fq)
-
 
     # setup metadata
     meta = []
@@ -125,7 +119,6 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
     last_success_item = {}
     start = []
     end = []
-    years_updated = set()
     chk_time = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
     now = datetime.datetime.utcnow()
     updating = False
@@ -135,32 +128,32 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
     end_year = config['end'][:4]
     years = np.arange(int(start_year), int(end_year) + 1)
 
-
     for year in years:
         for region in config['regions']:
             hemi = 'nh' if region == 'north' else 'sh'
 
             # build source urlbase
             urlbase0 = config['ddir'] + (region + '/')
-            urlbase = '{base}{time}/{year}/'.format(base=urlbase0,time=data_time_scale,year=year)
+            urlbase = '{base}{time}/{year}/'.format(
+                base=urlbase0, time=data_time_scale, year=year)
 
             files = []
             ftp.dir(urlbase, files.append)
             files = files[2:]
             files = [e.split()[-1] for e in files]
 
-            start_time = datetime.datetime.strptime(config['start'],"%Y%m%dT%H:%M:%SZ")
-            end_time = datetime.datetime.strptime(config['end'],"%Y%m%dT%H:%M:%SZ")
-
+            start_time = datetime.datetime.strptime(
+                config['start'], "%Y%m%dT%H:%M:%SZ")
+            end_time = datetime.datetime.strptime(
+                config['end'], "%Y%m%dT%H:%M:%SZ")
 
             # create dummy granule files first to handle race condition with transformation
             dummy_granule_meta = []
             for newfile in files:
-                date = getdate(config['regex'],newfile)
+                date = getdate(config['regex'], newfile)
                 new_date_format = f'{date[:4]}-{date[4:6]}-{date[6:]}T00:00:00Z'
-                date_time = datetime.datetime.strptime(date,"%Y%m%d")
-                granule_id = '{}_{}_{}'.format(config['ds_name'],date,hemi)
-
+                date_time = datetime.datetime.strptime(date, "%Y%m%d")
+                granule_id = '{}_{}_{}'.format(config['ds_name'], date, hemi)
 
                 if (start_time <= date_time) and (end_time >= date_time) and (not granule_id in docs.keys()):
                     item = {}               # to be populated for each file
@@ -168,21 +161,24 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
                     item['dataset_s'] = config['ds_name']
                     item['filename_s'] = newfile
                     item['hemisphere_s'] = hemi
-                    item['source_s'] = 'ftp://'+config['host']+'/'+urlbase+newfile
+                    item['source_s'] = 'ftp://' + \
+                        config['host']+'/'+urlbase+newfile
                     dummy_granule_meta.append(item)
 
-            lnk = '{}{}/update/json/docs?commit=true&f=/**'.format(config['solr_host'],config['solr_collection_name'])
-            headers = {'Content-Type':'application/json'}
+            lnk = '{}{}/update/json/docs?commit=true&f=/**'.format(
+                config['solr_host'], config['solr_collection_name'])
+            headers = {'Content-Type': 'application/json'}
             meta_json = json.dumps(dummy_granule_meta)
 
             for newfile in files:
-                date = getdate(config['regex'],newfile)
-                date_time = datetime.datetime.strptime(date,"%Y%m%d")
+                date = getdate(config['regex'], newfile)
+                date_time = datetime.datetime.strptime(date, "%Y%m%d")
                 new_date_format = f'{date[:4]}-{date[4:6]}-{date[6:]}T00:00:00Z'
 
                 # check if file in download date range
                 if (start_time <= date_time) and (end_time >= date_time):
-                    granule_id = '{}_{}_{}'.format(config['ds_name'],date,hemi)
+                    granule_id = '{}_{}_{}'.format(
+                        config['ds_name'], date, hemi)
 
                     item = {}
                     item['type_s'] = 'harvested'
@@ -193,15 +189,16 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
                     updating = False
                     aws_upload = False
 
-
                     try:
                         url = urlbase + newfile
                         item['source_s'] = 'ftp://'+config['host']+'/'+url
 
                         # get last modified date
                         timestamp = ftp.voidcmd("MDTM "+url)[4:]    # string
-                        time = parser.parse(timestamp)              # datetime object
-                        timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ") # string
+                        # datetime object
+                        time = parser.parse(timestamp)
+                        timestamp = time.strftime(
+                            "%Y-%m-%dT%H:%M:%SZ")  # string
                         item['modified_time_dt'] = timestamp
 
                         # compare modified timestamp or if granule previously downloaded
@@ -209,7 +206,8 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
                             or (datetime.datetime.strptime(docs[newfile]['download_time_dt'], "%Y-%m-%dT%H:%M:%SZ") <= time)
 
                         if updating:
-                            run_dates.append(datetime.datetime.strptime(getdate(config['regex'],newfile),"%Y%m%d"))
+                            run_dates.append(datetime.datetime.strptime(
+                                getdate(config['regex'], newfile), "%Y%m%d"))
 
                             local_fp = f'{folder}{config["ds_name"]}_granule.nc' if on_aws else target_dir + newfile
 
@@ -230,11 +228,9 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
 
                             else:
                                 print('File already downloaded and up to date')
-                                
+
                             # calculate checksum and expected file size
                             item['checksum_s'] = md5(local_fp)
-
-
 
                             # =====================================================
                             # ### Push data to s3 bucket
@@ -247,16 +243,16 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
                                 aws_upload = True
                                 print("=========uploading file=========")
                                 # print('uploading '+output_filename)
-                                target_bucket.upload_file(local_fp, output_filename)
+                                target_bucket.upload_file(
+                                    local_fp, output_filename)
                                 item['pre_transformation_file_path_s'] = 's3://' + \
-                                    config['target_bucket_name']+'/'+output_filename
+                                    config['target_bucket_name'] + \
+                                    '/'+output_filename
                                 print("======uploading file DONE=======")
 
                             item['harvest_success_b'] = True
                             item['filename_s'] = newfile
                             item['file_size_l'] = os.path.getsize(local_fp)
-
-                            years_updated.add(date[:4])
 
                     except Exception as e:
                         print(e)
@@ -343,7 +339,6 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
         ds_meta['data_time_scale_s'] = config['data_time_scale']
         ds_meta['date_format_s'] = config['date_format']
         ds_meta['last_checked_dt'] = chk_time
-        ds_meta['years_updated_ss'] = list(years_updated)
         ds_meta['original_dataset_title_s'] = config['original_dataset_title']
         ds_meta['original_dataset_short_name_s'] = config['original_dataset_short_name']
         ds_meta['original_dataset_url_s'] = config['original_dataset_url']
@@ -412,8 +407,6 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
         update_doc['id'] = doc_id
         update_doc['last_checked_dt'] = {"set": chk_time}
         update_doc['status_s'] = {"set": "harvested"}
-        if years_updated:
-            update_doc['years_updated_ss'] = {"set": list(years_updated)}
 
         if updating:
             # only update to "harvested" if there is further preprocessing to do

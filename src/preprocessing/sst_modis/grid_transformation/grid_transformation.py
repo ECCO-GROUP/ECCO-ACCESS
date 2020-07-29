@@ -84,6 +84,17 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
     file_name = source_file_path.split('/')[-1]
     dataset = config['ds_name']
 
+    # Query for dataset entry
+    fq = [f'dataset_s:{dataset}', 'type_s:dataset']
+    dataset_metadata = solr_query(config, fq)[0]
+
+    # Query for harvested entry to get origin_checksum and date
+    query_fq = [f'dataset_s:{dataset}', 'type_s:harvested',
+                f'pre_transformation_file_path_s:"{source_file_path}"']
+    harvested_metadata = solr_query(config, query_fq)[0]
+    origin_checksum = harvested_metadata['checksum_s']
+    date = harvested_metadata['date_s']
+
     # =====================================================
     # Load file to transform
     # =====================================================
@@ -112,9 +123,6 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
         # Check for model grid factors
         # =====================================================
         grid_factors = grid_name + '_factors_path_s'
-
-        fq = [f'dataset_s:{dataset}', 'type_s:dataset']
-        dataset_metadata = solr_query(config, fq)[0]
 
         if grid_factors in dataset_metadata.keys():
             factors_path = dataset_metadata[grid_factors]
@@ -201,12 +209,6 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
         # Run transformation
         # =====================================================
         # Creates or updates Solr entry for this grid/field/granule combination
-        # Must query for harvested entry to get origin_checksum and date
-        query_fq = [f'dataset_s:{dataset}', 'type_s:harvested',
-                    f'pre_transformation_file_path_s:"{source_file_path}"']
-        harvested_doc = solr_query(config, query_fq)[0]
-        origin_checksum = harvested_doc['checksum_s']
-        date = harvested_doc['date_s']
 
         update_body = []
 
@@ -246,7 +248,6 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
         print("===Running transformations for " + file_name + "===")
         field_DAs = run_in_any_env(
             model_grid, grid_name, grid_type, fields, factors, ds, date, config)
-        print(grid_name, len(field_DAs))
 
         # =====================================================
         # Save the output in netCDF format

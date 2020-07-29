@@ -44,7 +44,8 @@ def get_credentials(url):
     errprefix = ''
     try:
         info = netrc.netrc()
-        username, account, password = info.authenticators(urlparse(URS_URL).hostname)
+        username, account, password = info.authenticators(
+            urlparse(URS_URL).hostname)
         errprefix = 'netrc error: '
     except Exception as e:
         if (not ('No such file' in str(e))):
@@ -54,15 +55,17 @@ def get_credentials(url):
 
     while not credentials:
         if not username:
-            username = 'ecco_access' #hardcoded username
-            password = 'ECCOAccess1' #hardcoded password
+            username = 'ecco_access'  # hardcoded username
+            password = 'ECCOAccess1'  # hardcoded password
         credentials = '{0}:{1}'.format(username, password)
-        credentials = base64.b64encode(credentials.encode('ascii')).decode('ascii')
+        credentials = base64.b64encode(
+            credentials.encode('ascii')).decode('ascii')
 
         if url:
             try:
                 req = Request(url)
-                req.add_header('Authorization', 'Basic {0}'.format(credentials))
+                req.add_header('Authorization',
+                               'Basic {0}'.format(credentials))
                 opener = build_opener(HTTPCookieProcessor())
                 opener.open(req)
             except HTTPError:
@@ -73,6 +76,7 @@ def get_credentials(url):
                 password = None
 
     return credentials
+
 
 def build_version_query_params(version):
     desired_pad_length = 3
@@ -102,7 +106,8 @@ def build_cmr_query_url(short_name, version, time_start, time_end,
         params += '&bounding_box={0}'.format(bounding_box)
     if filename_filter:
         option = '&options[producer_granule_id][pattern]=true'
-        params += '&producer_granule_id[]={0}{1}'.format(filename_filter, option)
+        params += '&producer_granule_id[]={0}{1}'.format(
+            filename_filter, option)
     return CMR_FILE_URL + params
 
 
@@ -130,7 +135,8 @@ def cmr_download(urls):
             # open(filename, 'wb').write(resp.content)
             req = Request(url)
             if credentials:
-                req.add_header('Authorization', 'Basic {0}'.format(credentials))
+                req.add_header('Authorization',
+                               'Basic {0}'.format(credentials))
             opener = build_opener(HTTPCookieProcessor())
             data = opener.open(req).read()
             open(filename, 'wb').write(data)
@@ -208,7 +214,8 @@ def cmr_search(short_name, version, time_start, time_end,
             response = urlopen(req, context=ctx)
             if not cmr_scroll_id:
                 # Python 2 and 3 have different case for the http headers
-                headers = {k.lower(): v for k, v in dict(response.info()).items()}
+                headers = {k.lower(): v for k, v in dict(
+                    response.info()).items()}
                 cmr_scroll_id = headers['cmr-scroll-id']
                 hits = int(headers['cmr-hits'])
                 if hits > 0:
@@ -230,6 +237,7 @@ def cmr_search(short_name, version, time_start, time_end,
         return urls
     except KeyboardInterrupt:
         quit()
+
 
 def md5(fname):
     hash_md5 = hashlib.md5()
@@ -294,11 +302,8 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
     folder = '/tmp/'+config['ds_name']+'/'
     data_time_scale = config['data_time_scale']
 
-
     short_name = config['ds_name'][7:]
     version = '1'
-
-
 
     if not on_aws:
         print("!!downloading files to "+target_dir)
@@ -307,7 +312,6 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
               target_bucket_name+"/"+config['ds_name'])
 
     print("======downloading files========")
-
 
     # if target path doesn't exist, make it
     # if tmp folder for downloaded files doesn't exist, create it in temp lambda storage
@@ -327,10 +331,8 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
         for doc in query_docs:
             docs[doc['filename_s']] = doc
 
-
     fq = ['type_s:dataset', f'dataset_s:{config["ds_name"]}']
     query_docs = solr_query(config, fq)
-
 
     # setup metadata
     meta = []
@@ -338,7 +340,6 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
     last_success_item = {}
     start = []
     end = []
-    years_updated = set()
     chk_time = datetime.datetime.utcnow().strftime(config['date_regex'])
     now = datetime.datetime.utcnow()
     updating = False
@@ -347,33 +348,34 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
     start_year = config['start'][:4]
     end_year = config['end'][:4]
     years = np.arange(int(start_year), int(end_year) + 1)
-    start_time = datetime.datetime.strptime(config['start'],config['date_regex'])
-    end_time = datetime.datetime.strptime(config['end'],config['date_regex'])
-   
+    start_time = datetime.datetime.strptime(
+        config['start'], config['date_regex'])
+    end_time = datetime.datetime.strptime(config['end'], config['date_regex'])
 
     url_list = cmr_search(short_name, version, config['start'], config['end'])
 
     for year in years:
 
         iso_dates_at_end_of_month = []
-        
+
         # pull one record per month
-        for month in range(1,13):
-            # to find the last day of the month, we go up one month, 
+        for month in range(1, 13):
+            # to find the last day of the month, we go up one month,
             # and back one day
             #   if Jan-Nov, then we'll go forward one month to Feb-Dec
 
             if month < 12:
-                cur_mon_year = np.datetime64(str(year) + '-' + str(month+1).zfill(2))
+                cur_mon_year = np.datetime64(
+                    str(year) + '-' + str(month+1).zfill(2))
             # for december we go up one year, and set month to january
             else:
                 cur_mon_year = np.datetime64(str(year+1) + '-' + str('01'))
-            
-            # then back one day
-            last_day_of_month = cur_mon_year - np.timedelta64(1,'D')
-            
-            iso_dates_at_end_of_month.append((str(last_day_of_month)).replace('-', ''))
 
+            # then back one day
+            last_day_of_month = cur_mon_year - np.timedelta64(1, 'D')
+
+            iso_dates_at_end_of_month.append(
+                (str(last_day_of_month)).replace('-', ''))
 
         url_dict = {}
 
@@ -382,15 +384,15 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
 
             if end_of_month_url:
                 url_dict[file_date] = end_of_month_url[0]
-        
+
         for file_date, url in url_dict.items():
 
             # Date in filename is end date of 30 day period
             filename = url.split('/')[-1]
             local_fp = f'{folder}{config["ds_name"]}_granule.nc' if on_aws else target_dir + filename
 
-            date = getdate(config['regex'],filename)
-            date_time = datetime.datetime.strptime(date,"%Y%m%d")
+            date = getdate(config['regex'], filename)
+            date_time = datetime.datetime.strptime(date, "%Y%m%d")
             new_date_format = f'{date[:4]}-{date[4:6]}-{date[6:]}T00:00:00Z'
 
             # check if file in download date range
@@ -416,7 +418,8 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
 
                     # compare modified timestamp or if granule previously downloaded
                     # updating = (not newfile in docs.keys()) or (not docs[newfile]['harvest_success_b']) or (datetime.datetime.strptime(docs[newfile]['download_time_dt'], "%Y-%m-%dT%H:%M:%SZ") <= time)
-                    updating = (not filename in docs.keys()) or (not docs[filename]['harvest_success_b'])
+                    updating = (not filename in docs.keys()) or (
+                        not docs[filename]['harvest_success_b'])
 
                     if updating:
                         if not os.path.exists(local_fp):
@@ -425,11 +428,11 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
 
                             credentials = get_credentials(url)
                             req = Request(url)
-                            req.add_header('Authorization', 'Basic {0}'.format(credentials))
+                            req.add_header('Authorization',
+                                           'Basic {0}'.format(credentials))
                             opener = build_opener(HTTPCookieProcessor())
                             data = opener.open(req).read()
                             open(local_fp, 'wb').write(data)
-
 
                         # elif datetime.datetime.fromtimestamp(os.path.getmtime(local_fp)) <= time:
                         elif datetime.datetime.fromtimestamp(os.path.getmtime(local_fp)) <= parser.parse(file_date):
@@ -438,7 +441,8 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
 
                             credentials = get_credentials(url)
                             req = Request(url)
-                            req.add_header('Authorization', 'Basic {0}'.format(credentials))
+                            req.add_header('Authorization',
+                                           'Basic {0}'.format(credentials))
                             opener = build_opener(HTTPCookieProcessor())
                             data = opener.open(req).read()
                             open(local_fp, 'wb').write(data)
@@ -448,8 +452,6 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
 
                         # calculate checksum and expected file size
                         item['checksum_s'] = md5(local_fp)
-
-
 
                         # =====================================================
                         # ### Push data to s3 bucket
@@ -462,16 +464,16 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
                             aws_upload = True
                             print("=========uploading file=========")
                             # print('uploading '+output_filename)
-                            target_bucket.upload_file(local_fp, output_filename)
+                            target_bucket.upload_file(
+                                local_fp, output_filename)
                             item['pre_transformation_file_path_s'] = 's3://' + \
-                                config['target_bucket_name']+'/'+output_filename
+                                config['target_bucket_name'] + \
+                                '/'+output_filename
                             print("======uploading file DONE=======")
 
                         item['harvest_success_b'] = True
                         item['filename_s'] = filename
                         item['file_size_l'] = os.path.getsize(local_fp)
-
-                        years_updated.add(date[:4])
 
                 except Exception as e:
                     print('error', e)
@@ -496,7 +498,6 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
                     meta.append(item)
                     # store meta for last successful download
                     last_success_item = item
-
 
     # =====================================================
     # ### writing metadata to file
@@ -557,7 +558,6 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
         ds_meta['data_time_scale_s'] = config['data_time_scale']
         ds_meta['date_format_s'] = config['date_format']
         ds_meta['last_checked_dt'] = chk_time
-        ds_meta['years_updated_ss'] = list(years_updated)
         ds_meta['original_dataset_title_s'] = config['original_dataset_title']
         ds_meta['original_dataset_short_name_s'] = config['original_dataset_short_name']
         ds_meta['original_dataset_url_s'] = config['original_dataset_url']
@@ -626,8 +626,6 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
         update_doc['id'] = doc_id
         update_doc['last_checked_dt'] = {"set": chk_time}
         update_doc['status_s'] = {"set": "harvested"}
-        if years_updated:
-            update_doc['years_updated_ss'] = {"set": list(years_updated)}
 
         if updating:
             # only update to "harvested" if there is further preprocessing to do
