@@ -84,6 +84,17 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
     file_name = source_file_path.split('/')[-1]
     dataset = config['ds_name']
 
+    # Query for dataset entry
+    fq = [f'dataset_s:{dataset}', 'type_s:dataset']
+    dataset_metadata = solr_query(config, fq)[0]
+
+    # Must query for harvested entry to get origin_checksum and date
+    query_fq = [f'dataset_s:{dataset}', 'type_s:harvested',
+                f'pre_transformation_file_path_s:"{source_file_path}"']
+    harvested_doc = solr_query(config, query_fq)[0]
+    origin_checksum = harvested_doc['checksum_s']
+    date = harvested_doc['date_s']
+
     # =====================================================
     # Load file to transform
     # =====================================================
@@ -99,7 +110,7 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
         grid_metadata = solr_query(config, fq)[0]
         grid_path = grid_metadata['grid_path_s']
         grid_type = grid_metadata['grid_type_s']
-        grid_dir = grid_path.rsplit('/', 1)[0] + '/'
+        grid_dir = grid_path.rsplit('/', 2)[0] + '/'
 
         # =====================================================
         # Load grid
@@ -112,9 +123,6 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
         # Check for model grid factors
         # =====================================================
         grid_factors = grid_name + '_factors_path_s'
-
-        fq = [f'dataset_s:{dataset}', 'type_s:dataset']
-        dataset_metadata = solr_query(config, fq)[0]
 
         if grid_factors in dataset_metadata.keys():
             factors_path = dataset_metadata[grid_factors]
@@ -188,7 +196,13 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
                        nearest_source_index_to_target_index_i)
 
             print('===Saving grid factors===')
-            factors_path = f'{grid_dir}{grid_name}_factors_{dataset}'
+            factors_path = f'{grid_dir}grid_mappings/{dataset}/'
+
+            if not os.path.exists(factors_path):
+                os.makedirs(factors_path)
+
+            factors_path += f'{grid_name}_factors'
+
             with open(factors_path, 'wb') as f:
                 pickle.dump(factors, f)
 
@@ -208,12 +222,6 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
         # Run transformation
         # =====================================================
         # Creates or updates Solr entry for this grid/field/granule combination
-        # Must query for harvested entry to get origin_checksum and date
-        query_fq = [f'dataset_s:{dataset}', 'type_s:harvested',
-                    f'pre_transformation_file_path_s:"{source_file_path}"']
-        harvested_doc = solr_query(config, query_fq)[0]
-        origin_checksum = harvested_doc['checksum_s']
-        date = harvested_doc['date_s']
 
         update_body = []
 
@@ -251,7 +259,7 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
 
         # Returns list of DAs, one for each field in fields
         print("===Running transformations for " + file_name + "===")
-        
+
         field_DAs = run_in_any_env(
             model_grid, grid_name, grid_type, fields, factors, ds, date, config)
 
@@ -378,7 +386,8 @@ def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors
 
     # fields is a list of dictionaries
     for data_field_info in fields:
-        ds[data_field_info['name_s']].values = np.where(ds[data_field_info['name_s']].values < 0, np.nan, ds[data_field_info['name_s']].values)
+        ds[data_field_info['name_s']].values = np.where(
+            ds[data_field_info['name_s']].values < 0, np.nan, ds[data_field_info['name_s']].values)
 
         field_DA = ea.generalized_transform_to_model_grid_solr(data_field_info, record_date, model_grid, model_grid_type,
                                                                array_precision, record_file_name, original_dataset_metadata,

@@ -110,7 +110,7 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
         grid_metadata = solr_query(config, fq)[0]
         grid_path = grid_metadata['grid_path_s']
         grid_type = grid_metadata['grid_type_s']
-        grid_dir = grid_path.rsplit('/', 1)[0] + '/'
+        grid_dir = grid_path.rsplit('/', 2)[0] + '/'
 
         # =====================================================
         # Load grid
@@ -189,7 +189,13 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
                        nearest_source_index_to_target_index_i)
 
             print('===Saving grid factors===')
-            factors_path = f'{grid_dir}{grid_name}_factors_{dataset}'
+            factors_path = f'{grid_dir}grid_mappings/{dataset}/'
+
+            if not os.path.exists(factors_path):
+                os.makedirs(factors_path)
+
+            factors_path += f'{grid_name}_factors'
+
             with open(factors_path, 'wb') as f:
                 pickle.dump(factors, f)
 
