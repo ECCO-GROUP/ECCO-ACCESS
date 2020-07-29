@@ -263,7 +263,6 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
         print("===Running transformations for " + file_name + "===")
         field_DAs = run_in_any_env(
             model_grid, grid_name, grid_type, fields, factors, ds, date, config)
-        print(grid_name, len(field_DAs))
 
         # =====================================================
         # Save the output in netCDF format
