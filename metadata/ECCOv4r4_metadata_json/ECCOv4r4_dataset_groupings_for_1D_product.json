@@ -1,0 +1,18 @@
+[
+   {
+     "name": "spatial mean atmospheric surface pressure over ocean",
+     "fields": "Pa_global",
+      "product": "1D",
+      "dataset_description" : "spatial mean atmospheric surface pressure over ocean",
+      "filename" : "GLOBAL_MEAN_ATM_SURFACE_PRES",
+      "dimension" : "1D"
+   },
+   {
+     "name": "global mean sea level anomalies",
+     "fields": "global_mean_sea_level_anomaly, global_mean_barystatic_sea_level_anomaly,global_mean_sterodynamic_sea_level_anomaly",
+     "product": "1D",
+     "dataset_description" : "global mean sea level",
+     "filename" : "GLOBAL_MEAN_SEA_LEVEL",
+     "dimension" : "1D"
+   },
+]
