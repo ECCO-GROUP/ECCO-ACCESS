@@ -142,7 +142,6 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
 
     while more:
         xml = parse(urlopen(url))
-        print(xml)
         if firstIter:
             totalResults = int(
                 xml.find('{%(opensearch)s}totalResults' % namespace).text)
@@ -177,79 +176,56 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
                 try:
                     # get last modified time of file on podaac
                     mod_time = elem.find("{%(atom)s}updated" % namespace).text
-                    print(mod_time)
-                    mod_date_time = datetime.strptime(
-                        mod_time, config['date_regex'])
+                    mod_time = mod_time[:-8] + 'Z'
+                    mod_date_time = datetime.strptime(mod_time, config['date_regex'])
                     item['modified_time_dt'] = mod_time
 
-                except:
+                except Exception as e:
+                    print(e)
                     print('Cannot find last modified time.  Downloading granule.')
                     mod_date_time = now
 
                 # compare modified timestamp or if granule previously downloaded
-                updating = (not newfile in docs.keys()) or (not docs[newfile]['harvested_success_b']) \
+                updating = (not newfile in docs.keys()) or (not docs[newfile]['harvest_success_b']) \
                     or (datetime.strptime(docs[newfile]['download_time_dt'], "%Y-%m-%dT%H:%M:%SZ") <= mod_date_time)
 
                 # if no granule metadata or download time less than modified time, download new file
                 if updating:
                     local_fp = f'{folder}{config["ds_name"]}_granule.nc' if on_aws else target_dir + newfile
 
-                    # check if file is already downloaded
-                    # useful for local development when clearing Solr
-                    # avoids having to redownload files
-                    if not path.exists(local_fp):
-
-                        # actual download
+                    if not os.path.exists(local_fp):
                         print('Downloading: ' + local_fp)
-
 
                         urlcleanup()
                         urlretrieve(link, local_fp)
 
                         # unzip .gz files
-                        if '.bz2' in newfile:
-                            offset = -4
-                            # output_fp = local_fp[:offset] + '.nc'
-
-
-                            # with bz2.open(local_fp, 'r') as f_in, open(output_fp, 'wb') as f_out:
-                            #     read = f_in.read()
-                            #     print(type(read))
-                            #     decomped = bz2.decompress(read)
-                            #     print(decomped)
-
-                            #     for data in iter(lambda : f_in.read(100 * 1024), b''):
-                            #         f_out.write(data)
-                            # local_fp = output_fp
-
-
-
-                            # data = zipfile.read() # get the decompressed data
-                            # print(3)
-                            # newfilepath = local_fp + '.nc' # assuming the filepath ends with .bz2
-                            # print(4)
-                            # open(newfilepath, 'wb').write(data) # write a uncompressed file
-                            # print(5)
-
-                            # with open(local_fp[:offset], 'wb') as f_out, bz2.BZ2File(local_fp, 'rb') as f_in:
-                            #     f_out = f_out + '.nc'
-                            #     for data in iter(lambda : f_in.read(100 * 1024), b''):
-                            #         f_out.write(data)
-                            # newfile_ext = '.nc'
-                            # local_fp = local_fp[:offset]+newfile_ext
-                        else:
-                            offset = -3
-                            with gzip.open(local_fp, "rb") as f_in, open(local_fp[:offset], "wb") as f_out:
+                        if newfile[-3:] == '.gz':
+                            with gzip.open(local_fp, "rb") as f_in, open(local_fp[:-3], "wb") as f_out:
                                 shutil.copyfileobj(f_in, f_out)
                                 os.remove(local_fp)
                             newfile_ext = os.path.splitext(
                                 os.listdir(folder)[0])[1]
-                            local_fp = local_fp[:offset]+newfile_ext
+                            local_fp = local_fp[:-3]+newfile_ext
 
+                    elif datetime.fromtimestamp(os.path.getmtime(local_fp)) <= mod_date_time:
+                        print('Updating: ' + local_fp)
 
-                            
+                        urlcleanup()
+                        urlretrieve(link, local_fp)
+
+                        # unzip .gz files
+                        if newfile[-3:] == '.gz':
+                            with gzip.open(local_fp, "rb") as f_in, open(local_fp[:-3], "wb") as f_out:
+                                shutil.copyfileobj(f_in, f_out)
+                                os.remove(local_fp)
+                            newfile_ext = os.path.splitext(
+                                os.listdir(folder)[0])[1]
+                            local_fp = local_fp[:-3]+newfile_ext
+
                     else:
-                        print('File already downloaded')
+                        print('File already downloaded and up to date')
+                        
                     item['checksum_s'] = md5(local_fp)
 
                     # =====================================================

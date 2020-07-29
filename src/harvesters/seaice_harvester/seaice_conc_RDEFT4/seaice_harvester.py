@@ -1,3 +1,4 @@
+from __future__ import print_function
 from xml.etree.ElementTree import parse
 import datetime
 # from datetime import datetime, timedelta
@@ -5,7 +6,7 @@ import sys
 from os import path
 import os
 import re
-from urllib.request import urlopen, urlcleanup, urlretrieve
+# from urllib.request import urlopen, urlcleanup, urlretrieve
 import gzip
 import shutil
 import hashlib
@@ -16,8 +17,219 @@ from ftplib import FTP
 from dateutil import parser
 import numpy as np
 
+import base64
+import itertools
+import netrc
+import ssl
+try:
+    from urllib.parse import urlparse
+    from urllib.request import urlopen, Request, build_opener, HTTPCookieProcessor
+    from urllib.error import HTTPError, URLError
+except ImportError:
+    from urlparse import urlparse
+    from urllib2 import urlopen, Request, HTTPError, URLError, build_opener, HTTPCookieProcessor
 
 
+CMR_URL = 'https://cmr.earthdata.nasa.gov'
+URS_URL = 'https://urs.earthdata.nasa.gov'
+CMR_PAGE_SIZE = 2000
+CMR_FILE_URL = ('{0}/search/granules.json?provider=NSIDC_ECS'
+                '&sort_key[]=start_date&sort_key[]=producer_granule_id'
+                '&scroll=true&page_size={1}'.format(CMR_URL, CMR_PAGE_SIZE))
+
+
+def get_credentials(url):
+    """Get user credentials from .netrc or prompt for input."""
+    credentials = None
+    errprefix = ''
+    try:
+        info = netrc.netrc()
+        username, account, password = info.authenticators(urlparse(URS_URL).hostname)
+        errprefix = 'netrc error: '
+    except Exception as e:
+        if (not ('No such file' in str(e))):
+            print('netrc error: {0}'.format(str(e)))
+        username = None
+        password = None
+
+    while not credentials:
+        if not username:
+            username = 'ecco_access' #hardcoded username
+            password = 'ECCOAccess1' #hardcoded password
+        credentials = '{0}:{1}'.format(username, password)
+        credentials = base64.b64encode(credentials.encode('ascii')).decode('ascii')
+
+        if url:
+            try:
+                req = Request(url)
+                req.add_header('Authorization', 'Basic {0}'.format(credentials))
+                opener = build_opener(HTTPCookieProcessor())
+                opener.open(req)
+            except HTTPError:
+                print(errprefix + 'Incorrect username or password')
+                errprefix = ''
+                credentials = None
+                username = None
+                password = None
+
+    return credentials
+
+def build_version_query_params(version):
+    desired_pad_length = 3
+    if len(version) > desired_pad_length:
+        print('Version string too long: "{0}"'.format(version))
+        quit()
+
+    version = str(int(version))  # Strip off any leading zeros
+    query_params = ''
+
+    while len(version) <= desired_pad_length:
+        padded_version = version.zfill(desired_pad_length)
+        query_params += '&version={0}'.format(padded_version)
+        desired_pad_length -= 1
+    return query_params
+
+
+def build_cmr_query_url(short_name, version, time_start, time_end,
+                        bounding_box=None, polygon=None,
+                        filename_filter=None):
+    params = '&short_name={0}'.format(short_name)
+    params += build_version_query_params(version)
+    params += '&temporal[]={0},{1}'.format(time_start, time_end)
+    if polygon:
+        params += '&polygon={0}'.format(polygon)
+    elif bounding_box:
+        params += '&bounding_box={0}'.format(bounding_box)
+    if filename_filter:
+        option = '&options[producer_granule_id][pattern]=true'
+        params += '&producer_granule_id[]={0}{1}'.format(filename_filter, option)
+    return CMR_FILE_URL + params
+
+
+def cmr_download(urls):
+    """Download files from list of urls."""
+    if not urls:
+        return
+
+    url_count = len(urls)
+    print('Downloading {0} files...'.format(url_count))
+    credentials = None
+
+    for index, url in enumerate(urls, start=1):
+        if not credentials and urlparse(url).scheme == 'https':
+            credentials = get_credentials(url)
+
+        filename = url.split('/')[-1]
+        print('{0}/{1}: {2}'.format(str(index).zfill(len(str(url_count))),
+                                    url_count,
+                                    filename))
+
+        try:
+            # In Python 3 we could eliminate the opener and just do 2 lines:
+            # resp = requests.get(url, auth=(username, password))
+            # open(filename, 'wb').write(resp.content)
+            req = Request(url)
+            if credentials:
+                req.add_header('Authorization', 'Basic {0}'.format(credentials))
+            opener = build_opener(HTTPCookieProcessor())
+            data = opener.open(req).read()
+            open(filename, 'wb').write(data)
+        except HTTPError as e:
+            print('HTTP error {0}, {1}'.format(e.code, e.reason))
+        except URLError as e:
+            print('URL error: {0}'.format(e.reason))
+        except IOError:
+            raise
+        except KeyboardInterrupt:
+            quit()
+
+
+def cmr_filter_urls(search_results):
+    """Select only the desired data files from CMR response."""
+    if 'feed' not in search_results or 'entry' not in search_results['feed']:
+        return []
+
+    entries = [e['links']
+               for e in search_results['feed']['entry']
+               if 'links' in e]
+    # Flatten "entries" to a simple list of links
+    links = list(itertools.chain(*entries))
+
+    urls = []
+    unique_filenames = set()
+    for link in links:
+        if 'href' not in link:
+            # Exclude links with nothing to download
+            continue
+        if 'inherited' in link and link['inherited'] is True:
+            # Why are we excluding these links?
+            continue
+        if 'rel' in link and 'data#' not in link['rel']:
+            # Exclude links which are not classified by CMR as "data" or "metadata"
+            continue
+
+        if 'title' in link and 'opendap' in link['title'].lower():
+            # Exclude OPeNDAP links--they are responsible for many duplicates
+            # This is a hack; when the metadata is updated to properly identify
+            # non-datapool links, we should be able to do this in a non-hack way
+            continue
+
+        filename = link['href'].split('/')[-1]
+        if filename in unique_filenames:
+            # Exclude links with duplicate filenames (they would overwrite)
+            continue
+        unique_filenames.add(filename)
+
+        urls.append(link['href'])
+
+    return urls
+
+
+def cmr_search(short_name, version, time_start, time_end,
+               bounding_box='', polygon='', filename_filter=''):
+    """Perform a scrolling CMR query for files matching input criteria."""
+    cmr_query_url = build_cmr_query_url(short_name=short_name, version=version,
+                                        time_start=time_start, time_end=time_end,
+                                        bounding_box=bounding_box,
+                                        polygon=polygon, filename_filter=filename_filter)
+    print('Querying for data:\n\t{0}\n'.format(cmr_query_url))
+
+    cmr_scroll_id = None
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+
+    try:
+        urls = []
+        while True:
+            req = Request(cmr_query_url)
+            if cmr_scroll_id:
+                req.add_header('cmr-scroll-id', cmr_scroll_id)
+            response = urlopen(req, context=ctx)
+            if not cmr_scroll_id:
+                # Python 2 and 3 have different case for the http headers
+                headers = {k.lower(): v for k, v in dict(response.info()).items()}
+                cmr_scroll_id = headers['cmr-scroll-id']
+                hits = int(headers['cmr-hits'])
+                if hits > 0:
+                    print('Found {0} matches.'.format(hits))
+                else:
+                    print('Found no matches.')
+            search_page = response.read()
+            search_page = json.loads(search_page.decode('utf-8'))
+            url_scroll_results = cmr_filter_urls(search_page)
+            if not url_scroll_results:
+                break
+            if hits > CMR_PAGE_SIZE:
+                print('.', end='')
+                sys.stdout.flush()
+            urls += url_scroll_results
+
+        if hits > CMR_PAGE_SIZE:
+            print()
+        return urls
+    except KeyboardInterrupt:
+        quit()
 
 def md5(fname):
     hash_md5 = hashlib.md5()
@@ -82,15 +294,17 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
     folder = '/tmp/'+config['ds_name']+'/'
     data_time_scale = config['data_time_scale']
 
-    ftp = FTP(config['host'])
-    ftp.login(config['user'])
+
+    short_name = config['ds_name'][7:]
+    version = '1'
 
 
-    # if not on_aws:
-    #     print("!!downloading files to "+target_dir)
-    # else:
-    #     print("!!downloading files to "+folder+" and uploading to " +
-    #           target_bucket_name+"/"+config['ds_name'])
+
+    if not on_aws:
+        print("!!downloading files to "+target_dir)
+    else:
+        print("!!downloading files to "+folder+" and uploading to " +
+              target_bucket_name+"/"+config['ds_name'])
 
     print("======downloading files========")
 
@@ -121,12 +335,11 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
     # setup metadata
     meta = []
     item = {}
-    run_dates = []
     last_success_item = {}
     start = []
     end = []
     years_updated = set()
-    chk_time = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    chk_time = datetime.datetime.utcnow().strftime(config['date_regex'])
     now = datetime.datetime.utcnow()
     updating = False
     aws_upload = False
@@ -134,156 +347,156 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
     start_year = config['start'][:4]
     end_year = config['end'][:4]
     years = np.arange(int(start_year), int(end_year) + 1)
+    start_time = datetime.datetime.strptime(config['start'],config['date_regex'])
+    end_time = datetime.datetime.strptime(config['end'],config['date_regex'])
+   
 
+    url_list = cmr_search(short_name, version, config['start'], config['end'])
 
     for year in years:
-        for region in config['regions']:
-            hemi = 'nh' if region == 'north' else 'sh'
 
-            # build source urlbase
-            urlbase0 = config['ddir'] + region
-            urlbase = '{base}/{time}/{year}/'.format(base=urlbase0,time=data_time_scale,year=year)
+        iso_dates_at_end_of_month = []
+        
+        # pull one record per month
+        for month in range(1,13):
+            # to find the last day of the month, we go up one month, 
+            # and back one day
+            #   if Jan-Nov, then we'll go forward one month to Feb-Dec
 
-            files = []
-            ftp.dir(urlbase, files.append)
-            files = files[2:]
-            files = [e.split()[-1] for e in files]
-
-            start_time = datetime.datetime.strptime(config['start'],"%Y%m%dT%H:%M:%SZ")
-            end_time = datetime.datetime.strptime(config['end'],"%Y%m%dT%H:%M:%SZ")
-
-
-            # create dummy granule files first to handle race condition with transformation
-            dummy_granule_meta = []
-            for newfile in files:
-                date = getdate(config['regex'],newfile)
-                new_date_format = f'{date[:4]}-{date[4:6]}-{date[6:]}T00:00:00Z'
-                date_time = datetime.datetime.strptime(date,"%Y%m%d")
-                granule_id = '{}_{}_{}'.format(config['ds_name'],date,hemi)
+            if month < 12:
+                cur_mon_year = np.datetime64(str(year) + '-' + str(month+1).zfill(2))
+            # for december we go up one year, and set month to january
+            else:
+                cur_mon_year = np.datetime64(str(year+1) + '-' + str('01'))
+            
+            # then back one day
+            last_day_of_month = cur_mon_year - np.timedelta64(1,'D')
+            
+            iso_dates_at_end_of_month.append((str(last_day_of_month)).replace('-', ''))
 
 
-                if (start_time <= date_time) and (end_time >= date_time) and (not granule_id in docs.keys()):
-                    item = {}               # to be populated for each file
-                    item['date_s'] = new_date_format
-                    item['dataset_s'] = config['ds_name']
-                    item['filename_s'] = newfile
-                    item['hemisphere_s'] = hemi
-                    item['source_s'] = 'ftp://'+config['host']+'/'+urlbase+newfile
-                    dummy_granule_meta.append(item)
+        url_dict = {}
 
-            lnk = '{}{}/update/json/docs?commit=true&f=/**'.format(config['solr_host'],config['solr_collection_name'])
-            headers = {'Content-Type':'application/json'}
-            meta_json = json.dumps(dummy_granule_meta)
+        for file_date in iso_dates_at_end_of_month:
+            end_of_month_url = [url for url in url_list if file_date in url]
 
-            for newfile in files:
-                date = getdate(config['regex'],newfile)
-                date_time = datetime.datetime.strptime(date,"%Y%m%d")
-                new_date_format = f'{date[:4]}-{date[4:6]}-{date[6:]}T00:00:00Z'
+            if end_of_month_url:
+                url_dict[file_date] = end_of_month_url[0]
+        
+        for file_date, url in url_dict.items():
 
-                # check if file in download date range
-                if (start_time <= date_time) and (end_time >= date_time):
-                    granule_id = '{}_{}_{}'.format(config['ds_name'],date,hemi)
+            # Date in filename is end date of 30 day period
+            filename = url.split('/')[-1]
+            local_fp = f'{folder}{config["ds_name"]}_granule.nc' if on_aws else target_dir + filename
 
-                    item = {}
-                    item['type_s'] = 'harvested'
-                    item['date_s'] = new_date_format
-                    item['dataset_s'] = config['ds_name']
-                    item['hemisphere_s'] = hemi
+            date = getdate(config['regex'],filename)
+            date_time = datetime.datetime.strptime(date,"%Y%m%d")
+            new_date_format = f'{date[:4]}-{date[4:6]}-{date[6:]}T00:00:00Z'
 
-                    updating = False
-                    aws_upload = False
+            # check if file in download date range
+            if (start_time <= date_time) and (end_time >= date_time):
+                item = {}
+                item['type_s'] = 'harvested'
+                item['date_s'] = new_date_format
+                item['dataset_s'] = config['ds_name']
+                item['hemisphere_s'] = 'nh'
 
-                    
+                updating = False
+                aws_upload = False
 
-                    try:
-                        url = urlbase + newfile
-                        item['source_s'] = 'ftp://'+config['host']+'/'+url
+                try:
+                    item['source_s'] = url
 
-                        # get last modified date
-                        timestamp = ftp.voidcmd("MDTM "+url)[4:]    # string
-                        time = parser.parse(timestamp)              # datetime object
-                        timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ") # string
-                        item['modified_time_dt'] = timestamp
+                    # TODO: find a way to get last modified (see line 436 as well)
+                    # get last modified date
+                    # timestamp = ftp.voidcmd("MDTM "+url)[4:]    # string
+                    # time = parser.parse(timestamp)              # datetime object
+                    # timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ") # string
+                    # item['modified_time_dt'] = timestamp
 
-                        # compare modified timestamp or if granule previously downloaded
-                        updating = (not newfile in docs.keys()) or (not docs[newfile]['harvest_success_b']) \
-                            or (datetime.datetime.strptime(docs[newfile]['download_time_dt'], "%Y-%m-%dT%H:%M:%SZ") <= time)
-
-                        if updating:
-                            run_dates.append(datetime.datetime.strptime(getdate(config['regex'],newfile),"%Y%m%d"))
-
-                            local_fp = f'{folder}{config["ds_name"]}_granule.nc' if on_aws else target_dir + newfile
-
-                            if not os.path.exists(local_fp):
-
-                                print('Downloading: ' + local_fp)
-
-                                # # new ftp retrieval
-                                with open(local_fp, 'wb') as f:
-                                    ftp.retrbinary('RETR '+url, f.write)
-
-                            elif datetime.datetime.fromtimestamp(os.path.getmtime(local_fp)) <= time:
-                                print('Updating: ' + local_fp)
-
-                                # # new ftp retrieval
-                                with open(local_fp, 'wb') as f:
-                                    ftp.retrbinary('RETR '+url, f.write)
-
-                            else:
-                                print('File already downloaded and up to date')
-
-                            # calculate checksum and expected file size
-                            item['checksum_s'] = md5(local_fp)
-
-
-
-                            # =====================================================
-                            # ### Push data to s3 bucket
-                            # =====================================================
-                            output_filename = config['ds_name'] + \
-                                '/' + newfile if on_aws else newfile
-                            item['pre_transformation_file_path_s'] = target_dir + newfile
-
-                            if on_aws:
-                                aws_upload = True
-                                print("=========uploading file=========")
-                                # print('uploading '+output_filename)
-                                target_bucket.upload_file(local_fp, output_filename)
-                                item['pre_transformation_file_path_s'] = 's3://' + \
-                                    config['target_bucket_name']+'/'+output_filename
-                                print("======uploading file DONE=======")
-
-                            item['harvest_success_b'] = True
-                            item['filename_s'] = newfile
-                            item['file_size_l'] = os.path.getsize(local_fp)
-
-                            years_updated.add(date[:4])
-
-                    except Exception as e:
-                        print('error', e)
-                        if updating:
-                            if aws_upload:
-                                print("======aws upload unsuccessful=======")
-                                item['message_s'] = 'aws upload unsuccessful'
-
-                            else:
-                                print("Download "+newfile+" failed.")
-                                print("======file not successful=======")
-
-                            item['harvest_success_b'] = False
-                            item['filename'] = ''
-                            item['pre_transformation_file_path_s'] = ''
-                            item['file_size_l'] = 0
+                    # compare modified timestamp or if granule previously downloaded
+                    # updating = (not newfile in docs.keys()) or (not docs[newfile]['harvest_success_b']) or (datetime.datetime.strptime(docs[newfile]['download_time_dt'], "%Y-%m-%dT%H:%M:%SZ") <= time)
+                    updating = (not filename in docs.keys()) or (not docs[filename]['harvest_success_b'])
 
                     if updating:
-                        item['download_time_dt'] = chk_time
+                        if not os.path.exists(local_fp):
 
-                        # add item to metadata json
-                        meta.append(item)
-                        # store meta for last successful download
-                        last_success_item = item
+                            print('Downloading: ' + local_fp)
 
-    ftp.quit()
+                            credentials = get_credentials(url)
+                            req = Request(url)
+                            req.add_header('Authorization', 'Basic {0}'.format(credentials))
+                            opener = build_opener(HTTPCookieProcessor())
+                            data = opener.open(req).read()
+                            open(local_fp, 'wb').write(data)
+
+
+                        # elif datetime.datetime.fromtimestamp(os.path.getmtime(local_fp)) <= time:
+                        elif datetime.datetime.fromtimestamp(os.path.getmtime(local_fp)) <= parser.parse(file_date):
+
+                            print('Updating: ' + local_fp)
+
+                            credentials = get_credentials(url)
+                            req = Request(url)
+                            req.add_header('Authorization', 'Basic {0}'.format(credentials))
+                            opener = build_opener(HTTPCookieProcessor())
+                            data = opener.open(req).read()
+                            open(local_fp, 'wb').write(data)
+
+                        else:
+                            print('File already downloaded and up to date')
+
+                        # calculate checksum and expected file size
+                        item['checksum_s'] = md5(local_fp)
+
+
+
+                        # =====================================================
+                        # ### Push data to s3 bucket
+                        # =====================================================
+                        output_filename = config['ds_name'] + \
+                            '/' + filename if on_aws else filename
+                        item['pre_transformation_file_path_s'] = target_dir + filename
+
+                        if on_aws:
+                            aws_upload = True
+                            print("=========uploading file=========")
+                            # print('uploading '+output_filename)
+                            target_bucket.upload_file(local_fp, output_filename)
+                            item['pre_transformation_file_path_s'] = 's3://' + \
+                                config['target_bucket_name']+'/'+output_filename
+                            print("======uploading file DONE=======")
+
+                        item['harvest_success_b'] = True
+                        item['filename_s'] = filename
+                        item['file_size_l'] = os.path.getsize(local_fp)
+
+                        years_updated.add(date[:4])
+
+                except Exception as e:
+                    print('error', e)
+                    if updating:
+                        if aws_upload:
+                            print("======aws upload unsuccessful=======")
+                            item['message_s'] = 'aws upload unsuccessful'
+
+                        else:
+                            print("Download "+filename+" failed.")
+                            print("======file not successful=======")
+
+                        item['harvest_success_b'] = False
+                        item['filename'] = ''
+                        item['pre_transformation_file_path_s'] = ''
+                        item['file_size_l'] = 0
+
+                if updating:
+                    item['download_time_dt'] = chk_time
+
+                    # add item to metadata json
+                    meta.append(item)
+                    # store meta for last successful download
+                    last_success_item = item
+
 
     # =====================================================
     # ### writing metadata to file
@@ -340,7 +553,7 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
         ds_meta['type_s'] = 'dataset'
         ds_meta['dataset_s'] = config['ds_name']
         ds_meta['short_name_s'] = config['short_name']
-        ds_meta['source_s'] = f'ftp://{config["host"]}/{config["ddir"]}'
+        ds_meta['source_s'] = url_list[0][:-30]
         ds_meta['data_time_scale_s'] = config['data_time_scale']
         ds_meta['date_format_s'] = config['date_format']
         ds_meta['last_checked_dt'] = chk_time
