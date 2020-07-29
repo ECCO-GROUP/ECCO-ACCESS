@@ -11,7 +11,7 @@ from grid_transformation import run_locally_wrapper, solr_query, solr_update
 
 
 def get_remaining_transformations(config, source_file_path):
-    dataset_name = config['dataset_name']
+    dataset_name = config['ds_name']
 
     # Query for grids
     fq = ['type_s:grid']
@@ -85,7 +85,7 @@ if __name__ == "__main__":
         os.mkdir(output_dir)
 
     # Get all harvested granule for this dataset
-    fq = [f'dataset_s:{config["dataset_name"]}', 'type_s:harvested']
+    fq = [f'dataset_s:{config["ds_name"]}', 'type_s:harvested']
     harvested_granules = solr_query(config, fq)
 
     for item in harvested_granules:
@@ -105,7 +105,7 @@ if __name__ == "__main__":
             print(f'No new transformations for {item["date_s"]}')
 
     # Update Solr dataset entry status to transformed
-    fq = [f'dataset_s:{config["dataset_name"]}', 'type_s:dataset']
+    fq = [f'dataset_s:{config["ds_name"]}', 'type_s:dataset']
     dataset_metadata = solr_query(config, fq)[0]
 
     update_body = [{
