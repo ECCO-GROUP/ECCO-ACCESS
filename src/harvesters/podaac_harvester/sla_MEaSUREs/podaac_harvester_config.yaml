@@ -3,15 +3,14 @@
 # PODAAC explicitely expects this date format
 start: "19930701T00:00:01Z"
 end: "19930815T23:59:59Z"
-podaac_id: PODAAC-SLREF-CDRV2
 user: anonymous
 host: https://podaac.jpl.nasa.gov/ws/search/granule/?format=atom&pretty=false&itemsPerPage=300000
-aggregated: false
-# Provide date format from filename
 date_regex: "%Y-%m-%dT%H:%M:%SZ"
 
 # Dataset
 ds_name: sla_MEaSUREs
+podaac_id: PODAAC-SLREF-CDRV2
+aggregated: false
 short_name: SEA_SURFACE_HEIGHT_ALT_GRIDS_L4_2SATS_5DAY_6THDEG_V_JPL1812
 data_time_scale: daily
 date_format: yyyymmdd

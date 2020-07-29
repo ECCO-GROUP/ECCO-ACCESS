@@ -3,16 +3,14 @@
 # PODAAC explicitely expects this date format
 start: "19920101T00:00:01Z"
 end: "19920102T23:59:59Z"
-podaac_id: PODAAC-GHAAO-4BC02
 user: anonymous
 host: https://podaac.jpl.nasa.gov/ws/search/granule/?format=atom&pretty=false&itemsPerPage=300000
-aggregated: false
-# Provide date format from filename
-regex: '\d{8}'
 date_regex: "%Y-%m-%dT%H:%M:%SZ"
 
 # Dataset
 ds_name: sst_AVHRR
+podaac_id: PODAAC-GHAAO-4BC02
+aggregated: false
 short_name: AVHRR_OI-NCEI-L4-GLOB-v2.0
 data_time_scale: daily
 date_format: yyyymmdd

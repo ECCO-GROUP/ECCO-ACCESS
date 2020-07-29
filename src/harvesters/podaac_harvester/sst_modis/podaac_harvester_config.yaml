@@ -3,16 +3,14 @@
 # PODAAC explicitely expects this date format
 start: "20020628T00:00:01Z"
 end: "20020705T23:59:59Z"
-podaac_id: PODAAC-MODSA-1D9D9
 user: anonymous
 host: https://podaac.jpl.nasa.gov/ws/search/granule/?format=atom&pretty=false&itemsPerPage=300000
-aggregated: false
-# Provide date format from filename
-regex: '\d{8}'
 date_regex: "%Y-%m-%dT%H:%M:%SZ"
 
 # Dataset
 ds_name: sst_MODIS
+podaac_id: PODAAC-MODSA-1D9D9
+aggregated: false
 short_name: MODIS_AQUA_L3_SST_THERMAL_DAILY_9KM_DAYTIME_V2019.0
 data_time_scale: daily
 date_format: yyyymmdd

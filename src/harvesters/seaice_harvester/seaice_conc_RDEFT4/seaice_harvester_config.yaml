@@ -3,15 +3,29 @@
 start: "2010-09-20T00:00:00Z"
 end: "2011-09-21T00:00:00Z"
 
+<<<<<<< HEAD
 # Provide date format from filename
 regex: '\d{8}'
+=======
+start: "19990101T00:00:00Z"
+end: "19990104T23:59:59Z"
+user: anonymous
+host: sidads.colorado.edu
+>>>>>>> 81a6f9bbc7c057003d76d2e80e67873db5dd2713
 date_regex: "%Y-%m-%dT%H:%M:%SZ"
 
 # Dataset
 ds_name: seaice_RDEFT4
+<<<<<<< HEAD
 aggregated: false
 short_name: seaice_RDEFT4
 data_time_scale: monthly
+=======
+ddir: pub/DATASETS/NOAA/RDEFT4/
+aggregated: false
+short_name: seaice_conc_daily_icdr_G02202
+data_time_scale: daily
+>>>>>>> 81a6f9bbc7c057003d76d2e80e67873db5dd2713
 date_format: yyyymmdd
 regions: []
 fields:

@@ -1,5 +1,5 @@
 # Dataset
-dataset: sla_MEaSUREs
+ds_name: sla_MEaSUREs
 version: 1.0
 remove_nan_days_from_data: True
 do_monthly_aggregation: True
@@ -7,7 +7,6 @@ skipna_in_mean: False
 save_binary: True
 save_netcdf: True
 array_precision: float32
-
 
 # Local
 # REMEMBER, REPLACE LOCAL PATHS SO THEY POINT TO YOUR /SRC/ DIRECTORY

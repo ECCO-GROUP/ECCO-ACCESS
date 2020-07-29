@@ -1,5 +1,5 @@
 # Dataset
-dataset: sss_SMAP
+ds_name: sss_SMAP
 version: 1.0
 remove_nan_days_from_data: False
 do_monthly_aggregation: False
