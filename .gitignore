@@ -5,7 +5,7 @@
 *.json
 
 # factors pickled files
-/src/grids/*_factors_*
+/src/grids/*_factors
 
 # Editors
 .vscode/
