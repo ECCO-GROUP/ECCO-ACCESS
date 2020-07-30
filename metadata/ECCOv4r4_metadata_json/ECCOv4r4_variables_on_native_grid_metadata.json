@@ -1,5 +1,3 @@
-
-
 [
    {
       "name": "ADVr_SLT",
@@ -258,15 +256,15 @@
       "name": "ETAN",
       "long_name": "Model sea level anomaly",
       "units": "m",
-      "comments_1": "Model sea level anomaly without corrections for global mean density (steric) changes, inverted barometer effect, or volume displacement due to submerged sea-ice and snow  ",
-      "comments_2": "Note: ETAN should NOT be used for comparisons with altimetry data products because ETAN is NOT corrected for a) spurious mass fluxes incurred by density changes in the Boussinesq volume-conserving model  (Greatbatch correction) (see sterGloH) nor b) sea level displacement due to submerged sea-ice and snow (see sIceLoad).  These corrections are made for the variables SSH and SSHNOIBC.",
+      "comments_1": "Model sea level anomaly WITHOUT corrections for global mean density (steric) changes, inverted barometer effect, or volume displacement due to submerged sea-ice and snow  ",
+      "comments_2": "Note: ETAN should NOT be used for comparisons with altimetry data products because ETAN is NOT corrected for (a) spurious mass fluxes incurred by density changes in the Boussinesq volume-conserving model (Greatbatch correction, see sterGloH) nor (b) sea level displacement due to submerged sea-ice and snow (see sIceLoad).  These corrections ARE made for the variables SSH and SSHNOIBC.",
       "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; SEA SURFACE HEIGHT; SEA SURFACE TOPOGRAPHY",
       "grid_dimension":"2D",
       "coverage_content_type": "modelResult"
    },
    {
       "name": "EXFaqh",
-      "long_name": "Surface (2-m) specific humidity ",
+      "long_name": "Atmosphere surface (2-m) specific humidity ",
       "units": "kg kg-1",
       "standard_name": "surface_specific_humidity",
       "comments_1": "Surface (2-m) specific humidity over open water",
@@ -277,7 +275,7 @@
    },
    {
       "name": "EXFatemp",
-      "long_name": "Surface (2-m) air temperature ",
+      "long_name": "Atmosphere surface (2-m) air temperature ",
       "units": "degree_C",
       "standard_name": "air_temperature",
       "comments_1": "Surface (2-m) air temperature over open water",
@@ -299,7 +297,7 @@
    },
    {
       "name": "EXFevap",
-      "long_name": "Evaporation",
+      "long_name": "Evaporation rate",
       "units": "m s-1",
       "standard_name": "lwe_water_evaporation_rate",
       "comments_1": "Open ocean evaporation",
@@ -311,7 +309,7 @@
    },
    {
       "name": "EXFhl",
-      "long_name": "Latent heat flux",
+      "long_name": "Air-sea latent heat flux",
       "units": "W m-2",
       "standard_name": "surface_downward_latent_heat_flux",
       "comments_1": "Open ocean latent heat flux",
@@ -323,7 +321,7 @@
    },
    {
       "name": "EXFhs",
-      "long_name": "Sensible heat flux",
+      "long_name": "Air-sea sensible heat flux",
       "units": "W m-2",
       "standard_name": "surface_downward_sensible_heat_flux",
       "comments_1": "Open ocean sensible heat flux",
@@ -359,7 +357,7 @@
    },
    {
       "name": "EXFpreci",
-      "long_name": "Precipitation",
+      "long_name": "Precipitation rate",
       "units": "m s-1",
       "standard_name": "lwe_precipitation_rate",
       "comments_1": "Precipitation rate",
@@ -371,7 +369,7 @@
    },
    {
       "name": "EXFpress",
-      "long_name": "Atmosphere pressure",
+      "long_name": "Atmosphere surface pressure",
       "units": "N m-2",
       "standard_name": "surface_air_pressure",
       "comments_1": "Atmospheric pressure field at sea level",
@@ -393,7 +391,7 @@
    },
    {
       "name": "EXFroff",
-      "long_name": "River runoff ",
+      "long_name": "River runoff",
       "units": "m s-1",
       "standard_name": "surface_runoff_flux",
       "comments_1": "River runoff freshwater flux",
@@ -457,7 +455,7 @@
       "units": "m s-1",
       "standard_name": "x_wind",
       "comments_1": "Wind speed at 10m in the +x direction at the tracer cell on the native model grid",
-      "comments_2": "Note: ECCO v4r4 is forced with wind stress (see EXFtaux) not wind vector winds.  EXFuwind is calculated by converting wind stress to vector wind using bulk formulae.",
+      "comments_2": "Note: ECCO v4r4 is forced with wind stress (see EXFtaux) not wind vector winds. EXFuwind is calculated by converting wind stress to vector wind using bulk formulae.",
       "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; ATMOSPHERE;ATMOSPHERIC WINDS; WIND SPEED; U/V WIND COMPONENTS; SURFACE WINDS; OCEAN WINDS",
       "grid_dimension":"2D",
       "coverage_content_type": "modelResult"
@@ -468,7 +466,7 @@
       "units": "m s-1",
       "standard_name": "y_wind",
       "comments_1": "Wind speed at 10m in the +y direction at the tracer cell on the native model grid",
-      "comments_2": "Note: ECCO v4r4 is forced with wind stress (see EXFtauy) not wind vector winds.  EXFvwind is calculated by converting wind stress to vector wind using bulk formulae.",
+      "comments_2": "Note: ECCO v4r4 is forced with wind stress (see EXFtauy) not wind vector winds. EXFvwind is calculated by converting wind stress to vector wind using bulk formulae.",
       "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; ATMOSPHERE;ATMOSPHERIC WINDS; WIND SPEED; U/V WIND COMPONENTS; SURFACE WINDS; OCEAN WINDS",
       "grid_dimension":"2D",
       "coverage_content_type": "modelResult"
@@ -498,7 +496,7 @@
       "long_name": "Global mean sea level anomaly",
       "units": "m",
       "comments_1": "Global mean sea level anomaly",
-      "comments_2": "Note: ECCOv4 uses a volume-conserving Boussinesq formulation of the MITgcm.  Because volume (and not mass) is conserved in Boussinesq formulations, seawater density changes by buoyancy fluxes (e.g., surface heating/cooling) do not change model sea level anomaly (ETAN) and therefore induce a spurious change in model ocean bottom pressure (PHIBOT) via \"virtual mass fluxes\".   The \"Greatbatch correction\" is a time varying, globally-uniform correction to ocean volume due to changes in global mean density.  This correction is used to calculate dynamic sea level (SSH) and ocean bottom pressure (OBP).  Importantly, there is  no dynamical significance to the Greatbach correction but it is required to account for steric changes in global sea level.  See Greatbatch, 1994. J. of Geophys. Res. Oceans, https://doi.org/10.1029/94JC00847",
+      "comments_2": "Note: ECCOv4 uses a volume-conserving Boussinesq formulation of the MITgcm.  Because volume (and not mass) is conserved in Boussinesq formulations, seawater density changes by buoyancy fluxes (e.g., surface heating/cooling) do not change model sea level anomaly (ETAN) and therefore induce a spurious change in model ocean bottom pressure (PHIBOT) via \"virtual mass fluxes\". The \"Greatbatch correction\" is a time varying, globally-uniform correction to ocean volume due to changes in global mean density.  This correction is used to calculate dynamic sea level (SSH) and ocean bottom pressure (OBP).  Importantly, there is  no dynamical significance to the Greatbach correction but it is required to account for steric changes in global sea level.  See Greatbatch, 1994. J. of Geophys. Res. Oceans, https://doi.org/10.1029/94JC00847",
       "grid_dimension":"1D",
       "coverage_content_type": "modelResult"
    },
@@ -507,10 +505,9 @@
       "long_name": "Global mean steric sea level anomaly",
       "units": "m",
       "comments_1": "Steric sea level anomaly associated with seawater expansion/contraction due to density changes",
-      "comments_2": "Note: ECCOv4 uses a volume-conserving Boussinesq formulation of the MITgcm.  Because volume (and not mass) is conserved in Boussinesq formulations, seawater density changes by buoyancy fluxes (e.g., surface heating/cooling) do not change model sea level anomaly (ETAN) and therefore induce a spurious change in model ocean bottom pressure (PHIBOT) via \"virtual mass fluxes\".   The \"Greatbatch correction\" is a time varying, globally-uniform correction to ocean volume due to changes in global mean density.  This correction is used to calculate dynamic sea level (SSH) and ocean bottom pressure (OBP).  Importantly, there is  no dynamical significance to the Greatbach correction but it is required to account for steric changes in global sea level.  See Greatbatch, 1994. J. of Geophys. Res. Oceans, https://doi.org/10.1029/94JC00847",
+      "comments_2": "Note: ECCOv4 uses a volume-conserving Boussinesq formulation of the MITgcm.  Because volume (and not mass) is conserved in Boussinesq formulations, seawater density changes by buoyancy fluxes (e.g., surface heating/cooling) do not change model sea level anomaly (ETAN) and therefore induce a spurious change in model ocean bottom pressure (PHIBOT) via \"virtual mass fluxes\". The \"Greatbatch correction\" is a time varying, globally-uniform correction to ocean volume due to changes in global mean density.  This correction is used to calculate dynamic sea level (SSH) and ocean bottom pressure (OBP).  Importantly, there is  no dynamical significance to the Greatbach correction but it is required to account for steric changes in global sea level.  See Greatbatch, 1994. J. of Geophys. Res. Oceans, https://doi.org/10.1029/94JC00847",
       "grid_dimension":"1D",
       "coverage_content_type": "modelResult"
-
    },
    {
       "name": "GM_PsiX",
@@ -1016,7 +1013,7 @@
       "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS;OCEAN CURRENTS; OCEAN CIRCULATION",
       "grid_dimension":"3D",
       "coverage_content_type": "modelResult"
-   }
+   },
    {
       "name": "SIaaflux",
       "long_name": "Conservative ocean and sea-ice advective heat flux adjustment",
@@ -1027,7 +1024,7 @@
       "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; SEA ICE; SNOW/ICE; HEAT FLUX",
       "grid_dimension":"2D",
       "coverage_content_type": "modelResult"
-   }
+   },
    {
       "name": "SIrsSubl",
       "long_name": "Residual sublimation freshwater flux",
@@ -1038,7 +1035,7 @@
       "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; SEA ICE; SNOW/ICE; FRESH WATER FLUX",
       "grid_dimension":"2D",
       "coverage_content_type": "modelResult"
-   }
+   },
    {
       "name": "SIfwThru",
       "long_name": "Precipitation through sea-ice",
