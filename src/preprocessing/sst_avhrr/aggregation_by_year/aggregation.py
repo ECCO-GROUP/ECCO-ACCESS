@@ -119,6 +119,14 @@ def run_aggregation(system_path, output_dir, s3=None):
         years = dataset_metadata['years_updated_ss']
     else:
         print('No updated years to aggregate')
+        update_body = [
+            {
+                "id": dataset_metadata['id'],
+                "status_s": {"set": 'aggregated'},
+            }
+        ]
+
+        solr_update(config, update_body)
         return
 
     data_time_scale = dataset_metadata['data_time_scale_s']
@@ -201,8 +209,8 @@ def run_aggregation(system_path, output_dir, s3=None):
 
                         daily_DA_year.append(data_DA)
 
-                    
-                    daily_DA_year_merged = xr.concat((daily_DA_year), dim='time')
+                    daily_DA_year_merged = xr.concat(
+                        (daily_DA_year), dim='time')
 
                     new_data_attr = {}
                     new_data_attr['original_dataset_title'] = dataset_metadata['original_dataset_title_s']

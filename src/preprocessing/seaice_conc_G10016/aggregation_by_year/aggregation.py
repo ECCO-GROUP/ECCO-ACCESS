@@ -115,11 +115,20 @@ def run_aggregation(system_path, output_dir, s3=None):
     dataset_metadata = solr_query(config, fq)[0]
 
     short_name = dataset_metadata['short_name_s']
+
     if 'years_updated_ss' in dataset_metadata.keys():
         years = dataset_metadata['years_updated_ss']
     else:
         print('No updated years to aggregate')
-        # return
+        update_body = [
+            {
+                "id": dataset_metadata['id'],
+                "status_s": {"set": 'aggregated'},
+            }
+        ]
+
+        solr_update(config, update_body)
+        return
     data_time_scale = dataset_metadata['data_time_scale_s']
 
     # Define precision of output files, float32 is standard
@@ -139,7 +148,7 @@ def run_aggregation(system_path, output_dir, s3=None):
     fill_values = {'binary': -9999, 'netcdf': netcdf_fill_value}
 
     update_body = []
-    
+
     if years[0] != '':
 
         for grid in grids:
@@ -164,7 +173,7 @@ def run_aggregation(system_path, output_dir, s3=None):
                 for field in fields:
                     field_name = field['name_s']
                     print("======initalizing yr " + str(year) +
-                        "_" + grid_name + "_"+field_name+"======")
+                          "_" + grid_name + "_"+field_name+"======")
 
                     print("===looping through all files===")
                     daily_DA_year = []
@@ -178,16 +187,17 @@ def run_aggregation(system_path, output_dir, s3=None):
                         for hemi in ['nh', 'sh']:
 
                             fq = [f'dataset_s:{dataset}', 'type_s:transformation',
-                                f'grid_name_s:{grid_name}', f'field_s:{field_name}', f'date_s:{date}*',
-                                f'hemisphere_s:{hemi}']
+                                  f'grid_name_s:{grid_name}', f'field_s:{field_name}', f'date_s:{date}*',
+                                  f'hemisphere_s:{hemi}']
 
-                            docs  = solr_query(config, fq)
+                            docs = solr_query(config, fq)
 
                             if docs:
                                 if docs[0]['transformation_file_path_s'][:5] == 's3://':
                                     source_bucket_name, key_name = split_s3_bucket_key(
                                         docs[0]['transformation_file_path_s'])
-                                    obj = s3.Object(source_bucket_name, key_name)
+                                    obj = s3.Object(
+                                        source_bucket_name, key_name)
                                     data_DA = xr.open_dataarray(
                                         obj, decode_times=True)
                                     # f = obj.get()['Body'].read()
@@ -195,32 +205,33 @@ def run_aggregation(system_path, output_dir, s3=None):
                                 else:
                                     data_DA = xr.open_dataarray(
                                         docs[0]['transformation_file_path_s'], decode_times=True)
-                                    
 
                                 print('data DA: ', data_DA)
 
                             else:
                                 data_DA = ea.make_empty_record(field['standard_name_s'], field['long_name_s'], field['units_s'],
-                                                            date, model_grid, grid_type, array_precision)
+                                                               date, model_grid, grid_type, array_precision)
                                 print('empty DA: ', data_DA)
 
                             hemisphere_datsets.append(data_DA)
 
                         if np.count_nonzero(~(hemisphere_datsets[0].values == netcdf_fill_value)) > 0:
                             data_DA = hemisphere_datsets[0].copy()
-                            data_DA.values = np.where(hemisphere_datsets[1].values == netcdf_fill_value, data_DA.values, hemisphere_datsets[1].values)
+                            data_DA.values = np.where(
+                                hemisphere_datsets[1].values == netcdf_fill_value, data_DA.values, hemisphere_datsets[1].values)
                         else:
                             data_DA = hemisphere_datsets[1].copy()
                             data_DA.values = np.where(hemisphere_datsets[0].values == netcdf_fill_value,
-                                            data_DA.values,
-                                            hemisphere_datsets[0].values)
-                        
-                        data_DA.values = np.where(data_DA.values == netcdf_fill_value, np.nan, data_DA.values)
+                                                      data_DA.values,
+                                                      hemisphere_datsets[0].values)
+
+                        data_DA.values = np.where(
+                            data_DA.values == netcdf_fill_value, np.nan, data_DA.values)
 
                         daily_DA_year.append(data_DA)
 
-                    
-                    daily_DA_year_merged = xr.concat((daily_DA_year), dim='time')
+                    daily_DA_year_merged = xr.concat(
+                        (daily_DA_year), dim='time')
 
                     new_data_attr = {}
                     new_data_attr['original_dataset_title'] = dataset_metadata['original_dataset_title_s']
@@ -252,23 +263,23 @@ def run_aggregation(system_path, output_dir, s3=None):
 
                     # generalized_aggregate_and_save expects Paths
                     output_dirs = {'binary': Path(bin_output_dir),
-                                'netcdf': Path(netCDF_output_dir)}
+                                   'netcdf': Path(netCDF_output_dir)}
 
                     print(daily_DA_year_merged)
 
                     ea.generalized_aggregate_and_save(daily_DA_year_merged,
-                                                    new_data_attr,
-                                                    config['do_monthly_aggregation'],
-                                                    int(year),
-                                                    config['skipna_in_mean'],
-                                                    output_filenames,
-                                                    fill_values,
-                                                    output_dirs,
-                                                    binary_dtype,
-                                                    grid_type,
-                                                    save_binary=config['save_binary'],
-                                                    save_netcdf=config['save_netcdf'],
-                                                    remove_nan_days_from_data=config['remove_nan_days_from_data'])
+                                                      new_data_attr,
+                                                      config['do_monthly_aggregation'],
+                                                      int(year),
+                                                      config['skipna_in_mean'],
+                                                      output_filenames,
+                                                      fill_values,
+                                                      output_dirs,
+                                                      binary_dtype,
+                                                      grid_type,
+                                                      save_binary=config['save_binary'],
+                                                      save_netcdf=config['save_netcdf'],
+                                                      remove_nan_days_from_data=config['remove_nan_days_from_data'])
 
                     # Upload files to s3
                     if s3:
@@ -287,7 +298,7 @@ def run_aggregation(system_path, output_dir, s3=None):
 
                     # Check if aggregation already exists
                     fq = [f'dataset_s:{dataset}', 'type_s:aggregation',
-                        f'grid_name_s:{grid_name}', f'field_s:{field_name}', f'year_s:{year}']
+                          f'grid_name_s:{grid_name}', f'field_s:{field_name}', f'year_s:{year}']
                     docs = solr_query(config, fq)
 
                     if len(docs) > 0:
