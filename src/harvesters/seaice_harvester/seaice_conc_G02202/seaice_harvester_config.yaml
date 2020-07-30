@@ -5,6 +5,7 @@ end: "19990104T23:59:59Z"
 
 user: anonymous
 host: sidads.colorado.edu
+regex: '\d{8}'
 date_regex: "%Y-%m-%dT%H:%M:%SZ"
 
 # Dataset
@@ -14,7 +15,7 @@ aggregated: false
 short_name: seaice_conc_daily_icdr_G02202
 data_time_scale: daily
 date_format: yyyymmdd
-regions: ['north', 'south']
+regions: ["north", "south"]
 fields:
   [
     {
@@ -27,8 +28,8 @@ fields:
       name: stdev_of_seaice_conc_cdr,
       long_name: Passive Microwave Daily Northern Hemisphere Sea Ice Concentration Source Estimated Standard Deviation,
       standard_name: " ",
-      units: " "
-    }
+      units: " ",
+    },
   ]
 # new_data_attrs:
 original_dataset_title: NOAA/NSIDC Climate Data Record of Passive Microwave Sea Ice Concentration, Version 3

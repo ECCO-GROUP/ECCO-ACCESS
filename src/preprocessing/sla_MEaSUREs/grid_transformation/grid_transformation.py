@@ -142,9 +142,16 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
             fq = [f'dataset_s:{dataset}', 'type_s:dataset']
             short_name = dataset_metadata['short_name_s']
 
+            # data_res is fractional and should not contain white space
+            data_res = config['data_res']
+
+            if '/' in data_res:
+                num, den = data_res.replace(' ', '').split('/')
+                data_res = float(num) / float(den)
+
             source_grid_min_L, source_grid_max_L, source_grid, \
                 data_grid_lons, data_grid_lats = ea.generalized_grid_product(short_name,
-                                                                             config['data_res'],
+                                                                             data_res,
                                                                              config['data_max_lat'],
                                                                              config['area_extent'],
                                                                              config['dims'],
