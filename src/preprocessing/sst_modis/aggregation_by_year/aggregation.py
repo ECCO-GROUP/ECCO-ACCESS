@@ -37,8 +37,13 @@ def split_s3_bucket_key(s3_path):
 def export_lineage(output_dir, years, config):
     dataset_name = config['ds_name']
 
+    lineages_dir = f'{output_dir}/{dataset_name}/annual_lineages/'
+
+    if not os.path.exists(lineages_dir):
+        os.makedirs(lineages_dir)
+
     for year in years:
-        outfile = f'{output_dir}/{dataset_name}/{dataset_name}_{year}_lineage'
+        outfile = f'{lineages_dir}/{dataset_name}_{year}_lineage'
 
         fq = ['type_s:lineage', f'dataset_s:{dataset_name}', f'date_s:{year}*']
         lineage_docs = solr_query(config, fq)
