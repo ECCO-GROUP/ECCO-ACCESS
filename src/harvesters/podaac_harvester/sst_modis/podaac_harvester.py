@@ -53,11 +53,20 @@ def solr_update(config, update_body, r=False):
         requests.post(url, json=update_body)
 
 
+def unzip_gz(local_fp, folder):
+    with gzip.open(local_fp, "rb") as f_in, open(local_fp[:-3], "wb") as f_out:
+        shutil.copyfileobj(f_in, f_out)
+        os.remove(local_fp)
+    newfile_ext = os.path.splitext(
+        os.listdir(folder)[0])[1]
+    local_fp = local_fp[:-3]+newfile_ext
+    return local_fp
+
+
 def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
     # =====================================================
     # Read configurations from YAML file
     # =====================================================
-    # TODO decide on command line argument for different dataset configs
     path_to_yaml = path_to_file_dir + "podaac_harvester_config.yaml"
     with open(path_to_yaml, "r") as stream:
         config = yaml.load(stream)
@@ -74,14 +83,13 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
     # =====================================================
     dataset_name = config['ds_name']
     target_dir = config['target_dir'] + '/'
-    folder = '/tmp/'+config['ds_name']+'/'
+    folder = '/tmp/'+dataset_name+'/'
 
     if not on_aws:
-        print("!!downloading files to "+target_dir)
+        print(f'!!downloading files to {target_dir}')
     else:
-        print("!!downloading files to "+folder+" and uploading to " +
-              target_bucket_name+"/"+config['ds_name'])
-
+        print(
+            f'!!downloading files to {folder} and uploading to {target_bucket_name}/{dataset_name}')
     print("======downloading files========")
     if config['aggregated']:
         url = f'{config["host"]}&datasetId={config["podaac_id"]}'
@@ -115,7 +123,7 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
     lineage_docs = {}
 
     # Query for harvested docs
-    fq = ['type_s:harvested', f'dataset_s:{config["ds_name"]}']
+    fq = ['type_s:harvested', f'dataset_s:{dataset_name}']
     harvested_docs = solr_query(config, fq)
 
     if len(harvested_docs) > 0:
@@ -123,7 +131,7 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
             docs[doc['filename_s']] = doc
 
     # Query for lineage docs
-    fq = ['type_s:lineage', f'dataset_s:{config["ds_name"]}']
+    fq = ['type_s:lineage', f'dataset_s:{dataset_name}']
     existing_lineage_docs = solr_query(config, fq)
 
     if len(existing_lineage_docs) > 0:
@@ -176,7 +184,7 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
                 item = {}               # to be populated for each file
                 item['type_s'] = 'harvested'
                 item['date_s'] = start_str
-                item['dataset_s'] = config['ds_name']
+                item['dataset_s'] = dataset_name
                 item['source_s'] = link
 
                 # Create or modify lineage entry in Solr
@@ -201,7 +209,7 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
 
                 # if no granule metadata or download time less than modified time, download new file
                 if updating:
-                    local_fp = f'{folder}{config["ds_name"]}_granule.nc' if on_aws else target_dir + newfile
+                    local_fp = f'{folder}{dataset_name}_granule.nc' if on_aws else target_dir + newfile
 
                     if not os.path.exists(local_fp):
                         print('Downloading: ' + local_fp)
@@ -211,12 +219,7 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
 
                         # unzip .gz files
                         if newfile[-3:] == '.gz':
-                            with gzip.open(local_fp, "rb") as f_in, open(local_fp[:-3], "wb") as f_out:
-                                shutil.copyfileobj(f_in, f_out)
-                                os.remove(local_fp)
-                            newfile_ext = os.path.splitext(
-                                os.listdir(folder)[0])[1]
-                            local_fp = local_fp[:-3]+newfile_ext
+                            local_fp = unzip_gz(local_fp, folder)
 
                     elif datetime.fromtimestamp(os.path.getmtime(local_fp)) <= mod_date_time:
                         print('Updating: ' + local_fp)
@@ -226,24 +229,19 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
 
                         # unzip .gz files
                         if newfile[-3:] == '.gz':
-                            with gzip.open(local_fp, "rb") as f_in, open(local_fp[:-3], "wb") as f_out:
-                                shutil.copyfileobj(f_in, f_out)
-                                os.remove(local_fp)
-                            newfile_ext = os.path.splitext(
-                                os.listdir(folder)[0])[1]
-                            local_fp = local_fp[:-3]+newfile_ext
+                            local_fp = unzip_gz(local_fp, folder)
 
                     else:
                         print('File already downloaded and up to date')
 
                     item['checksum_s'] = md5(local_fp)
 
+                    output_filename = f'{dataset_name}/{newfile}' if on_aws else newfile
+                    item['pre_transformation_file_path_s'] = target_dir + newfile
+
                     # =====================================================
                     # ### Push data to s3 bucket
                     # =====================================================
-                    output_filename = config['ds_name'] + \
-                        '/' + newfile if on_aws else newfile
-                    item['pre_transformation_file_path_s'] = target_dir + newfile
 
                     if on_aws:
                         aws_upload = True
@@ -294,7 +292,7 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
         next = xml.find("{%(atom)s}link[@rel='next']" % namespace)
         if next is None:
             more = False
-            print(config['ds_name']+' done')
+            print(dataset_name + ' done')
         else:
             url = next.attrib['href']
 
@@ -303,9 +301,9 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
     # =====================================================
     print("=========creating meta=========")
 
-    meta_path = config['ds_name']+'.json'
-    meta_local_path = target_dir+meta_path
-    meta_output_path = 'meta/'+meta_path
+    meta_path = dataset_name + '.json'
+    meta_local_path = target_dir + meta_path
+    meta_output_path = 'meta/' + meta_path
 
     if len(meta) == 0:
         print('no new downloads')
@@ -331,14 +329,14 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
     # =====================================================
     print("=========posting meta=========")
 
-    headers = {'Content-Type': 'application/json'}
     overall_start = min(start) if len(start) > 0 else None
     overall_end = max(end) if len(end) > 0 else None
+
     # =====================================================
     # Query for Solr Dataset-level Document
     # =====================================================
 
-    fq = ['type_s:dataset', 'dataset_s:'+config['ds_name']]
+    fq = ['type_s:dataset', 'dataset_s:'+dataset_name]
     docs = solr_query(config, fq)
 
     update = (len(docs) == 1)
@@ -351,7 +349,7 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
         # -----------------------------------------------------
         ds_meta = {}
         ds_meta['type_s'] = 'dataset'
-        ds_meta['dataset_s'] = config['ds_name']
+        ds_meta['dataset_s'] = dataset_name
         ds_meta['short_name_s'] = config['short_name']
         ds_meta['source_s'] = f'{config["host"]}&datasetId={config["podaac_id"]}'
         ds_meta['data_time_scale_s'] = config['data_time_scale']
@@ -393,7 +391,7 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
         for field in config['fields']:
             field_obj = {}
             field_obj['type_s'] = 'field'
-            field_obj['dataset_s'] = config['ds_name']
+            field_obj['dataset_s'] = dataset_name
             field_obj['name_s'] = field['name']
             field_obj['long_name_s'] = field['long_name']
             field_obj['standard_name_s'] = field['standard_name']

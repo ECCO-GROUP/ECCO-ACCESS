@@ -7,11 +7,8 @@ import json
 import os
 import hashlib
 import pickle
-import traceback
-
 from datetime import datetime
 from netCDF4 import default_fillvals  # pylint: disable=import-error
-
 
 np.warnings.filterwarnings('ignore')
 
@@ -50,10 +47,8 @@ def run_locally_wrapper(system_path, source_file_path, remaining_transformations
     try:
         run_locally(system_path, source_file_path,
                     remaining_transformations, output_dir)
-    except Exception:
-        traceback.print_exc()
-        # run_locally(system_path, source_file_path,
-        #             remaining_transformations, output_dir)
+    except Exception as e:
+        print(e)
         print('Unable to run local transformation')
 
 
@@ -82,14 +77,14 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
         config = yaml.load(stream)
 
     file_name = source_file_path.split('/')[-1]
-    dataset = config['ds_name']
+    dataset_name = config['ds_name']
 
     # Query for dataset entry
-    fq = [f'dataset_s:{dataset}', 'type_s:dataset']
+    fq = [f'dataset_s:{dataset_name}', 'type_s:dataset']
     dataset_metadata = solr_query(config, fq)[0]
 
     # Query for harvested entry to get origin_checksum and date
-    query_fq = [f'dataset_s:{dataset}', 'type_s:harvested',
+    query_fq = [f'dataset_s:{dataset_name}', 'type_s:harvested',
                 f'pre_transformation_file_path_s:"{source_file_path}"']
     harvested_metadata = solr_query(config, query_fq)[0]
     origin_checksum = harvested_metadata['checksum_s']
@@ -142,7 +137,7 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
             #######################################################
             ## BEGIN GRID PRODUCT                                ##
 
-            fq = [f'dataset_s:{dataset}', 'type_s:dataset']
+            fq = [f'dataset_s:{dataset_name}', 'type_s:dataset']
             short_name = dataset_metadata['short_name_s']
 
             source_grid_min_L, source_grid_max_L, source_grid, \
@@ -192,7 +187,7 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
                        nearest_source_index_to_target_index_i)
 
             print('===Saving grid factors===')
-            factors_path = f'{grid_dir}grid_mappings/{dataset}/'
+            factors_path = f'{grid_dir}grid_mappings/{dataset_name}/'
 
             if not os.path.exists(factors_path):
                 os.makedirs(factors_path)
@@ -203,7 +198,7 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
                 pickle.dump(factors, f)
 
             print('===Updating Solr with factors===')
-            query_fq = [f'dataset_s:{config["ds_name"]}',
+            query_fq = [f'dataset_s:{dataset_name}',
                         'type_s:dataset']
             update_body = [
                 {
@@ -222,10 +217,11 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
         update_body = []
 
         for field in fields:
+            field_name = field["name_s"]
 
             # Query if entry exists
-            query_fq = [f'dataset_s:{dataset}', 'type_s:transformation', f'grid_name_s:{grid_name}',
-                        f'field_s:{field["name_s"]}', f'pre_transformation_file_path_s:"{source_file_path}"']
+            query_fq = [f'dataset_s:{dataset_name}', 'type_s:transformation', f'grid_name_s:{grid_name}',
+                        f'field_s:{field_name}', f'pre_transformation_file_path_s:"{source_file_path}"']
 
             docs = solr_query(config, query_fq)
             updating = len(docs) > 0
@@ -243,11 +239,11 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
                 # Create new transformation entry
                 transform['type_s'] = 'transformation'
                 transform['date_s'] = date
-                transform['dataset_s'] = dataset
+                transform['dataset_s'] = dataset_name
                 transform['pre_transformation_file_path_s'] = source_file_path
                 transform['origin_checksum_s'] = origin_checksum
                 transform['grid_name_s'] = grid_name
-                transform['field_s'] = field["name_s"]
+                transform['field_s'] = field_name
                 transform['transformation_in_progress_b'] = True
                 transform['success_b'] = False
                 update_body.append(transform)
@@ -265,8 +261,9 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
         # fields is list of dictionaries
 
         for field, field_DA in zip(fields, field_DAs):
+            field_name = field["name_s"]
 
-            output_filename = f'{grid_name}_{field["name_s"]}_{file_name}'
+            output_filename = f'{grid_name}_{field_name}_{file_name}'
 
             # Define precision of output files from config
             array_precision = getattr(np, config['array_precision'])
@@ -283,7 +280,7 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
                                        netcdf_fill_value,
                                        field_DA.values)
 
-            output_path = f'{output_dir}{config["ds_name"]}/{grid_name}/transformed/{field["name_s"]}/'
+            output_path = f'{output_dir}{dataset_name}/{grid_name}/transformed/{field_name}/'
 
             if not os.path.exists(output_path):
                 os.makedirs(output_path)
@@ -292,27 +289,26 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
 
             field_DS = field_DA.to_dataset()
 
-            encoding_each = {'zlib': True,
-                             'complevel': 5,
-                             'fletcher32': True,
-                             '_FillValue': netcdf_fill_value}
+            # encoding_each = {'zlib': True,
+            #                  'complevel': 5,
+            #                  'fletcher32': True,
+            #                  '_FillValue': netcdf_fill_value}
 
-            encoding = {var: encoding_each for var in field_DS.data_vars}
+            # encoding = {var: encoding_each for var in field_DS.data_vars}
 
-            coord_encoding_each = {'zlib': True,
-                                   'complevel': 5,
-                                   'fletcher32': True,
-                                   '_FillValue': False}
+            # coord_encoding_each = {'zlib': True,
+            #                        'complevel': 5,
+            #                        'fletcher32': True,
+            #                        '_FillValue': False}
 
-            encoding_coords = {
-                var: coord_encoding_each for var in field_DS.dims}
+            # encoding_coords = {
+            #     var: coord_encoding_each for var in field_DS.dims}
 
-            encoding_2 = {**encoding_coords, **encoding}
+            # encoding_2 = {**encoding_coords, **encoding}
+
+            # field_DS.to_netcdf(output_path + output_filename, encoding=encoding_2)
 
             field_DS.to_netcdf(output_path + output_filename)
-
-            # field_DS.to_netcdf(output_path + output_filename,
-            #                    encoding=encoding_2)
 
             field_DS.close()
 
@@ -320,8 +316,8 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
             transformed_location = output_path + output_filename
 
             # First query for the id
-            query_fq = [f'dataset_s:{dataset}', 'type_s:transformation', f'grid_name_s:{grid_name}',
-                        f'field_s:{field["name_s"]}', f'pre_transformation_file_path_s:"{source_file_path}"']
+            query_fq = [f'dataset_s:{dataset_name}', 'type_s:transformation', f'grid_name_s:{grid_name}',
+                        f'field_s:{field_name}', f'pre_transformation_file_path_s:"{source_file_path}"']
 
             docs = solr_query(config, query_fq)
             doc_id = solr_query(config, query_fq)[0]['id']
@@ -330,7 +326,7 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
             success = True if output_filename != '' else False
 
             transformation_successes = transformation_successes and success
-            transformation_file_paths[f'{grid_name}_{field["name_s"]}_transformation_file_path_s'] = transformed_location
+            transformation_file_paths[f'{grid_name}_{field_name}_transformation_file_path_s'] = transformed_location
 
             update_body = [
                 {
@@ -350,7 +346,7 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
         print("======saving output DONE=======")
 
     # Update lineage entries in Solr
-    query_fq = [f'dataset_s:{dataset}',
+    query_fq = [f'dataset_s:{dataset_name}',
                 'type_s:lineage', f'date_s:{date[:10]}*']
     docs = solr_query(config, query_fq)
 
@@ -383,6 +379,8 @@ def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors
     # END Code to import ecco utils locally... #
     #
 
+    dataset_name = config['ds_name']
+
     # Check if ends in z and Drop if it does
     if record_date[-1] == 'Z':
         record_date = record_date[:-1]
@@ -393,7 +391,7 @@ def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors
     time_zone_included_with_time = config['time_zone_included_with_time']
 
     # Get dataset metadata. Used for dataarray attributes
-    fq = ['type_s:dataset', f'dataset_s:{config["ds_name"]}']
+    fq = ['type_s:dataset', f'dataset_s:{dataset_name}']
     dataset_metadata = solr_query(config, fq)[0]
 
     field_DAs = []
