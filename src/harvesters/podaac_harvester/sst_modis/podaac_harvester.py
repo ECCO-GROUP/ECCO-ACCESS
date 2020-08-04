@@ -72,6 +72,7 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
     # =====================================================
     # Download raw data files
     # =====================================================
+    dataset_name = config['ds_name']
     target_dir = config['target_dir'] + '/'
     folder = '/tmp/'+config['ds_name']+'/'
 
@@ -111,13 +112,23 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
 
     # get old data if exists
     docs = {}
+    lineage_docs = {}
 
+    # Query for harvested docs
     fq = ['type_s:harvested', f'dataset_s:{config["ds_name"]}']
-    query_docs = solr_query(config, fq)
+    harvested_docs = solr_query(config, fq)
 
-    if len(query_docs) > 0:
-        for doc in query_docs:
+    if len(harvested_docs) > 0:
+        for doc in harvested_docs:
             docs[doc['filename_s']] = doc
+
+    # Query for lineage docs
+    fq = ['type_s:lineage', f'dataset_s:{config["ds_name"]}']
+    existing_lineage_docs = solr_query(config, fq)
+
+    if len(existing_lineage_docs) > 0:
+        for doc in existing_lineage_docs:
+            lineage_docs[doc['date_s']] = doc
 
     # setup metadata
     meta = []
@@ -149,6 +160,9 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
             updating = False
             aws_upload = False
 
+            lineage_item = {}
+            lineage_item['type_s'] = 'lineage'
+
             try:
                 # download link
                 link = elem.find(
@@ -156,25 +170,19 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
                 link = '.'.join(link.split('.')[:-1])
                 newfile = link.split("/")[-1]
 
-                # dates
                 start_str = elem.find("{%(time)s}start" % namespace).text
-                # end_str = elem.find("{%(time)s}end" % namespace).text
-                # date_range = '{start}-{end}'.format(
-                #     start=start_str, end=end_str)
 
-                # start_datetime = datetime.strptime(
-                #     start_str, config['date_regex'])
-                # end_datetime = datetime.strptime(end_str, config['date_regex'])
-
-                # start.append(start_datetime)
-                # end.append(end_datetime)
-
-                # metadata setup
+                # granule metadata setup
                 item = {}               # to be populated for each file
                 item['type_s'] = 'harvested'
                 item['date_s'] = start_str
                 item['dataset_s'] = config['ds_name']
                 item['source_s'] = link
+
+                # Create or modify lineage entry in Solr
+                lineage_item['dataset_s'] = item['dataset_s']
+                lineage_item['date_s'] = item['date_s']
+                lineage_item['source_s'] = item['source_s']
 
                 try:
                     # get last modified time of file on podaac
@@ -269,6 +277,14 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
 
             if updating:
                 item['download_time_dt'] = chk_time
+
+                # Update Solr entry using id if it exists
+                if item['date_s'] in lineage_docs.keys():
+                    lineage_item['id'] = lineage_docs[item['date_s']]['id']
+
+                lineage_item['harvest_success_b'] = item['harvest_success_b']
+                lineage_item['pre_transformation_file_path_s'] = item['pre_transformation_file_path_s']
+                meta.append(lineage_item)
 
                 # add item to metadata json
                 meta.append(item)

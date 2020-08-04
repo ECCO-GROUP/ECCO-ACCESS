@@ -150,6 +150,9 @@ def run_aggregation(system_path, output_dir, s3=None):
 
     update_body = []
 
+    aggregation_successes = True
+    aggregation_file_paths = {}
+
     if years[0] != '':
 
         for grid in grids:
@@ -192,7 +195,8 @@ def run_aggregation(system_path, output_dir, s3=None):
                             if docs[0]['transformation_file_path_s'][:5] == 's3://':
                                 source_bucket_name, key_name = split_s3_bucket_key(
                                     docs[0]['transformation_file_path_s'])
-                                obj = s3.Object(source_bucket_name, key_name)
+                                obj = s3.Object(
+                                    source_bucket_name, key_name)
                                 data_DA = xr.open_dataarray(
                                     obj, decode_times=True)
                                 # f = obj.get()['Body'].read()
@@ -245,21 +249,38 @@ def run_aggregation(system_path, output_dir, s3=None):
                     output_dirs = {'binary': Path(bin_output_dir),
                                    'netcdf': Path(netCDF_output_dir)}
 
+                    output_filepaths = {'daily_bin': f'{output_path}bin/{shortest_filename}',
+                                        'daily_netCDF': f'{output_path}netCDF/{shortest_filename}.nc',
+                                        'monthly_bin': f'{output_path}bin/{monthly_filename}',
+                                        'monthly_netCDF': f'{output_path}netCDF/{monthly_filename}.nc'}
+
                     print(daily_DA_year_merged)
 
-                    ea.generalized_aggregate_and_save(daily_DA_year_merged,
-                                                      new_data_attr,
-                                                      config['do_monthly_aggregation'],
-                                                      int(year),
-                                                      config['skipna_in_mean'],
-                                                      output_filenames,
-                                                      fill_values,
-                                                      output_dirs,
-                                                      binary_dtype,
-                                                      grid_type,
-                                                      save_binary=config['save_binary'],
-                                                      save_netcdf=config['save_netcdf'],
-                                                      remove_nan_days_from_data=config['remove_nan_days_from_data'])
+                    try:
+                        ea.generalized_aggregate_and_save(daily_DA_year_merged,
+                                                          new_data_attr,
+                                                          config['do_monthly_aggregation'],
+                                                          int(year),
+                                                          config['skipna_in_mean'],
+                                                          output_filenames,
+                                                          fill_values,
+                                                          output_dirs,
+                                                          binary_dtype,
+                                                          grid_type,
+                                                          save_binary=config['save_binary'],
+                                                          save_netcdf=config['save_netcdf'],
+                                                          remove_nan_days_from_data=config['remove_nan_days_from_data'])
+
+                        success = True
+                    except Exception as e:
+                        print(e)
+                        success = False
+                        output_filepaths = {'daily_bin': '',
+                                            'daily_netCDF': '',
+                                            'monthly_bin': '',
+                                            'monthly_netCDF': ''}
+
+                    aggregation_successes = aggregation_successes and success
 
                     # Upload files to s3
                     if s3:
@@ -287,13 +308,28 @@ def run_aggregation(system_path, output_dir, s3=None):
                             {
                                 "id": doc_id,
                                 "aggregation_time_dt": {"set": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")},
-                                "aggregated_daily_bin_path_s": {"set": output_path + 'bin/' + shortest_filename},
-                                "aggregated_monthly_bin_path_s": {"set": output_path + 'bin/' + monthly_filename},
-                                "aggregated_daily_netCDF_path_s": {"set": output_path + 'netCDF/' + shortest_filename},
-                                "aggregated_monthly_netCDF_path_s": {"set": output_path + 'netCDF/' + monthly_filename},
                                 "aggregation_version_s": {"set": config['version']}
                             }
                         ]
+                        if (data_time_scale == 'daily') and (config['do_monthly_aggregation']):
+                            update_body[0]["aggregated_daily_bin_path_s"] = {
+                                "set": output_filepaths['daily_bin']}
+                            update_body[0]["aggregated_daily_netCDF_path_s"] = {
+                                "set": output_filepaths['daily_netCDF']}
+                            update_body[0]["aggregated_monthly_bin_path_s"] = {
+                                "set": output_filepaths['monthly_bin']}
+                            update_body[0]["aggregated_monthly_netCDF_path_s"] = {
+                                "set": output_filepaths['monthly_netCDF']}
+                        elif (data_time_scale == 'daily') and not (config['do_monthly_aggregation']):
+                            update_body[0]["aggregated_daily_bin_path_s"] = {
+                                "set": output_filepaths['daily_bin']}
+                            update_body[0]["aggregated_daily_netCDF_path_s"] = {
+                                "set": output_filepaths['daily_netCDF']}
+                        elif data_time_scale == 'monthly':
+                            update_body[0]["aggregated_monthly_bin_path_s"] = {
+                                "set": output_filepaths['monthly_bin']}
+                            update_body[0]["aggregated_monthly_netCDF_path_s"] = {
+                                "set": output_filepaths['monthly_netCDF']}
 
                         if s3:
                             update_body[0]['s3_path'] = s3_path
@@ -309,19 +345,48 @@ def run_aggregation(system_path, output_dir, s3=None):
                                 "grid_name_s": grid_name,
                                 "field_s": field_name,
                                 "aggregation_time_dt": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-                                "aggregation_success_b": True,
-                                "aggregated_daily_bin_path_s": output_path + 'bin/' + shortest_filename,
-                                "aggregated_monthly_bin_path_s": output_path + 'bin/' + monthly_filename,
-                                "aggregated_daily_netCDF_path_s": output_path + 'netCDF/' + shortest_filename,
-                                "aggregated_monthly_netCDF_path_s": output_path + 'netCDF/' + monthly_filename,
-                                "aggregation_version_s": config['version'],
+                                "aggregation_success_b": success,
+                                "aggregation_version_s": config['version']
                             }
                         ]
+
+                        if (data_time_scale == 'daily') and (config['do_monthly_aggregation']):
+                            update_body[0]["aggregated_daily_bin_path_s"] = output_filepaths['daily_bin']
+                            update_body[0]["aggregated_daily_netCDF_path_s"] = output_filepaths['daily_netCDF']
+                            update_body[0]["aggregated_monthly_bin_path_s"] = output_filepaths['monthly_bin']
+                            update_body[0]["aggregated_monthly_netCDF_path_s"] = output_filepaths['monthly_netCDF']
+                        elif (data_time_scale == 'daily') and (not config['do_monthly_aggregation']):
+                            update_body[0]["aggregated_daily_bin_path_s"] = output_filepaths['daily_bin']
+                            update_body[0]["aggregated_daily_netCDF_path_s"] = output_filepaths['daily_netCDF']
+                        elif data_time_scale == 'monthly':
+                            update_body[0]["aggregated_monthly_bin_path_s"] = output_filepaths['monthly_bin']
+                            update_body[0]["aggregated_monthly_netCDF_path_s"] = output_filepaths['monthly_netCDF']
 
                         if s3:
                             update_body[0]['s3_path'] = s3_path
 
                         solr_update(config, update_body)
+
+                    # Query for lineage entries from this year
+                    fq = ['type_s:lineage',
+                          f'dataset_s:{config["ds_name"]}', f'date_s:{year}*']
+                    existing_lineage_docs = solr_query(config, fq)
+
+                    if len(existing_lineage_docs) > 0:
+                        for doc in existing_lineage_docs:
+                            doc_id = doc['id']
+
+                            update_body = [
+                                {
+                                    "id": doc_id,
+                                    "all_aggregation_success_b": {"set": aggregation_successes}
+                                }
+                            ]
+                            for key, value in output_filepaths.items():
+                                update_body[0][f'{grid_name}_{field_name}_aggregated_{key}_path_s'] = {
+                                    "set": value}
+
+                            solr_update(config, update_body)
 
         # Clear out years updated in dataset level Solr object
         update_body = [

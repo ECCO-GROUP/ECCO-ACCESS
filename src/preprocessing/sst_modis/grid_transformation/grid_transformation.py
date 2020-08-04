@@ -95,6 +95,9 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
     origin_checksum = harvested_metadata['checksum_s']
     date = harvested_metadata['date_s']
 
+    transformation_successes = True
+    transformation_file_paths = {}
+
     # =====================================================
     # Load file to transform
     # =====================================================
@@ -326,6 +329,9 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
             # Then update the new metadata
             success = True if output_filename != '' else False
 
+            transformation_successes = transformation_successes and success
+            transformation_file_paths[f'{grid_name}_{field["name_s"]}_transformation_file_path_s'] = transformed_location
+
             update_body = [
                 {
                     "id": doc_id,
@@ -342,6 +348,25 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
             solr_update(config, update_body)
 
         print("======saving output DONE=======")
+
+    # Update lineage entries in Solr
+    query_fq = [f'dataset_s:{dataset}',
+                'type_s:lineage', f'date_s:{date[:10]}*']
+    docs = solr_query(config, query_fq)
+
+    doc_id = solr_query(config, query_fq)[0]['id']
+
+    update_body = [
+        {
+            "id": doc_id,
+            "all_transformations_success_b": {"set": transformation_successes}
+        }
+    ]
+
+    for key, path in transformation_file_paths.items():
+        update_body[0][key] = {"set": path}
+
+    solr_update(config, update_body)
 
 
 def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors, ds, record_date, config):

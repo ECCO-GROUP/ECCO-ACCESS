@@ -116,8 +116,6 @@ def run_aggregation(system_path, output_dir, s3=None):
 
     short_name = dataset_metadata['short_name_s']
 
-    years = ['2010', '2011']
-
     if 'years_updated_ss' in dataset_metadata.keys():
         years = dataset_metadata['years_updated_ss']
     else:
