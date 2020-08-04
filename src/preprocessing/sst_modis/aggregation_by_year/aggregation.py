@@ -73,13 +73,16 @@ def solr_query(config, fq):
     return response.json()['response']['docs']
 
 
-def solr_update(config, update_body):
+def solr_update(config, update_body, r=False):
     solr_host = config['solr_host']
     solr_collection_name = config['solr_collection_name']
 
     url = solr_host + solr_collection_name + '/update?commit=true'
 
-    requests.post(url, json=update_body)
+    if r:
+        return requests.post(url, json=update_body)
+    else:
+        requests.post(url, json=update_body)
 
 
 def run_aggregation(system_path, output_dir, s3=None):
@@ -127,7 +130,12 @@ def run_aggregation(system_path, output_dir, s3=None):
             }
         ]
 
-        solr_update(config, update_body)
+        r = solr_update(config, update_body, r=True)
+
+        if r.status_code == 200:
+            print('Successfully updated Solr with aggregation status')
+        else:
+            print('Failed to update Solr with aggregation status')
         return
 
     data_time_scale = dataset_metadata['data_time_scale_s']
@@ -334,7 +342,10 @@ def run_aggregation(system_path, output_dir, s3=None):
                         if s3:
                             update_body[0]['s3_path'] = s3_path
 
-                        solr_update(config, update_body)
+                        r = solr_update(config, update_body, r=True)
+
+                        if r.status_code != 200:
+                            print('Failed to update Solr aggregation entry for {field_name} in {dataset} for {year} and grid {grid_name}')
 
                     else:
                         update_body = [
@@ -365,11 +376,14 @@ def run_aggregation(system_path, output_dir, s3=None):
                         if s3:
                             update_body[0]['s3_path'] = s3_path
 
-                        solr_update(config, update_body)
+                        r = solr_update(config, update_body, r=True)
+
+                        if r.status_code != 200:
+                            print('Failed to update Solr aggregation entry for {field_name} in {dataset} for {year} and grid {grid_name}')
 
                     # Query for lineage entries from this year
                     fq = ['type_s:lineage',
-                          f'dataset_s:{config["ds_name"]}', f'date_s:{year}*']
+                          f'dataset_s:{dataset}', f'date_s:{year}*']
                     existing_lineage_docs = solr_query(config, fq)
 
                     if len(existing_lineage_docs) > 0:
@@ -386,7 +400,10 @@ def run_aggregation(system_path, output_dir, s3=None):
                                 update_body[0][f'{grid_name}_{field_name}_aggregated_{key}_path_s'] = {
                                     "set": value}
 
-                            solr_update(config, update_body)
+                            r = solr_update(config, update_body, r=True)
+
+                            if r.status_code != 200:
+                                print('Failed to update Solr lineage entry for {dataset} for {year}')
 
         # Clear out years updated in dataset level Solr object
         update_body = [
@@ -396,7 +413,10 @@ def run_aggregation(system_path, output_dir, s3=None):
                 "years_updated_ss": {"set": []}}
         ]
 
-        solr_update(config, update_body)
+        r = solr_update(config, update_body, r=True)
+
+        if r.status_code != 200:
+            print('Failed to update Solr dataset entry with aggregation information for {dataset}')
 
         print("=========exporting data lineage=========")
         export_lineage(f'{output_dir}/{dataset}/{dataset}_lineage', config)

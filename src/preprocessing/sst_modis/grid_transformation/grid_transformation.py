@@ -37,13 +37,16 @@ def solr_query(config, fq):
     return response.json()['response']['docs']
 
 
-def solr_update(config, update_body):
+def solr_update(config, update_body, r=False):
     solr_host = config['solr_host']
     solr_collection_name = config['solr_collection_name']
 
     url = solr_host + solr_collection_name + '/update?commit=true'
 
-    requests.post(url, json=update_body)
+    if r:
+        return requests.post(url, json=update_body)
+    else:
+        requests.post(url, json=update_body)
 
 
 def run_locally_wrapper(system_path, source_file_path, remaining_transformations, output_dir):
@@ -212,7 +215,13 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
                     f'{grid_name}_factors_stored_dt': {"set": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}
                 }
             ]
-            solr_update(config, update_body)
+            
+            r = solr_update(config, update_body, r=True)
+
+            if r.status_code == 200:
+                print('Successfully updated Solr with factors information')
+            else:
+                print('Failed to update Solr with factors information')
 
         # =====================================================
         # Run transformation
@@ -238,7 +247,7 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
                 transform['id'] = docs[0]['id']
                 transform['transformation_in_progress_b']: {"set": True}
                 transform['success_b']: {"set": False}
-                solr_update(config, transform)
+                r = solr_update(config, transform, r=True)
             else:
                 # Create new transformation entry
                 transform['type_s'] = 'transformation'
@@ -251,7 +260,10 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
                 transform['transformation_in_progress_b'] = True
                 transform['success_b'] = False
                 update_body.append(transform)
-                solr_update(config, update_body)
+                r = solr_update(config, update_body, r=True)
+
+            if r.status_code != 200:
+                print(f'Failed to update Solr transformation status for {dataset} on {date}')
 
         # Returns list of DAs, one for each field in fields
         print("===Running transformations for " + file_name + "===")
@@ -345,7 +357,10 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
                 }
             ]
 
-            solr_update(config, update_body)
+            r = solr_update(config, update_body, r=True)
+
+            if r.status_code != 200:
+                print(f'Failed to update Solr transformation entry for {field["name_s"]} in {dataset} on {date}')
 
         print("======saving output DONE=======")
 
@@ -366,7 +381,10 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
     for key, path in transformation_file_paths.items():
         update_body[0][key] = {"set": path}
 
-    solr_update(config, update_body)
+    r = solr_update(config, update_body, r=True)
+
+    if r.status_code != 200:
+        print('Failed to update Solr with lineage information for {dataset} on {date}')
 
 
 def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors, ds, record_date, config):
