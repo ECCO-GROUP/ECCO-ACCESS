@@ -210,7 +210,7 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
                     f'{grid_name}_factors_stored_dt': {"set": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}
                 }
             ]
-            
+
             r = solr_update(config, update_body, r=True)
 
             if r.status_code == 200:
@@ -259,7 +259,8 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
                 r = solr_update(config, update_body, r=True)
 
             if r.status_code != 200:
-                print(f'Failed to update Solr transformation status for {dataset_name} on {date}')
+                print(
+                    f'Failed to update Solr transformation status for {dataset_name} on {date}')
 
         # Returns list of DAs, one for each field in fields
         print("===Running transformations for " + file_name + "===")
@@ -288,9 +289,9 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
             elif array_precision == np.float64:
                 netcdf_fill_value = default_fillvals['f8']
 
-            field_DA.values = np.where(np.isnan(field_DA.values),
-                                       netcdf_fill_value,
-                                       field_DA.values)
+            # field_DA.values = np.where(np.isnan(field_DA.values),
+            #                            netcdf_fill_value,
+            #                            field_DA.values)
 
             output_path = f'{output_dir}{dataset_name}/{grid_name}/transformed/{field_name}/'
 
@@ -356,7 +357,8 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
             r = solr_update(config, update_body, r=True)
 
             if r.status_code != 200:
-                print(f'Failed to update Solr transformation entry for {field["name_s"]} in {dataset_name} on {date}')
+                print(
+                    f'Failed to update Solr transformation entry for {field["name_s"]} in {dataset_name} on {date}')
 
         print("======saving output DONE=======")
 
@@ -380,7 +382,8 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
     r = solr_update(config, update_body, r=True)
 
     if r.status_code != 200:
-        print(f'Failed to update Solr with lineage information for {dataset_name} on {date}')
+        print(
+            f'Failed to update Solr with lineage information for {dataset_name} on {date}')
 
 
 def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors, ds, record_date, config):
