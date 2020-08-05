@@ -328,8 +328,6 @@ def run_aggregation(system_path, output_dir, s3=None):
                     if s3:
                         update_body[0]['s3_path'] = s3_path
 
-                    solr_update(config, update_body)
-
                 else:
                     update_body = [
                         {
