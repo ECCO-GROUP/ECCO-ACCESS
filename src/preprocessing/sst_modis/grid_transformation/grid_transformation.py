@@ -259,7 +259,7 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
                 r = solr_update(config, update_body, r=True)
 
             if r.status_code != 200:
-                print(f'Failed to update Solr transformation status for {dataset} on {date}')
+                print(f'Failed to update Solr transformation status for {dataset_name} on {date}')
 
         # Returns list of DAs, one for each field in fields
         print("===Running transformations for " + file_name + "===")
@@ -356,7 +356,7 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
             r = solr_update(config, update_body, r=True)
 
             if r.status_code != 200:
-                print(f'Failed to update Solr transformation entry for {field["name_s"]} in {dataset} on {date}')
+                print(f'Failed to update Solr transformation entry for {field["name_s"]} in {dataset_name} on {date}')
 
         print("======saving output DONE=======")
 
@@ -380,7 +380,7 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
     r = solr_update(config, update_body, r=True)
 
     if r.status_code != 200:
-        print('Failed to update Solr with lineage information for {dataset} on {date}')
+        print(f'Failed to update Solr with lineage information for {dataset_name} on {date}')
 
 
 def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors, ds, record_date, config):
