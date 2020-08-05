@@ -75,13 +75,16 @@ def solr_query(config, fq):
     return response.json()['response']['docs']
 
 
-def solr_update(config, update_body):
+def solr_update(config, update_body, r=False):
     solr_host = config['solr_host']
     solr_collection_name = config['solr_collection_name']
 
     url = solr_host + solr_collection_name + '/update?commit=true'
 
-    requests.post(url, json=update_body)
+    if r:
+        return requests.post(url, json=update_body)
+    else:
+        requests.post(url, json=update_body)
 
 
 def run_aggregation(system_path, output_dir, s3=None):
@@ -129,7 +132,10 @@ def run_aggregation(system_path, output_dir, s3=None):
             }
         ]
 
-        solr_update(config, update_body)
+        r = solr_update(config, update_body, r=True)
+
+        if r.status_code != 200:
+            print(f'Failed to update Solr dataset status entry for {dataset_name}')
         return
 
     data_time_scale = dataset_metadata['data_time_scale_s']
