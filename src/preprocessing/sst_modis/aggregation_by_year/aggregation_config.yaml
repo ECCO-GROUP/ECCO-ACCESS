@@ -16,6 +16,7 @@ reaggregate: False
 solr_host: http://localhost:8983/solr/
 solr_collection_name: ecco_datasets
 output_dir: /Users/kevinmarlis/Developer/JPL/ecco-preprocessing/src/output/
+
 # AWS
 source_bucket: ecco-ames
 target_bucket: ecco-ames

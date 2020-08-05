@@ -79,13 +79,15 @@ if __name__ == "__main__":
     with open(path_to_yaml, "r") as stream:
         config = yaml.load(stream)
 
+    dataset_name = config['ds_name']
+
     output_dir = config['output_dir']
 
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
 
     # Get all harvested granule for this dataset
-    fq = [f'dataset_s:{config["ds_name"]}', 'type_s:harvested']
+    fq = [f'dataset_s:{dataset_name}', 'type_s:harvested']
     harvested_granules = solr_query(config, fq)
 
     years_updated = []
@@ -110,7 +112,7 @@ if __name__ == "__main__":
             print(f'No new transformations for {item["date_s"]}')
 
     # Update Solr dataset entry status to transformed and years_updated list
-    fq = [f'dataset_s:{config["ds_name"]}', 'type_s:dataset']
+    fq = [f'dataset_s:{dataset_name}', 'type_s:dataset']
     dataset_metadata = solr_query(config, fq)[0]
 
     if 'years_updated_ss' in dataset_metadata.keys():
