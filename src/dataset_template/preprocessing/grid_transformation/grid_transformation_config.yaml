@@ -1,0 +1,44 @@
+# =====================================================
+# Dataset
+# =====================================================
+ds_name: "" # Name for dataset
+version: 1.0
+array_precision: float32
+time_zone_included_with_time: False # Data time values have time zone
+extra_information: [] # Unique things to do for dataset
+data_res: 1.0 # Resolution of dataset
+data_max_lat: 90.0 # Maximum latitude in dataset
+area_extent: [-180, -90, 180, 90] # [lon_min, lat_min, lon_max, lat_max]
+dims: [360, 180] # [lon, lat]
+proj_info:
+  {
+    "area_id": "longlat",
+    "area_name": "Plate Carree",
+    "proj_id": "EPSG:4326",
+    "proj4_args": "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs",
+  }
+
+extra_transformation_steps: [] # Additional full dataset transformation steps
+
+# =====================================================
+# Solr
+# =====================================================
+solr_host_local: http://localhost:8983/solr/ # doesn't change if following standard Solr setup
+solr_host_aws: http://ec2-3-16-187-19.us-east-2.compute.amazonaws.com:8983/solr/
+solr_collection_name: ecco_datasets # doesn't change
+
+# =====================================================
+# Local
+# =====================================================
+# REMEMBER, REPLACE LOCAL PATHS SO THEY POINT TO YOUR /SRC/ DIRECTORY
+output_dir: ../ecco-preprocessing/src/output/
+ecco_utils: /Users/kevinmarlis/Developer/JPL/ecco-preprocessing/src/preprocessing/ecco-access/ECCO-ACCESS/ecco-cloud-utils
+
+# =====================================================
+# AWS
+# =====================================================
+source_bucket: ecco-preprocess
+target_bucket: ecco-ames
+aws_output_dir: {ds_name}_transformed/
+
+

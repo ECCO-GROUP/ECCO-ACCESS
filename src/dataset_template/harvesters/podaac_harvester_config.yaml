@@ -30,7 +30,7 @@ original_dataset_doi: ""
 # Solr
 # =====================================================
 solr_host_local: http://localhost:8983/solr/ # doesn't change if following standard Solr setup
-solr_host_aws: ""
+solr_host_aws: http://ec2-3-16-187-19.us-east-2.compute.amazonaws.com:8983/solr/
 solr_collection_name: ecco_datasets # doesn't change
 
 # =====================================================

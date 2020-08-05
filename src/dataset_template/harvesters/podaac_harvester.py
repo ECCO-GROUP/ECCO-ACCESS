@@ -22,8 +22,7 @@ def md5(fname):
 
 # Queries Solr based on config information and filter query
 # Returns list of Solr entries (docs)
-def solr_query(config, fq):
-    solr_host = config['solr_host']
+def solr_query(config, solr_host, fq):
     solr_collection_name = config['solr_collection_name']
 
     getVars = {'q': '*:*',
@@ -37,8 +36,7 @@ def solr_query(config, fq):
 
 # Posts update to Solr with provided update body
 # Optional return of posting status code
-def solr_update(config, update_body, r=False):
-    solr_host = config['solr_host']
+def solr_update(config, solr_host, update_body, r=False):
     solr_collection_name = config['solr_collection_name']
 
     url = f'{solr_host}{solr_collection_name}/update?commit=true'
@@ -78,6 +76,9 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
     if on_aws:
         target_bucket_name = config['target_bucket_name']
         target_bucket = s3.Bucket(target_bucket_name)
+        solr_host = config['solr_host_aws']
+    else:
+        solr_host = config['solr_host_local']
 
     # =====================================================
     # Initializing required values
@@ -120,7 +121,7 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
 
     # Query for existing harvested docs
     fq = ['type_s:harvested', f'dataset_s:{dataset_name}']
-    harvested_docs = solr_query(config, fq)
+    harvested_docs = solr_query(config, solr_host, fq)
 
     if len(harvested_docs) > 0:
         for doc in harvested_docs:
@@ -128,7 +129,7 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
 
     # Query for existing lineage docs
     fq = ['type_s:lineage', f'dataset_s:{dataset_name}']
-    existing_lineage_docs = solr_query(config, fq)
+    existing_lineage_docs = solr_query(config, solr_host, fq)
 
     if len(existing_lineage_docs) > 0:
         for doc in existing_lineage_docs:
@@ -288,7 +289,7 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
             url = next.attrib['href']
 
     # Update Solr with downloaded granule metadata entries
-    r = solr_update(config, meta, r=True)
+    r = solr_update(config, solr_host, meta, r=True)
 
     if r.status_code == 200:
         print('granule metadata post to Solr success')
@@ -326,7 +327,7 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
 
     # Query for Solr Dataset-level Document
     fq = ['type_s:dataset', f'dataset_s:{dataset_name}']
-    docs = solr_query(config, fq)
+    docs = solr_query(config, solr_host, fq)
 
     # If dataset entry exists on Solr
     update = (len(docs) == 1)
@@ -370,7 +371,7 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
         body.append(ds_meta)
 
         # Update Solr with dataset metadata
-        r = solr_update(config, body, r=True)
+        r = solr_update(config, solr_host, body, r=True)
 
         if r.status_code == 200:
             print('Successfully created Solr dataset document')
@@ -392,7 +393,7 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
             body.append(field_obj)
 
         # Update Solr with dataset fields metadata
-        r = solr_update(config, body, r=True)
+        r = solr_update(config, solr_host, body, r=True)
 
         if r.status_code == 200:
             print('Successfully created Solr field documents')
@@ -428,7 +429,7 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
                 "set": overall_end.strftime("%Y-%m-%dT%H:%M:%SZ")}
 
         # Update Solr with modified dataset entry
-        r = solr_update(config, [update_doc], r=True)
+        r = solr_update(config, solr_host, [update_doc], r=True)
 
         if r.status_code == 200:
             print('Successfully updated Solr dataset document')
