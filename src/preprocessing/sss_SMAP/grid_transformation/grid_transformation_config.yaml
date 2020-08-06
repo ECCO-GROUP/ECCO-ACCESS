@@ -39,7 +39,4 @@ ecco_utils: ../ecco-preprocessing/src/preprocessing/ecco-access/ECCO-ACCESS/ecco
 # =====================================================
 source_bucket: ecco-preprocess
 target_bucket: ecco-ames
-aws_output_dir: {ds_name}_transformed/
-
-
-
+aws_output_dir: sss_SMAP_transformed/

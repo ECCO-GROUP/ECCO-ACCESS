@@ -1,5 +1,5 @@
-import sys
 import os
+import sys
 
 from podaac_harvester import podaac_harvester
 

@@ -86,6 +86,7 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
     dataset_name = config['ds_name']
     target_dir = f'{config["target_dir"]}/'
     folder = f'/tmp/{dataset_name}/'
+    date_regex = config['date_regex']
 
     if not on_aws:
         print(f'!!downloading files to {target_dir}')
@@ -169,6 +170,13 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
                 newfile = link.split("/")[-1]
 
                 date_start_str = elem.find("{%(time)s}start" % namespace).text
+                date_end_str = elem.find("{%(time)s}end" % namespace).text
+
+                start_datetime = datetime.strptime(date_start_str, date_regex)
+                end_datetime = datetime.strptime(date_end_str, date_regex)
+
+                start.append(start_datetime)
+                end.append(end_datetime)
 
                 # granule metadata setup to be populated for each granule
                 item = {}
@@ -187,7 +195,7 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
                 try:
                     mod_time = elem.find("{%(atom)s}updated" % namespace).text
                     mod_date_time = datetime.strptime(
-                        mod_time, config['date_regex'])
+                        mod_time, date_regex)
                     item['modified_time_dt'] = mod_time
 
                 except:

@@ -52,14 +52,15 @@ def get_remaining_transformations(config, source_file_path):
                 # Query for harvested granule checksum
                 fq = [f'dataset_s:{dataset_name}', 'type_s:harvested',
                       f'pre_transformation_file_path_s:"{source_file_path}"']
-                harvested_checksum = solr_query(config, fq)[0]['checksum_s']
+                harvested_checksum = solr_query(config, solr_host, fq)[
+                    0]['checksum_s']
 
                 origin_checksum = existing_transformations[(grid, field_name)]
 
                 # Query for existing transformation
                 fq = [f'dataset_s:{dataset_name}', 'type_s:transformation',
                       f'pre_transformation_file_path_s:"{source_file_path}"']
-                transformation = solr_query(config, fq)[0]
+                transformation = solr_query(config, solr_host, fq)[0]
 
                 # Compare transformation version number and config version number
                 # Compare origin checksum for transformed file
