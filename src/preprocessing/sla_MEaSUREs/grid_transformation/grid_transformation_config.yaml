@@ -1,13 +1,15 @@
+# =====================================================
 # Dataset
-ds_name: sla_MEaSUREs
+# =====================================================
+ds_name: "sla_MEaSUREs" # Name for dataset
 version: 1.0
 array_precision: float32
-time_zone_included_with_time: False
-extra_information: ['transpose', 'time_bounds_var', 'time_var']
-data_res: 1/6
-data_max_lat: 80.0
-area_extent: [0, 80, 360, -80]
-dims: [2160, 960]
+time_zone_included_with_time: False # Data time values have time zone
+extra_information: ["transpose", "time_bounds_var", "time_var"] # Unique things to do for dataset
+data_res: 1/6 # Resolution of dataset
+data_max_lat: 80.0 # Maximum latitude in dataset
+area_extent: [0, 80, 360, -80] # [lon_min, lat_min, lon_max, lat_max]
+dims: [2160, 960] # [lon, lat]
 proj_info:
   {
     "area_id": "longlat",
@@ -16,18 +18,25 @@ proj_info:
     "proj4_args": "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs",
   }
 
-extra_transformation_steps: []
+extra_transformation_steps: [] # Additional full dataset transformation steps
 
+# =====================================================
+# Solr
+# =====================================================
+solr_host_local: http://localhost:8983/solr/ # doesn't change if following standard Solr setup
+solr_host_aws: http://ec2-3-16-187-19.us-east-2.compute.amazonaws.com:8983/solr/
+solr_collection_name: ecco_datasets # doesn't change
+
+# =====================================================
 # Local
+# =====================================================
 # REMEMBER, REPLACE LOCAL PATHS SO THEY POINT TO YOUR /SRC/ DIRECTORY
-solr_host: http://localhost:8983/solr/
-solr_collection_name: ecco_datasets
 output_dir: /Users/kevinmarlis/Developer/JPL/ecco-preprocessing/src/output/
+ecco_utils: /Users/kevinmarlis/Developer/JPL/ecco-preprocessing/src/preprocessing/ecco-access/ECCO-ACCESS/ecco-cloud-utils
+
+# =====================================================
 # AWS
-# solr_host: http://ec2-3-16-187-19.us-east-2.compute.amazonaws.com:8983/solr/
-# solr_collection_name: ecco_datasets
-# source_bucket: ecco-preprocess
-# target_bucket: ecco-ames
-# aws_output_dir: sst_AVHRR_transformed/
-# aws_lon_grid_path: ECCO_grid_blank_model/XC.data
-# aws_lat_grid_path: ECCO_grid_blank_model/YC.data
+# =====================================================
+source_bucket: ecco-preprocess
+target_bucket: ecco-ames
+aws_output_dir: sla_MEaSUREs_transformed/
