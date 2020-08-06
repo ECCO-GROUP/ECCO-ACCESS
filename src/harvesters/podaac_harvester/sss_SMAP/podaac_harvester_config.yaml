@@ -1,19 +1,22 @@
-# Harvesting
+# =====================================================
+# PODAAC
+# =====================================================
+# PODAAC explicitly expects this date format
+start: "20160101T00:00:01Z" # yyyymmddThh:mm:ssZ
+end: "20161231T23:59:59Z" # yyyymmddThh:mm:ssZ
+user: anonymous # does not change
+host: https://podaac.jpl.nasa.gov/ws/search/granule/?format=atom&pretty=false&itemsPerPage=300000 # does not change
+date_regex: "%Y-%m-%dT%H:%M:%SZ" # does not change
 
-# PODAAC explicitely expects this date format
-start: "20160101T00:00:01Z"
-end: "20161231T23:59:59Z"
-user: anonymous
-host: https://podaac.jpl.nasa.gov/ws/search/granule/?format=atom&pretty=false&itemsPerPage=300000
-date_regex: "%Y-%m-%dT%H:%M:%SZ"
-
+# =====================================================
 # Dataset
-ds_name: sss_SMAP
-podaac_id: PODAAC-SMP40-3SMCS
-aggregated: false
-short_name: SMAP_RSS_L3_SSS_SMI_MONTHLY_V4
-data_time_scale: monthly
-date_format: yyyy_mm
+# =====================================================
+ds_name: "sss_SMAP" # Name for dataset
+podaac_id: "PODAAC-SMP40-3SMCS"
+aggregated: false # if data is available aggregated
+short_name: "SMAP_RSS_L3_SSS_SMI_MONTHLY_V4"
+data_time_scale: "monthly" # daily or monthly
+date_format: "yyyy_mm" # format of date in file name ex: yyyymmdd
 fields:
   [
     {
@@ -29,6 +32,7 @@ fields:
       units: 1e-3,
     },
   ]
+
 # new_data_attrs:
 original_dataset_title: RSS SMAP Level 3 Sea Surface Salinity Standard Mapped Image Monthly V4.0 Validated Dataset
 original_dataset_short_name: SMAP_RSS_L3_SSS_SMI_MONTHLY_V4
@@ -36,10 +40,20 @@ original_dataset_url: https://podaac.jpl.nasa.gov/dataset/SMAP_RSS_L3_SSS_SMI_MO
 original_dataset_reference: http://smap.jpl.nasa.gov/
 original_dataset_doi: 10.5067/SMP40-3SMCS
 
+# =====================================================
+# Solr
+# =====================================================
+solr_host_local: http://localhost:8983/solr/ # doesn't change if following standard Solr setup
+solr_host_aws: http://ec2-3-16-187-19.us-east-2.compute.amazonaws.com:8983/solr/
+solr_collection_name: ecco_datasets # doesn't change
+
+# =====================================================
 # Local
+# =====================================================
 # REMEMBER, REPLACE LOCAL PATHS SO THEY POINT TO YOUR /SRC/ DIRECTORY
-solr_host: http://localhost:8983/solr/
-solr_collection_name: ecco_datasets
 target_dir: /Users/kevinmarlis/Developer/JPL/ecco-preprocessing/src/harvesters/podaac_harvester/harvested_granule/SSS_SMAP_MONTHLY
+
+# =====================================================
 # AWS
-# target_bucket_name: ecco-preprocess
+# =====================================================
+target_bucket_name: ecco-preprocess

@@ -1,19 +1,33 @@
+# =====================================================
 # Dataset
-ds_name: sss_SMAP
+# =====================================================
+ds_name: "sss_SMAP" # Name for dataset
 version: 1.0
-remove_nan_days_from_data: False
+array_precision: float32
+remove_nan_days_from_data: False # Remove empty days from data when aggregating
 do_monthly_aggregation: False
-skipna_in_mean: False
+skipna_in_mean: False # Controls skipna when calculating monthly mean
 save_binary: True
 save_netcdf: True
-array_precision: float32
 
+# =====================================================
+# Solr
+# =====================================================
+solr_host_local: http://localhost:8983/solr/ # doesn't change if following standard Solr setup
+solr_host_aws: http://ec2-3-16-187-19.us-east-2.compute.amazonaws.com:8983/solr/
+solr_collection_name: ecco_datasets # doesn't change
+
+# =====================================================
 # Local
+# =====================================================
 # REMEMBER, REPLACE LOCAL PATHS SO THEY POINT TO YOUR /SRC/ DIRECTORY
-solr_host: http://localhost:8983/solr/
-solr_collection_name: ecco_datasets
-output_dir: /Users/kevinmarlis/Developer/JPL/ecco-preprocessing/src/output/
+output_dir: ../ecco-preprocessing/src/output/
+ecco_utils: /Users/kevinmarlis/Developer/JPL/ecco-preprocessing/src/preprocessing/ecco-access/ECCO-ACCESS/ecco-cloud-utils
+
+# =====================================================
 # AWS
+# =====================================================
 source_bucket: ecco-ames
 target_bucket: ecco-ames
 s3_aggregated_path: aggregated/
+

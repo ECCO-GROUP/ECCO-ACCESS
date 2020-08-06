@@ -1,12 +1,14 @@
-import numpy as np
-import xarray as xr
-from netCDF4 import default_fillvals  # pylint: disable=import-error
-from datetime import datetime
+import os
 import json
 import yaml
-import requests
-import os
 import hashlib
+import requests
+import numpy as np
+import xarray as xr
+from datetime import datetime
+from netCDF4 import default_fillvals  # pylint: disable=import-error
+
+
 np.warnings.filterwarnings('ignore')
 
 
@@ -34,21 +36,26 @@ def split_s3_bucket_key(s3_path):
     return find_bucket_key(s3_path)
 
 
-def export_lineage(outfile, config):
-    host = config['solr_host']
-    collection_name = config['solr_collection_name']
-    dataset = config['ds_name']
+# Separately saves to disk all lineage entries for each year
+def export_lineage(output_dir, years, solr_host, config):
+    dataset_name = config['ds_name']
 
-    url = host + collection_name + \
-        '/select?q=dataset_name_s%3A{dataset}%20OR%20dataset_s%3A{dataset}&rows=30000'
-    url = url.format(dataset=dataset)
+    lineages_dir = f'{output_dir}/{dataset_name}/annual_lineages/'
 
-    r = requests.get(url=url)
-    resp = json.loads(r.content)
+    if not os.path.exists(lineages_dir):
+        os.makedirs(lineages_dir)
 
-    with open(outfile, 'w') as f:
-        resp_out = json.dumps(resp)
-        f.write(resp_out)
+    for year in years:
+        outfile = f'{lineages_dir}/{dataset_name}_{year}_lineage'
+
+        fq = ['type_s:lineage', f'dataset_s:{dataset_name}', f'date_s:{year}*']
+        lineage_docs = solr_query(config, solr_host, fq)
+
+        with open(outfile, 'w') as f:
+            resp_out = json.dumps(lineage_docs)
+            f.write(resp_out)
+
+# Creates checksum from filename
 
 
 def md5(fname):
@@ -59,8 +66,9 @@ def md5(fname):
     return hash_md5.hexdigest()
 
 
-def solr_query(config, fq):
-    solr_host = config['solr_host']
+# Queries Solr based on config information and filter query
+# Returns list of Solr entries (docs)
+def solr_query(config, solr_host, fq):
     solr_collection_name = config['solr_collection_name']
 
     getVars = {'q': '*:*',
@@ -73,51 +81,64 @@ def solr_query(config, fq):
     return response.json()['response']['docs']
 
 
-def solr_update(config, update_body):
-    solr_host = config['solr_host']
+# Posts update to Solr with provided update body
+# Optional return of posting status code
+def solr_update(config, solr_host, update_body, r=False):
     solr_collection_name = config['solr_collection_name']
 
     url = solr_host + solr_collection_name + '/update?commit=true'
 
-    requests.post(url, json=update_body)
+    if r:
+        return requests.post(url, json=update_body)
+    else:
+        requests.post(url, json=update_body)
 
 
+# Aggregates data into annual files, saves them, and updates Solr
 def run_aggregation(system_path, output_dir, s3=None):
-    #
-    # Code to import ecco utils locally... #
-    # NOTE: assumes /src/preprocessing/ECCO-ACCESS
-    from pathlib import Path
-    import sys
-
-    p = Path(__file__).parents[2]
-    generalized_functions_path = Path(
-        f'{p}/ecco-access/ECCO-ACCESS/ecco-cloud-utils/')
-    sys.path.append(str(generalized_functions_path))
-    import ecco_cloud_utils as ea
-    # NOTE: generalized functions added to ecco_cloud_utils __init__.py
-    # import generalized_functions as gf
-    # END Code to import ecco utils locally... #
-    #
-
+    # =====================================================
+    # Read configurations from YAML file
+    # =====================================================
     path_to_yaml = system_path + "/aggregation_config.yaml"
     with open(path_to_yaml, "r") as stream:
         config = yaml.load(stream)
 
-    dataset = config['ds_name']
+    # =====================================================
+    # Code to import ecco utils locally...
+    # =====================================================
+    from pathlib import Path
+    import sys
+    generalized_functions_path = Path(config['ecco_utils'])
+    sys.path.append(str(generalized_functions_path))
+    import ecco_cloud_utils as ea
+
+    # =====================================================
+    # Set configuration options and Solr metadata
+    # =====================================================
+    dataset_name = config['ds_name']
+    if s3:
+        solr_host = config['solr_host_aws']
+    else:
+        solr_host = config['solr_host_local']
 
     fq = ['type_s:grid']
-    grids = [grid for grid in solr_query(config, fq)]
+    grids = [grid for grid in solr_query(config, solr_host, fq)]
 
-    fq = ['type_s:field', f'dataset_s:{dataset}']
-    fields = solr_query(config, fq)
+    fq = ['type_s:field', f'dataset_s:{dataset_name}']
+    fields = solr_query(config, solr_host, fq)
 
-    fq = ['type_s:dataset', f'dataset_s:{dataset}']
-    dataset_metadata = solr_query(config, fq)[0]
+    fq = ['type_s:dataset', f'dataset_s:{dataset_name}']
+    dataset_metadata = solr_query(config, solr_host, fq)[0]
 
     short_name = dataset_metadata['short_name_s']
+    data_time_scale = dataset_metadata['data_time_scale_s']
+
+    # Only aggregate years with updated transformations
+    # Based on years_updated_ss field in dataset Solr entry
     if 'years_updated_ss' in dataset_metadata.keys():
         years = dataset_metadata['years_updated_ss']
     else:
+        # If no years to aggregate, update dataset Solr entry status
         print('No updated years to aggregate')
         update_body = [
             {
@@ -126,17 +147,17 @@ def run_aggregation(system_path, output_dir, s3=None):
             }
         ]
 
-        solr_update(config, update_body)
+        r = solr_update(config, solr_host, update_body, r=True)
+
+        if r.status_code != 200:
+            print(
+                f'Failed to update Solr dataset status entry for {dataset_name}')
         return
 
-    data_time_scale = dataset_metadata['data_time_scale_s']
-
     # Define precision of output files, float32 is standard
-    # ------------------------------------------------------
     array_precision = getattr(np, config['array_precision'])
 
     # Define fill values for binary and netcdf
-    # ---------------------------------------------
     if array_precision == np.float32:
         binary_dtype = '>f4'
         netcdf_fill_value = default_fillvals['f4']
@@ -149,103 +170,114 @@ def run_aggregation(system_path, output_dir, s3=None):
 
     update_body = []
 
-    if years[0] != '':
+    aggregation_successes = True
 
-        for grid in grids:
-            grid_path = grid['grid_path_s']
-            grid_name = grid['grid_name_s']
-            grid_type = grid['grid_type_s']
+    # Iterate through grids
+    for grid in grids:
 
-            model_grid = xr.open_dataset(grid_path, decode_times=True)
+        grid_path = grid['grid_path_s']
+        grid_name = grid['grid_name_s']
+        grid_type = grid['grid_type_s']
 
-            for year in years:
+        model_grid = xr.open_dataset(grid_path, decode_times=True)
 
-                if data_time_scale == 'daily':
-                    dates_in_year = np.arange(
-                        f'{year}-01-01', f'{int(year)+1}-01-01', dtype='datetime64[D]')
-                elif data_time_scale == 'monthly':
-                    months_in_year = np.arange(
-                        f'{year}-01', f'{int(year)+1}-01', dtype='datetime64[M]')
-                    dates_in_year = []
-                    for month in months_in_year:
-                        dates_in_year.append(f'{month}')
+        # Iterate through years
+        for year in years:
 
-                for field in fields:
-                    field_name = field['name_s']
-                    print("======initalizing yr " + str(year) +
-                          "_" + grid_name + "_"+field_name+"======")
+            # Construct list of dates corresponding to data time scale
+            if data_time_scale == 'daily':
+                dates_in_year = np.arange(
+                    f'{year}-01-01', f'{int(year)+1}-01-01', dtype='datetime64[D]')
+            elif data_time_scale == 'monthly':
+                dates_in_year = np.arange(
+                    f'{year}-01', f'{int(year)+1}-01', dtype='datetime64[M]')
 
-                    print("===looping through all files===")
-                    daily_DA_year = []
+            # Iterate through dataset fields
+            for field in fields:
+                field_name = field['name_s']
 
-                    print("===creating empty records for missing days===")
-                    for date in dates_in_year:
-                        print('dates_in_year: ', date)
-                        # Query for date
-                        fq = [f'dataset_s:{dataset}', 'type_s:transformation',
-                              f'grid_name_s:{grid_name}', f'field_s:{field_name}', f'date_s:{date}*']
+                print(
+                    f'===initializing {str(year)}_{grid_name}_{field_name}===')
 
-                        docs = solr_query(config, fq)
+                print("===looping through all files===")
+                daily_DA_year = []
 
-                        if docs:
-                            if docs[0]['transformation_file_path_s'][:5] == 's3://':
-                                source_bucket_name, key_name = split_s3_bucket_key(
-                                    docs[0]['transformation_file_path_s'])
-                                obj = s3.Object(source_bucket_name, key_name)
-                                data_DA = xr.open_dataarray(
-                                    obj, decode_times=True)
-                                # f = obj.get()['Body'].read()
-                                # data = np.frombuffer(f, dtype=dt, count=-1)
-                            else:
-                                data_DA = xr.open_dataarray(
-                                    docs[0]['transformation_file_path_s'], decode_times=True)
+                for date in dates_in_year:
+                    # Query for date
+                    fq = [f'dataset_s:{dataset_name}', 'type_s:transformation',
+                          f'grid_name_s:{grid_name}', f'field_s:{field_name}', f'date_s:{date}*']
 
-                            print('data DA: ', data_DA)
+                    docs = solr_query(config, solr_host, fq)
 
+                    # If transformed file is present for date, grid, and field combination
+                    # open the file, otherwise make empty record
+                    if docs:
+
+                        # if running on AWS, get file from s3
+                        if docs[0]['transformation_file_path_s'][:5] == 's3://':
+                            source_bucket_name, key_name = split_s3_bucket_key(
+                                docs[0]['transformation_file_path_s'])
+                            obj = s3.Object(source_bucket_name, key_name)
+                            data_DA = xr.open_dataarray(obj, decode_times=True)
+                            # f = obj.get()['Body'].read()
+                            # data = np.frombuffer(f, dtype=dt, count=-1)
                         else:
-                            data_DA = ea.make_empty_record(field['standard_name_s'], field['long_name_s'], field['units_s'],
-                                                           date, model_grid, grid_type, array_precision)
-                            print('empty DA: ', data_DA)
+                            data_DA = xr.open_dataarray(
+                                docs[0]['transformation_file_path_s'], decode_times=True)
 
-                        daily_DA_year.append(data_DA)
+                    else:
+                        data_DA = ea.make_empty_record(field['standard_name_s'], field['long_name_s'], field['units_s'],
+                                                       date, model_grid, grid_type, array_precision)
 
-                    daily_DA_year_merged = xr.concat(
-                        (daily_DA_year), dim='time')
+                    # Append each day's data to annual list
+                    daily_DA_year.append(data_DA)
 
-                    new_data_attr = {}
-                    new_data_attr['original_dataset_title'] = dataset_metadata['original_dataset_title_s']
-                    new_data_attr['original_dataset_short_name'] = dataset_metadata['original_dataset_short_name_s']
-                    new_data_attr['original_dataset_url'] = dataset_metadata['original_dataset_url_s']
-                    new_data_attr['original_dataset_reference'] = dataset_metadata['original_dataset_reference_s']
-                    new_data_attr['original_dataset_doi'] = dataset_metadata['original_dataset_doi_s']
-                    new_data_attr['new_name'] = f'{field_name}_interpolated_to_{grid_name}'
-                    new_data_attr['interpolated_grid_id'] = grid_name
+                # Concatenate all data files within annual list
+                daily_DA_year_merged = xr.concat((daily_DA_year), dim='time')
 
-                    shortest_filename = f'{short_name}_{grid_name}_DAILY_{year}_{field_name}'
-                    monthly_filename = f'{short_name}_{grid_name}_MONTHLY_{year}_{field_name}'
+                # Create metadata fields for aggregated data file
+                new_data_attr = {}
+                new_data_attr['original_dataset_title'] = dataset_metadata['original_dataset_title_s']
+                new_data_attr['original_dataset_short_name'] = dataset_metadata['original_dataset_short_name_s']
+                new_data_attr['original_dataset_url'] = dataset_metadata['original_dataset_url_s']
+                new_data_attr['original_dataset_reference'] = dataset_metadata['original_dataset_reference_s']
+                new_data_attr['original_dataset_doi'] = dataset_metadata['original_dataset_doi_s']
+                new_data_attr['new_name'] = f'{field_name}_interpolated_to_{grid_name}'
+                new_data_attr['interpolated_grid_id'] = grid_name
 
-                    output_filenames = {'shortest': shortest_filename,
-                                        'monthly': monthly_filename}
+                # Create filenames based on date time scale
+                # If data time scale is monthly, shortest_filename is monthly
+                shortest_filename = f'{short_name}_{grid_name}_{data_time_scale.upper()}_{year}_{field_name}'
+                monthly_filename = f'{short_name}_{grid_name}_MONTHLY_{year}_{field_name}'
 
-                    output_path = output_dir + dataset + '/' + \
-                        grid_name + '/aggregated/' + field_name + '/'
-                    if not os.path.exists(output_path):
-                        os.makedirs(output_path)
+                output_filenames = {'shortest': shortest_filename,
+                                    'monthly': monthly_filename}
 
-                    bin_output_dir = output_path + 'bin/'
-                    if not os.path.exists(bin_output_dir):
-                        os.mkdir(bin_output_dir)
+                output_path = f'{output_dir}{dataset_name}/{grid_name}/aggregated/{field_name}/'
 
-                    netCDF_output_dir = output_path + 'netCDF/'
-                    if not os.path.exists(netCDF_output_dir):
-                        os.mkdir(netCDF_output_dir)
+                bin_output_dir = output_path + 'bin/'
 
-                    # generalized_aggregate_and_save expects Paths
-                    output_dirs = {'binary': Path(bin_output_dir),
-                                   'netcdf': Path(netCDF_output_dir)}
+                if not os.path.exists(bin_output_dir):
+                    os.makedirs(bin_output_dir)
 
-                    print(daily_DA_year_merged)
+                netCDF_output_dir = output_path + 'netCDF/'
 
+                if not os.path.exists(netCDF_output_dir):
+                    os.makedirs(netCDF_output_dir)
+
+                # generalized_aggregate_and_save expects Paths
+                output_dirs = {'binary': Path(bin_output_dir),
+                               'netcdf': Path(netCDF_output_dir)}
+
+                output_filepaths = {'daily_bin': f'{output_path}bin/{shortest_filename}',
+                                    'daily_netCDF': f'{output_path}netCDF/{shortest_filename}.nc',
+                                    'monthly_bin': f'{output_path}bin/{monthly_filename}',
+                                    'monthly_netCDF': f'{output_path}netCDF/{monthly_filename}.nc'}
+
+                print(daily_DA_year_merged)
+
+                try:
+                    # Performs the aggreagtion of the yearly data, and saves it
                     ea.generalized_aggregate_and_save(daily_DA_year_merged,
                                                       new_data_attr,
                                                       config['do_monthly_aggregation'],
@@ -260,81 +292,150 @@ def run_aggregation(system_path, output_dir, s3=None):
                                                       save_netcdf=config['save_netcdf'],
                                                       remove_nan_days_from_data=config['remove_nan_days_from_data'])
 
-                    # Upload files to s3
+                    success = True
+                except Exception as e:
+                    print(e)
+                    success = False
+                    output_filepaths = {'daily_bin': '',
+                                        'daily_netCDF': '',
+                                        'monthly_bin': '',
+                                        'monthly_netCDF': ''}
+
+                aggregation_successes = aggregation_successes and success
+
+                # Upload files to s3
+                if s3:
+                    target_bucket_name = config['target_bucket_name']
+                    s3_aggregated_path = config['s3_aggregated_path']
+                    s3_output_dir = f'{s3_aggregated_path}{dataset_name}_transformed_by_year'
+                    target_bucket = s3.Bucket(target_bucket_name)
+
+                    # Upload shortest and monthly aggregated files to target bucket
+                    for filename in output_filenames:
+                        target_bucket.upload_file(bin_output_dir, filename)
+
+                    s3_path = f's3://{target_bucket_name}/{s3_output_dir}'
+
+                # Query Solr for existing aggregation
+                fq = [f'dataset_s:{dataset_name}', 'type_s:aggregation',
+                      f'grid_name_s:{grid_name}', f'field_s:{field_name}', f'year_s:{year}']
+                docs = solr_query(config, solr_host, fq)
+
+                # If aggregation exists, update using Solr entry id
+                if len(docs) > 0:
+                    doc_id = docs[0]['id']
+                    update_body = [
+                        {
+                            "id": doc_id,
+                            "aggregation_time_dt": {"set": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")},
+                            "aggregation_version_s": {"set": config['version']}
+                        }
+                    ]
+
+                    # Update file paths according to the data time scale and do monthly aggregation config field
+                    if (data_time_scale == 'daily') and (config['do_monthly_aggregation']):
+                        update_body[0]["aggregated_daily_bin_path_s"] = {
+                            "set": output_filepaths['daily_bin']}
+                        update_body[0]["aggregated_daily_netCDF_path_s"] = {
+                            "set": output_filepaths['daily_netCDF']}
+                        update_body[0]["aggregated_monthly_bin_path_s"] = {
+                            "set": output_filepaths['monthly_bin']}
+                        update_body[0]["aggregated_monthly_netCDF_path_s"] = {
+                            "set": output_filepaths['monthly_netCDF']}
+                    elif (data_time_scale == 'daily') and not (config['do_monthly_aggregation']):
+                        update_body[0]["aggregated_daily_bin_path_s"] = {
+                            "set": output_filepaths['daily_bin']}
+                        update_body[0]["aggregated_daily_netCDF_path_s"] = {
+                            "set": output_filepaths['daily_netCDF']}
+                    elif data_time_scale == 'monthly':
+                        update_body[0]["aggregated_monthly_bin_path_s"] = {
+                            "set": output_filepaths['monthly_bin']}
+                        update_body[0]["aggregated_monthly_netCDF_path_s"] = {
+                            "set": output_filepaths['monthly_netCDF']}
+
                     if s3:
-                        target_bucket_name = config['target_bucket_name']
-                        s3_aggregated_path = config['s3_aggregated_path']
-                        s3_output_dir = s3_aggregated_path + \
-                            config['ds_name'] + '_transformed_by_year'
-                        target_bucket = s3.Bucket(target_bucket_name)
+                        update_body[0]['s3_path'] = s3_path
 
-                        # Upload shortest and monthly aggregated files to target bucket
-                        for filename in output_filenames:
-                            target_bucket.upload_file(
-                                bin_output_dir, filename)
+                else:
+                    # Create new aggregation entry if it doesn't exist
+                    update_body = [
+                        {
+                            "type_s": 'aggregation',
+                            "dataset_s": dataset_name,
+                            "year_s": year,
+                            "grid_name_s": grid_name,
+                            "field_s": field_name,
+                            "aggregation_time_dt": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+                            "aggregation_success_b": success,
+                            "aggregation_version_s": config['version']
+                        }
+                    ]
 
-                        s3_path = "s3://" + target_bucket_name + '/' + s3_output_dir
+                    # Update file paths according to the data time scale and do monthly aggregation config field
+                    if (data_time_scale == 'daily') and (config['do_monthly_aggregation']):
+                        update_body[0]["aggregated_daily_bin_path_s"] = output_filepaths['daily_bin']
+                        update_body[0]["aggregated_daily_netCDF_path_s"] = output_filepaths['daily_netCDF']
+                        update_body[0]["aggregated_monthly_bin_path_s"] = output_filepaths['monthly_bin']
+                        update_body[0]["aggregated_monthly_netCDF_path_s"] = output_filepaths['monthly_netCDF']
+                    elif (data_time_scale == 'daily') and (not config['do_monthly_aggregation']):
+                        update_body[0]["aggregated_daily_bin_path_s"] = output_filepaths['daily_bin']
+                        update_body[0]["aggregated_daily_netCDF_path_s"] = output_filepaths['daily_netCDF']
+                    elif data_time_scale == 'monthly':
+                        update_body[0]["aggregated_monthly_bin_path_s"] = output_filepaths['monthly_bin']
+                        update_body[0]["aggregated_monthly_netCDF_path_s"] = output_filepaths['monthly_netCDF']
 
-                    # Check if aggregation already exists
-                    fq = [f'dataset_s:{dataset}', 'type_s:aggregation',
-                          f'grid_name_s:{grid_name}', f'field_s:{field_name}', f'year_s:{year}']
-                    docs = solr_query(config, fq)
+                    if s3:
+                        update_body[0]['s3_path'] = s3_path
 
-                    if len(docs) > 0:
-                        doc_id = docs[0]['id']
+                r = solr_update(config, solr_host, update_body, r=True)
+
+                if r.status_code != 200:
+                    print(
+                        f'Failed to update Solr aggregation entry for {field_name} in {dataset_name} for {year} and grid {grid_name}')
+
+                # Query for lineage entries from this year
+                fq = ['type_s:lineage',
+                      f'dataset_s:{dataset_name}', f'date_s:{year}*']
+                existing_lineage_docs = solr_query(config, solr_host, fq)
+
+                # if lineage entries already exist, update them
+                if len(existing_lineage_docs) > 0:
+                    for doc in existing_lineage_docs:
+                        doc_id = doc['id']
+
                         update_body = [
                             {
                                 "id": doc_id,
-                                "aggregation_time_dt": {"set": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")},
-                                "aggregated_daily_bin_path_s": {"set": output_path + 'bin/' + shortest_filename},
-                                "aggregated_monthly_bin_path_s": {"set": output_path + 'bin/' + monthly_filename},
-                                "aggregated_daily_netCDF_path_s": {"set": output_path + 'netCDF/' + shortest_filename},
-                                "aggregated_monthly_netCDF_path_s": {"set": output_path + 'netCDF/' + monthly_filename},
-                                "aggregation_version_s": {"set": config['version']}
+                                "all_aggregation_success_b": {"set": aggregation_successes}
                             }
                         ]
 
-                        if s3:
-                            update_body[0]['s3_path'] = s3_path
+                        # Add aggregation file path fields to lineage entry
+                        for key, value in output_filepaths.items():
+                            update_body[0][f'{grid_name}_{field_name}_aggregated_{key}_path_s'] = {
+                                "set": value}
 
-                        solr_update(config, update_body)
+                        r = solr_update(config, solr_host, update_body, r=True)
 
-                    else:
-                        update_body = [
-                            {
-                                "type_s": 'aggregation',
-                                "dataset_s": dataset,
-                                "year_s": year,
-                                "grid_name_s": grid_name,
-                                "field_s": field_name,
-                                "aggregation_time_dt": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-                                "aggregation_success_b": True,
-                                "aggregated_daily_bin_path_s": output_path + 'bin/' + shortest_filename,
-                                "aggregated_monthly_bin_path_s": output_path + 'bin/' + monthly_filename,
-                                "aggregated_daily_netCDF_path_s": output_path + 'netCDF/' + shortest_filename,
-                                "aggregated_monthly_netCDF_path_s": output_path + 'netCDF/' + monthly_filename,
-                                "aggregation_version_s": config['version'],
-                            }
-                        ]
+                        if r.status_code != 200:
+                            print(
+                                f'Failed to update Solr aggregation entry for {field_name} in {dataset_name} for {year} and grid {grid_name}')
 
-                        if s3:
-                            update_body[0]['s3_path'] = s3_path
+    # Update Solr dataset entry status and years_updated to empty
+    update_body = [
+        {
+            "id": dataset_metadata['id'],
+            "status_s": {"set": 'aggregated'},
+            "years_updated_ss": {"set": []}}
+    ]
 
-                        solr_update(config, update_body)
+    r = solr_update(config, solr_host, update_body, r=True)
 
-        # Clear out years updated in dataset level Solr object
-        update_body = [
-            {
-                "id": dataset_metadata['id'],
-                "status_s": {"set": 'aggregated'},
-                "years_updated_ss": {"set": []}}
-        ]
+    if r.status_code != 200:
+        print(
+            f'Failed to update Solr dataset entry with aggregation information for {dataset_name}')
 
-        solr_update(config, update_body)
-
-        print("=========exporting data lineage=========")
-        export_lineage(f'{output_dir}/{dataset}/{dataset}_lineage', config)
-
-        print("=========exporting data lineage DONE=========")
-    else:
-        print("=========No new files to aggregate=========")
+    # Export annual lineage JSON file for each year updated
+    print("=========exporting data lineage=========")
+    export_lineage(output_dir, years, solr_host, config)
+    print("=========exporting data lineage DONE=========")

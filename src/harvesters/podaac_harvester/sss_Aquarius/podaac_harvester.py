@@ -1,19 +1,17 @@
-from xml.etree.ElementTree import parse
-from datetime import datetime, timedelta
-import sys
-from os import path
 import os
-import re
-from urllib.request import urlopen, urlcleanup, urlretrieve
+import sys
 import gzip
+import json
+import yaml
 import shutil
 import hashlib
 import requests
-import json
-import yaml
-import bz2
+from xml.etree.ElementTree import parse
+from datetime import datetime, timedelta
+from urllib.request import urlopen, urlcleanup, urlretrieve
 
 
+# Creates checksum from filename
 def md5(fname):
     hash_md5 = hashlib.md5()
     with open(fname, 'rb') as f:
@@ -22,31 +20,26 @@ def md5(fname):
     return hash_md5.hexdigest()
 
 
-def getdate(regex, fname):
-    ex = re.compile(regex)
-    match = re.search(ex, fname)
-    date = match.group()
-    return date
-
-
-def solr_query(config, fq):
-    solr_host = config['solr_host']
+# Queries Solr based on config information and filter query
+# Returns list of Solr entries (docs)
+def solr_query(config, solr_host, fq):
     solr_collection_name = config['solr_collection_name']
 
     getVars = {'q': '*:*',
                'fq': fq,
                'rows': 300000}
 
-    url = solr_host + solr_collection_name + '/select?'
+    url = f'{solr_host}{solr_collection_name}/select?'
     response = requests.get(url, params=getVars)
     return response.json()['response']['docs']
 
 
-def solr_update(config, update_body, r=False):
-    solr_host = config['solr_host']
+# Posts update to Solr with provided update body
+# Optional return of posting status code
+def solr_update(config, solr_host, update_body, r=False):
     solr_collection_name = config['solr_collection_name']
 
-    url = solr_host + solr_collection_name + '/update?commit=true'
+    url = f'{solr_host}{solr_collection_name}/update?commit=true'
 
     if r:
         return requests.post(url, json=update_body)
@@ -54,12 +47,26 @@ def solr_update(config, update_body, r=False):
         requests.post(url, json=update_body)
 
 
+# Unzips downloaded .gz files
+# Returns file path
+def unzip_gz(local_fp, folder):
+    with gzip.open(local_fp, "rb") as f_in, open(local_fp[:-3], "wb") as f_out:
+        shutil.copyfileobj(f_in, f_out)
+        os.remove(local_fp)
+    newfile_ext = os.path.splitext(
+        os.listdir(folder)[0])[1]
+    local_fp = f'{local_fp[:-3]}{newfile_ext}'
+    return local_fp
+
+
+# Pulls data files for given PODAAC id and date range
+# If not on_aws, saves locally, else saves to s3 bucket
+# Creates Solr entries for dataset, harvested granule, fields, and lineage
 def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
     # =====================================================
     # Read configurations from YAML file
     # =====================================================
-    # TODO decide on command line argument for different dataset configs
-    path_to_yaml = path_to_file_dir + "podaac_harvester_config.yaml"
+    path_to_yaml = f'{path_to_file_dir}podaac_harvester_config.yaml'
     with open(path_to_yaml, "r") as stream:
         config = yaml.load(stream)
 
@@ -69,25 +76,27 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
     if on_aws:
         target_bucket_name = config['target_bucket_name']
         target_bucket = s3.Bucket(target_bucket_name)
+        solr_host = config['solr_host_aws']
+    else:
+        solr_host = config['solr_host_local']
 
     # =====================================================
-    # Download raw data files
+    # Initializing required values
     # =====================================================
-    target_dir = config['target_dir'] + '/'
-    folder = '/tmp/'+config['ds_name']+'/'
+    dataset_name = config['ds_name']
+    target_dir = f'{config["target_dir"]}/'
+    folder = f'/tmp/{dataset_name}/'
 
     if not on_aws:
-        print("!!downloading files to "+target_dir)
+        print(f'!!downloading files to {target_dir}')
     else:
-        print("!!downloading files to "+folder+" and uploading to " +
-              target_bucket_name+"/"+config['ds_name'])
+        print(
+            f'!!downloading files to {folder} and uploading to {target_bucket_name}/{dataset_name}')
 
-    print("======downloading files========")
     if config['aggregated']:
         url = f'{config["host"]}&datasetId={config["podaac_id"]}'
     else:
         url = f'{config["host"]}&datasetId={config["podaac_id"]}&endTime={config["end"]}&startTime={config["start"]}'
-    print(url)
 
     namespace = {"podaac": "http://podaac.jpl.nasa.gov/opensearch/",
                  "opensearch": "http://a9.com/-/spec/opensearch/1.1/",
@@ -98,28 +107,33 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
                  "time": "http://a9.com/-/opensearch/extensions/time/1.0/"}
 
     next = None
-    firstIter = True
     more = True
 
-    # ------------------------------------------------------------
-
-    # if target path doesn't exist, make it
-    # if tmp folder for downloaded files doesn't exist, create it in temp lambda storage
+    # if target paths don't exist, make them
     if not os.path.exists(folder):
         os.mkdir(folder)
 
     if not os.path.exists(target_dir):
         os.makedirs(target_dir)
 
-    # get old data if exists
     docs = {}
+    lineage_docs = {}
 
-    fq = ['type_s:harvested', f'dataset_s:{config["ds_name"]}']
-    query_docs = solr_query(config, fq)
+    # Query for existing harvested docs
+    fq = ['type_s:harvested', f'dataset_s:{dataset_name}']
+    harvested_docs = solr_query(config, solr_host, fq)
 
-    if len(query_docs) > 0:
-        for doc in query_docs:
+    if len(harvested_docs) > 0:
+        for doc in harvested_docs:
             docs[doc['filename_s']] = doc
+
+    # Query for existing lineage docs
+    fq = ['type_s:lineage', f'dataset_s:{dataset_name}']
+    existing_lineage_docs = solr_query(config, solr_host, fq)
+
+    if len(existing_lineage_docs) > 0:
+        for doc in existing_lineage_docs:
+            lineage_docs[doc['date_s']] = doc
 
     # setup metadata
     meta = []
@@ -128,29 +142,25 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
     start = []
     end = []
     chk_time = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
-    dl_count = 0    # track how many new files to transform and wait for
     now = datetime.utcnow()
     updating = False
     aws_upload = False
 
-    if not config['aggregated']:
-        config_start_datetime = datetime.strptime(
-            config['start'], "%Y%m%dT%H:%M:%SZ")
-        config_end_datetime = datetime.strptime(
-            config['end'], "%Y%m%dT%H:%M:%SZ")
-
+    # While available granules exist
     while more:
         xml = parse(urlopen(url))
-        if firstIter:
-            totalResults = int(
-                xml.find('{%(opensearch)s}totalResults' % namespace).text)
-            firstIter = False
+
         items = xml.findall('{%(atom)s}entry' % namespace)
 
+        # Loops through available granules to download
         for elem in items:
             updating = False
             aws_upload = False
 
+            lineage_item = {}
+            lineage_item['type_s'] = 'lineage'
+
+            # Prepares information necessary for download and metadata
             try:
                 # download link
                 link = elem.find(
@@ -158,93 +168,82 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
                 link = '.'.join(link.split('.')[:-1])
                 newfile = link.split("/")[-1]
 
-                # dates
-                start_str = elem.find("{%(time)s}start" % namespace).text
+                date_start_str = elem.find("{%(time)s}start" % namespace).text
 
-                # "Ignore granules with start time less than wanted start time" -DB, 7/23/2020
-                if int(start_str[:4]) < int(config['start'][:4]):
-                    continue
-
-                # metadata setup
-                item = {}               # to be populated for each file
+                # granule metadata setup to be populated for each granule
+                item = {}
                 item['type_s'] = 'harvested'
-                item['date_s'] = start_str
-                item['dataset_s'] = config['ds_name']
+                item['date_s'] = date_start_str
+                item['dataset_s'] = dataset_name
                 item['source_s'] = link
 
+                # Create or modify lineage entry in Solr
+                lineage_item['dataset_s'] = item['dataset_s']
+                lineage_item['date_s'] = item['date_s']
+                lineage_item['source_s'] = item['source_s']
+
+                # Attempt to get last modified time of file on podaac
+                # Not all PODAAC datasets contain last modified time
                 try:
-                    # get last modified time of file on podaac
                     mod_time = elem.find("{%(atom)s}updated" % namespace).text
-                    mod_time = mod_time[:-8] + 'Z'
                     mod_date_time = datetime.strptime(
                         mod_time, config['date_regex'])
                     item['modified_time_dt'] = mod_time
 
-                except Exception as e:
-                    print(e)
+                except:
                     print('Cannot find last modified time.  Downloading granule.')
                     mod_date_time = now
 
-                # compare modified timestamp or if granule previously downloaded
+                # If granule doesn't exist or previously failed or has been updated since last harvest
                 updating = (not newfile in docs.keys()) or (not docs[newfile]['harvest_success_b']) \
                     or (datetime.strptime(docs[newfile]['download_time_dt'], "%Y-%m-%dT%H:%M:%SZ") <= mod_date_time)
 
-                # if no granule metadata or download time less than modified time, download new file
+                # If updating, download file
                 if updating:
-                    local_fp = f'{folder}{config["ds_name"]}_granule.nc' if on_aws else target_dir + newfile
+                    local_fp = f'{folder}{dataset_name}_granule.nc' if on_aws else f'{target_dir}{newfile}'
 
+                    # If file doesn't exist locally, download it
                     if not os.path.exists(local_fp):
-                        print('Downloading: ' + local_fp)
+                        print(f'Downloading: {local_fp}')
 
                         urlcleanup()
                         urlretrieve(link, local_fp)
 
                         # unzip .gz files
                         if newfile[-3:] == '.gz':
-                            with gzip.open(local_fp, "rb") as f_in, open(local_fp[:-3], "wb") as f_out:
-                                shutil.copyfileobj(f_in, f_out)
-                                os.remove(local_fp)
-                            newfile_ext = os.path.splitext(
-                                os.listdir(folder)[0])[1]
-                            local_fp = local_fp[:-3]+newfile_ext
+                            local_fp = unzip_gz(local_fp, folder)
 
+                    # If file exists, but is out of date, download it
                     elif datetime.fromtimestamp(os.path.getmtime(local_fp)) <= mod_date_time:
-                        print('Updating: ' + local_fp)
+                        print(f'Updating: {local_fp}')
 
                         urlcleanup()
                         urlretrieve(link, local_fp)
 
                         # unzip .gz files
                         if newfile[-3:] == '.gz':
-                            with gzip.open(local_fp, "rb") as f_in, open(local_fp[:-3], "wb") as f_out:
-                                shutil.copyfileobj(f_in, f_out)
-                                os.remove(local_fp)
-                            newfile_ext = os.path.splitext(
-                                os.listdir(folder)[0])[1]
-                            local_fp = local_fp[:-3]+newfile_ext
+                            local_fp = unzip_gz(local_fp, folder)
 
                     else:
                         print('File already downloaded and up to date')
 
+                    # Create checksum for file
                     item['checksum_s'] = md5(local_fp)
 
+                    output_filename = f'{dataset_name}/{newfile}' if on_aws else newfile
+                    item['pre_transformation_file_path_s'] = f'{target_dir}{newfile}'
+
                     # =====================================================
-                    # ### Push data to s3 bucket
+                    # Push data to s3 bucket
                     # =====================================================
-                    output_filename = config['ds_name'] + \
-                        '/' + newfile if on_aws else newfile
-                    item['pre_transformation_file_path_s'] = target_dir + newfile
 
                     if on_aws:
                         aws_upload = True
-                        print("=========uploading file=========")
-                        # print('uploading '+output_filename)
+                        print("=========uploading file to s3=========")
                         target_bucket.upload_file(local_fp, output_filename)
-                        item['pre_transformation_file_path_s'] = 's3://' + \
-                            config['target_bucket_name']+'/'+output_filename
-                        print("======uploading file DONE=======")
+                        item['pre_transformation_file_path_s'] = f's3://{config["target_bucket_name"]}/{output_filename}'
+                        print("======uploading file to s3 DONE=======")
 
-                    dl_count += 1
                     item['harvest_success_b'] = True
                     item['filename_s'] = newfile
                     item['file_size_l'] = os.path.getsize(local_fp)
@@ -257,7 +256,7 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
                         item['message_s'] = 'aws upload unsuccessful'
 
                     else:
-                        print("Download "+newfile+" failed.")
+                        print(f'Download {newfile} failed.')
                         print("======file not successful=======")
 
                     item['harvest_success_b'] = False
@@ -268,26 +267,43 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
             if updating:
                 item['download_time_dt'] = chk_time
 
+                # Update Solr entry using id if it exists
+                if item['date_s'] in lineage_docs.keys():
+                    lineage_item['id'] = lineage_docs[item['date_s']]['id']
+
+                lineage_item['harvest_success_b'] = item['harvest_success_b']
+                lineage_item['pre_transformation_file_path_s'] = item['pre_transformation_file_path_s']
+                meta.append(lineage_item)
+
                 # add item to metadata json
                 meta.append(item)
                 # store meta for last successful download
                 last_success_item = item
 
+        # Check if more granules are available
         next = xml.find("{%(atom)s}link[@rel='next']" % namespace)
         if next is None:
             more = False
-            print(config['ds_name']+' done')
+            print(f'{dataset_name} done')
         else:
             url = next.attrib['href']
 
-    # =====================================================
-    # ### writing metadata to file
-    # =====================================================
-    print("=========creating meta=========")
+    # Update Solr with downloaded granule metadata entries
+    r = solr_update(config, solr_host, meta, r=True)
 
-    meta_path = config['ds_name']+'.json'
-    meta_local_path = target_dir+meta_path
-    meta_output_path = 'meta/'+meta_path
+    if r.status_code == 200:
+        print('granule metadata post to Solr success')
+    else:
+        print('granule metadata post to Solr failed')
+
+    # =====================================================
+    # writing metadata to file
+    # =====================================================
+    print("=========creating metadata JSON=========")
+
+    meta_path = f'{dataset_name}.json'
+    meta_local_path = f'{target_dir}{meta_path}'
+    meta_output_path = f'meta/{meta_path}'
 
     if len(meta) == 0:
         print('no new downloads')
@@ -296,44 +312,36 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
     with open(meta_local_path, 'w') as meta_file:
         json.dump(meta, meta_file)
 
-    print("======creating meta DONE=======")
+    print("======creating metadata JSON DONE=======")
 
+    # =====================================================
+    # uploading metadata file to s3
+    # =====================================================
     if on_aws:
-        # =====================================================
-        # ### uploading metadata file to s3
-        # =====================================================
-        print("=========uploading meta=========")
-
+        print("=========uploading meta to s3=========")
         target_bucket.upload_file(meta_local_path, meta_output_path)
+        print("======uploading meta to s3 DONE=======")
 
-        print("======uploading meta DONE=======")
-
-    # =====================================================
-    # ### posting metadata logs to Solr
-    # =====================================================
-    print("=========posting meta=========")
-
-    headers = {'Content-Type': 'application/json'}
     overall_start = min(start) if len(start) > 0 else None
     overall_end = max(end) if len(end) > 0 else None
-    # =====================================================
+
     # Query for Solr Dataset-level Document
-    # =====================================================
+    fq = ['type_s:dataset', f'dataset_s:{dataset_name}']
+    docs = solr_query(config, solr_host, fq)
 
-    fq = ['type_s:dataset', 'dataset_s:'+config['ds_name']]
-    docs = solr_query(config, fq)
-
+    # If dataset entry exists on Solr
     update = (len(docs) == 1)
 
-    # if no dataset-level entry in Solr, create one
+    # Update Solr metadata for dataset and fields
     if not update:
         # TODO: THIS SECTION BELONGS WITH DATASET DISCOVERY
+
         # -----------------------------------------------------
-        # Create Solr Dataset-level Document if doesn't exist
+        # Create Solr dataset entry
         # -----------------------------------------------------
         ds_meta = {}
         ds_meta['type_s'] = 'dataset'
-        ds_meta['dataset_s'] = config['ds_name']
+        ds_meta['dataset_s'] = dataset_name
         ds_meta['short_name_s'] = config['short_name']
         ds_meta['source_s'] = f'{config["host"]}&datasetId={config["podaac_id"]}'
         ds_meta['data_time_scale_s'] = config['data_time_scale']
@@ -344,6 +352,7 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
         ds_meta['original_dataset_url_s'] = config['original_dataset_url']
         ds_meta['original_dataset_reference_s'] = config['original_dataset_reference']
         ds_meta['original_dataset_doi_s'] = config['original_dataset_doi']
+
         if overall_start != None:
             ds_meta['start_date_dt'] = overall_start.strftime(
                 "%Y-%m-%dT%H:%M:%SZ")
@@ -361,40 +370,39 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
         body = []
         body.append(ds_meta)
 
-        # Post document
-        r = solr_update(config, body, r=True)
+        # Update Solr with dataset metadata
+        r = solr_update(config, solr_host, body, r=True)
 
         if r.status_code == 200:
             print('Successfully created Solr dataset document')
         else:
             print('Failed to create Solr dataset document')
 
-        # TODO: update for changes in yaml (incinerate and rewrite)
-        # modify updating variable to account for updates in config and then incinerate and rewrite
+        # -----------------------------------------------------
+        # Create Solr dataset field entries
+        # -----------------------------------------------------
         body = []
         for field in config['fields']:
             field_obj = {}
             field_obj['type_s'] = 'field'
-            field_obj['dataset_s'] = config['ds_name']
+            field_obj['dataset_s'] = dataset_name
             field_obj['name_s'] = field['name']
             field_obj['long_name_s'] = field['long_name']
             field_obj['standard_name_s'] = field['standard_name']
             field_obj['units_s'] = field['units']
             body.append(field_obj)
 
-        # post document
-        r = solr_update(config, body, r=True)
+        # Update Solr with dataset fields metadata
+        r = solr_update(config, solr_host, body, r=True)
 
         if r.status_code == 200:
             print('Successfully created Solr field documents')
         else:
             print('Failed to create Solr field documents')
 
-    # if record exists, update download time, converage start date, coverage end date
+    # if dataset entry exists, update download time, converage start date, coverage end date
     else:
-        # =====================================================
         # Check start and end date coverage
-        # =====================================================
         doc = docs[0]
         old_start = datetime.strptime(
             doc['start_date_dt'], "%Y-%m-%dT%H:%M:%SZ") if 'start_date_dt' in doc.keys() else None
@@ -408,33 +416,22 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
         update_doc['last_checked_dt'] = {"set": chk_time}
         update_doc['status_s'] = {"set": "harvested"}
 
-        if updating:
-            # only update to "harvested" if there is further preprocessing to do
-            update_doc['status_s'] = "harvested"
+        if len(meta) > 0 and 'download_time_dt' in last_success_item.keys():
+            update_doc['last_download_dt'] = {
+                "set": last_success_item['download_time_dt']}
 
-            if len(meta) > 0 and 'download_time_dt' in last_success_item.keys():
-                update_doc['last_download_dt'] = {
-                    "set": last_success_item['download_time_dt']}
-            if old_start == None or overall_start < old_start:
-                update_doc['start_date_dt'] = {
-                    "set": overall_start.strftime("%Y-%m-%dT%H:%M:%SZ")}
-            if old_end == None or overall_end > old_end:
-                update_doc['end_date_dt'] = {
-                    "set": overall_end.strftime("%Y-%m-%dT%H:%M:%SZ")}
+        if overall_start < old_start or old_start == None:
+            update_doc['start_date_dt'] = {
+                "set": overall_start.strftime("%Y-%m-%dT%H:%M:%SZ")}
 
-        body = [update_doc]
-        r = solr_update(config, body, r=True)
+        if overall_end > old_end or old_end == None:
+            update_doc['end_date_dt'] = {
+                "set": overall_end.strftime("%Y-%m-%dT%H:%M:%SZ")}
+
+        # Update Solr with modified dataset entry
+        r = solr_update(config, solr_host, [update_doc], r=True)
 
         if r.status_code == 200:
             print('Successfully updated Solr dataset document')
         else:
             print('Failed to update Solr dataset document')
-
-    # post granule metadata documents for downloaded granules
-    r = solr_update(config, meta, r=True)
-
-    if r.status_code == 200:
-        print('granule metadata post to Solr success')
-    else:
-        print('granule metadata post to Solr failed')
-    print("=========posted meta==========")
