@@ -99,6 +99,14 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
     origin_checksum = harvested_metadata['checksum_s']
     date = harvested_metadata['date_s']
 
+    # If data is stored in hemispheres, use that hemisphere when naming files and updating Solr
+    # Otherwise, leave it blank
+    # While using hemi in naming files, care has been taken to ensure proper filenames are created when working with both types
+    if 'hemisphere_s' in harvested_metadata.keys():
+        hemi = f'_{harvested_metadata["hemisphere_s"]}'
+    else:
+        hemi = ''
+
     transformation_successes = True
     transformation_file_paths = {}
 
@@ -130,7 +138,7 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
         # =====================================================
         # Make model grid factors if not present locally
         # =====================================================
-        grid_factors = grid_name + '_factors_path_s'
+        grid_factors = f'{grid_name}{hemi}_factors_path_s'
 
         if grid_factors in dataset_metadata.keys():
             factors_path = dataset_metadata[grid_factors]
@@ -152,13 +160,28 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
                 num, den = data_res.replace(' ', '').split('/')
                 data_res = float(num) / float(den)
 
-            source_grid_min_L, source_grid_max_L, source_grid, \
-                data_grid_lons, data_grid_lats = ea.generalized_grid_product(short_name,
-                                                                             data_res,
-                                                                             config['data_max_lat'],
-                                                                             config['area_extent'],
-                                                                             config['dims'],
-                                                                             config['proj_info'])
+            # Use hemisphere specific variables if data is hemisphere specific
+            if hemi:
+                hemi_dim = config[f'dims_{hemi}']
+                hemi_area_extent = config[f'area_extent_{hemi}']
+                hemi_proj_info = config[f'proj_info_{hemi}']
+                hemi_data_max_lat = config[f'data_max_lat_{hemi}']
+
+                source_grid_min_L, source_grid_max_L, source_grid, \
+                    data_grid_lons, data_grid_lats = ea.generalized_grid_product(short_name,
+                                                                                 data_res,
+                                                                                 hemi_data_max_lat,
+                                                                                 hemi_area_extent,
+                                                                                 hemi_dim,
+                                                                                 hemi_proj_info)
+            else:
+                source_grid_min_L, source_grid_max_L, source_grid, \
+                    data_grid_lons, data_grid_lats = ea.generalized_grid_product(short_name,
+                                                                                 data_res,
+                                                                                 config['data_max_lat'],
+                                                                                 config['area_extent'],
+                                                                                 config['dims'],
+                                                                                 config['proj_info'])
 
             # Define the 'swath' as the lats/lon pairs of the model grid
             target_grid = pr.geometry.SwathDefinition(lons=model_grid.XC.values.ravel(),
@@ -209,8 +232,8 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
             update_body = [
                 {
                     "id": doc_id,
-                    f'{grid_name}_factors_path_s': {"set": factors_path},
-                    f'{grid_name}_factors_stored_dt': {"set": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}
+                    f'{grid_name}{hemi}_factors_path_s': {"set": factors_path},
+                    f'{grid_name}{hemi}_factors_stored_dt': {"set": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}
                 }
             ]
 
@@ -249,6 +272,8 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
                 transform['date_s'] = date
                 transform['dataset_s'] = dataset_name
                 transform['pre_transformation_file_path_s'] = source_file_path
+                if hemi:
+                    transform['hemisphere_s'] = hemi
                 transform['origin_checksum_s'] = origin_checksum
                 transform['grid_name_s'] = grid_name
                 transform['field_s'] = field_name

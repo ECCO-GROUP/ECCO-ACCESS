@@ -203,6 +203,7 @@ def run_aggregation(system_path, output_dir, s3=None):
                 daily_DA_year = []
 
                 for date in dates_in_year:
+
                     # Query for date
                     fq = [f'dataset_s:{dataset_name}', 'type_s:transformation',
                           f'grid_name_s:{grid_name}', f'field_s:{field_name}', f'date_s:{date}*']
@@ -211,20 +212,41 @@ def run_aggregation(system_path, output_dir, s3=None):
 
                     # If transformed file is present for date, grid, and field combination
                     # open the file, otherwise make empty record
+
+                    # Combines hemisphere data into one file, if data is in hemisphere format
                     if docs:
+                        opened_datasets = []
 
-                        # if running on AWS, get file from s3
-                        if docs[0]['transformation_file_path_s'][:5] == 's3://':
-                            source_bucket_name, key_name = split_s3_bucket_key(
-                                docs[0]['transformation_file_path_s'])
-                            obj = s3.Object(source_bucket_name, key_name)
-                            data_DA = xr.open_dataarray(obj, decode_times=True)
-                            # f = obj.get()['Body'].read()
-                            # data = np.frombuffer(f, dtype=dt, count=-1)
+                        for doc in docs:
+                            # if running on AWS, get file from s3
+                            if doc['transformation_file_path_s'][:5] == 's3://':
+                                source_bucket_name, key_name = split_s3_bucket_key(
+                                    doc['transformation_file_path_s'])
+                                obj = s3.Object(source_bucket_name, key_name)
+                                data_DA = xr.open_dataarray(
+                                    obj, decode_times=True)
+                                # f = obj.get()['Body'].read()
+                                # data = np.frombuffer(f, dtype=dt, count=-1)
+                            else:
+                                data_DA = xr.open_dataarray(
+                                    doc['transformation_file_path_s'], decode_times=True)
+
+                            opened_datasets.append(data_DA)
+
+                        # If there are more than one files for this grid/field/date combination (implies hemisphered data),
+                        # combine hemispheres on nonempty datafile, if present.
+                        if len(opened_datasets) == 2:
+                            if np.count_nonzero(~(opened_datasets[0].values == np.nan)) > 0:
+                                data_DA = opened_datasets[0].copy()
+                                data_DA.values = np.where(
+                                    opened_datasets[1].values == np.nan, data_DA.values, opened_datasets[1].values)
+                            else:
+                                data_DA = opened_datasets[1].copy()
+                                data_DA.values = np.where(opened_datasets[0].values == np.nan,
+                                                          data_DA.values,
+                                                          opened_datasets[0].values)
                         else:
-                            data_DA = xr.open_dataarray(
-                                docs[0]['transformation_file_path_s'], decode_times=True)
-
+                            data_DA = opened_datasets[0]
                     else:
                         data_DA = ea.make_empty_record(field['standard_name_s'], field['long_name_s'], field['units_s'],
                                                        date, model_grid, grid_type, array_precision)
