@@ -172,6 +172,10 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
                 date_start_str = elem.find("{%(time)s}start" % namespace).text
                 date_end_str = elem.find("{%(time)s}end" % namespace).text
 
+                # Ignore granules with start time less than wanted start time
+                if int(date_start_str[:4]) < int(config['start'][:4]):
+                    continue
+
                 start_datetime = datetime.strptime(date_start_str, date_regex)
                 end_datetime = datetime.strptime(date_end_str, date_regex)
 
@@ -422,19 +426,21 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
         update_doc = {}
         update_doc['id'] = doc_id
         update_doc['last_checked_dt'] = {"set": chk_time}
-        update_doc['status_s'] = {"set": "harvested"}
 
-        if len(meta) > 0 and 'download_time_dt' in last_success_item.keys():
-            update_doc['last_download_dt'] = {
-                "set": last_success_item['download_time_dt']}
+        if meta:
+            update_doc['status_s'] = {"set": "harvested"}
 
-        if overall_start < old_start or old_start == None:
-            update_doc['start_date_dt'] = {
-                "set": overall_start.strftime("%Y-%m-%dT%H:%M:%SZ")}
+            if 'download_time_dt' in last_success_item.keys():
+                update_doc['last_download_dt'] = {
+                    "set": last_success_item['download_time_dt']}
 
-        if overall_end > old_end or old_end == None:
-            update_doc['end_date_dt'] = {
-                "set": overall_end.strftime("%Y-%m-%dT%H:%M:%SZ")}
+            if old_start == None or overall_start < old_start:
+                update_doc['start_date_dt'] = {
+                    "set": overall_start.strftime("%Y-%m-%dT%H:%M:%SZ")}
+
+            if old_end == None or overall_end > old_end:
+                update_doc['end_date_dt'] = {
+                    "set": overall_end.strftime("%Y-%m-%dT%H:%M:%SZ")}
 
         # Update Solr with modified dataset entry
         r = solr_update(config, solr_host, [update_doc], r=True)
