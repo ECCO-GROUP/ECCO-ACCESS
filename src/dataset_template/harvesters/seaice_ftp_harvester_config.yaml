@@ -1,0 +1,62 @@
+# TODO: TEST HARVESTER THEN SET TEMPLATE VALUES
+
+# =====================================================
+# Seaice FTP
+# =====================================================
+start: "20190101T00:00:00Z" # yyyymmddThh:mm:ssZ
+end: "20190103T23:59:59Z" # yyyymmddThh:mm:ssZ
+user: anonymous # does not change
+host: sidads.colorado.edu # does not change
+regex: '\d{8}'
+date_regex: "%Y-%m-%dT%H:%M:%SZ" # does not change
+
+# =====================================================
+# Dataset
+# =====================================================
+ds_name: seaice_G10016 # Name for dataset
+ddir: pub/DATASETS/NOAA/G10016/
+aggregated: false # if data is available aggregated
+short_name: seaice_conc_daily_icdr_G10016
+data_time_scale: daily # daily or monthly
+date_format: yyyymmdd # format of date in file name ex: yyyymmdd
+regions: ["north", "south"] # regions data is split into
+fields:
+  [
+    {
+      name: seaice_conc_cdr,
+      long_name: NOAA/NSIDC Climate Data Record of Passive Microwave Daily Sea Ice Concentration,
+      standard_name: sea_ice_area_fraction,
+      units: 1,
+    },
+    {
+      name: stdev_of_seaice_conc_cdr,
+      long_name: Passive Microwave Daily Northern Hemisphere Sea Ice Concentration Source Estimated Standard Deviation,
+      standard_name: " ",
+      units: " ",
+    },
+  ]
+
+# new_data_attrs:
+original_dataset_title: Near-Real-Time NOAA/NSIDC Climate Data Record of Passive Microwave Sea Ice Concentration, Version 1
+original_dataset_short_name: seaice_conc_daily_icdr_G10016
+original_dataset_url: https://nsidc.org/data/G10016/versions/1
+original_dataset_reference: https://nsidc.org/sites/nsidc.org/files/technical-references/SeaIce_CDR_CATBD_final_Rev-7.pdf
+original_dataset_doi: 10.7265/N5FF3QJ6
+
+# =====================================================
+# Solr
+# =====================================================
+solr_host_local: http://localhost:8983/solr/ # doesn't change if following standard Solr setup
+solr_host_aws: http://ec2-3-16-187-19.us-east-2.compute.amazonaws.com:8983/solr/
+solr_collection_name: ecco_datasets # doesn't change
+
+# =====================================================
+# Local
+# =====================================================
+# REMEMBER, REPLACE LOCAL PATHS SO THEY POINT TO YOUR /SRC/ DIRECTORY
+target_dir: /Users/kevinmarlis/Developer/JPL/ecco-preprocessing/src/harvesters/seaice_harvester/harvested_granule/SEAICE_CONC_G10016_DAILY
+
+# =====================================================
+# AWS
+# =====================================================
+target_bucket_name: ecco-preprocess

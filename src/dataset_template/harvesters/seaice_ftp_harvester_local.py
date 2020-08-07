@@ -2,7 +2,7 @@
 import sys
 import os
 
-from ftp_harvester import ftp_harvester
+from seaice_ftp_harvester import seaice_ftp_harvester
 
 if __name__ == '__main__':
     path_to_file_dir = os.path.dirname(os.path.abspath(sys.argv[0])) + '/'

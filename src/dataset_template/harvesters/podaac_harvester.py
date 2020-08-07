@@ -203,7 +203,7 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
                     item['modified_time_dt'] = mod_time
 
                 except:
-                    print('Cannot find last modified time.  Downloading granule.')
+                    print('Cannot find last modified time. Downloading granule.')
                     mod_date_time = now
 
                 # If granule doesn't exist or previously failed or has been updated since last harvest
