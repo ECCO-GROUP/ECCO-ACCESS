@@ -6,11 +6,11 @@ import json
 import yaml
 import shutil
 import hashlib
-import datetime
 import requests
 import numpy as np
 from ftplib import FTP
 from dateutil import parser
+from datetime import datetime
 from xml.etree.ElementTree import parse
 from urllib.request import urlopen, urlcleanup, urlretrieve
 
@@ -66,7 +66,7 @@ def seaice_ftp_harvester(path_to_file_dir="", s3=None, on_aws=False):
     # =====================================================
     # Read configurations from YAML file
     # =====================================================
-    path_to_yaml = path_to_file_dir + "seaice_harvester_config.yaml"
+    path_to_yaml = path_to_file_dir + "seaice_ftp_harvester_config.yaml"
     with open(path_to_yaml, "r") as stream:
         config = yaml.load(stream)
 
@@ -130,16 +130,15 @@ def seaice_ftp_harvester(path_to_file_dir="", s3=None, on_aws=False):
     meta = []
     item = {}
     last_success_item = {}
-    start = []
-    end = []
-    chk_time = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
-    now = datetime.datetime.utcnow()
+    granule_dates = []
+    chk_time = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    now = datetime.utcnow()
     updating = False
     aws_upload = False
 
-    start_time = datetime.datetime.strptime(
+    start_time = datetime.strptime(
         config['start'], "%Y%m%dT%H:%M:%SZ")
-    end_time = datetime.datetime.strptime(config['end'], "%Y%m%dT%H:%M:%SZ")
+    end_time = datetime.strptime(config['end'], "%Y%m%dT%H:%M:%SZ")
     start_year = config['start'][:4]
     end_year = config['end'][:4]
     years = np.arange(int(start_year), int(end_year) + 1)
@@ -161,6 +160,9 @@ def seaice_ftp_harvester(path_to_file_dir="", s3=None, on_aws=False):
                 ftp.dir(urlbase, files.append)
                 files = files[2:]
                 files = [e.split()[-1] for e in files]
+
+                if not files:
+                    print('No granules found')
             except:
                 print(f'Error finding files at {urlbase}')
 
@@ -170,12 +172,15 @@ def seaice_ftp_harvester(path_to_file_dir="", s3=None, on_aws=False):
                     url = f'{urlbase}{newfile}'
 
                     date = getdate(config['regex'], newfile)
-                    date_time = datetime.datetime.strptime(date, "%Y%m%d")
+                    date_time = datetime.strptime(date, "%Y%m%d")
                     new_date_format = f'{date[:4]}-{date[4:6]}-{date[6:]}T00:00:00Z'
 
                     # Ignore granules with start time less than wanted start time
-                    if (start_time > date_time) and (end_time < date_time):
+                    if (start_time > date_time) or (end_time < date_time):
                         continue
+
+                    granule_dates.append(datetime.strptime(
+                        new_date_format, config['date_regex']))
 
                     # granule metadata setup to be populated for each granule
                     item = {}
@@ -200,7 +205,7 @@ def seaice_ftp_harvester(path_to_file_dir="", s3=None, on_aws=False):
 
                     # If granule doesn't exist or previously failed or has been updated since last harvest
                     updating = (not newfile in docs.keys()) or (not docs[newfile]['harvest_success_b']) \
-                        or (datetime.datetime.strptime(docs[newfile]['download_time_dt'], "%Y-%m-%dT%H:%M:%SZ") <= mod_date_time)
+                        or (datetime.strptime(docs[newfile]['download_time_dt'], "%Y-%m-%dT%H:%M:%SZ") <= mod_date_time)
 
                     # If updating, download file
                     if updating:
@@ -215,7 +220,7 @@ def seaice_ftp_harvester(path_to_file_dir="", s3=None, on_aws=False):
                                 ftp.retrbinary('RETR '+url, f.write)
 
                         # If file exists, but is out of date, download it
-                        elif datetime.datetime.fromtimestamp(os.path.getmtime(local_fp)) <= mod_date_time:
+                        elif datetime.fromtimestamp(os.path.getmtime(local_fp)) <= mod_date_time:
                             print(f'Updating: {local_fp}')
 
                             # new ftp retrieval
@@ -283,7 +288,7 @@ def seaice_ftp_harvester(path_to_file_dir="", s3=None, on_aws=False):
         else:
             print('granule metadata post to Solr failed')
     else:
-        print('no granules found')
+        print('no new granules found')
 
     # =====================================================
     # ### writing metadata to file
@@ -293,9 +298,6 @@ def seaice_ftp_harvester(path_to_file_dir="", s3=None, on_aws=False):
     meta_path = f'{dataset_name}.json'
     meta_local_path = f'{target_dir}{meta_path}'
     meta_output_path = f'meta/{meta_path}'
-
-    if len(meta) == 0:
-        print('no new downloads')
 
     # write json file
     with open(meta_local_path, 'w') as meta_file:
@@ -311,8 +313,8 @@ def seaice_ftp_harvester(path_to_file_dir="", s3=None, on_aws=False):
         target_bucket.upload_file(meta_local_path, meta_output_path)
         print("======uploading meta to s3 DONE=======")
 
-    overall_start = min(start) if len(start) > 0 else None
-    overall_end = max(end) if len(end) > 0 else None
+    overall_start = min(granule_dates) if granule_dates else None
+    overall_end = max(granule_dates) if granule_dates else None
 
     # Query for Solr Dataset-level Document
     fq = ['type_s:dataset', f'dataset_s:{dataset_name}']
@@ -393,9 +395,9 @@ def seaice_ftp_harvester(path_to_file_dir="", s3=None, on_aws=False):
     else:
         # Check start and end date coverage
         doc = docs[0]
-        old_start = datetime.datetime.strptime(
+        old_start = datetime.strptime(
             doc['start_date_dt'], "%Y-%m-%dT%H:%M:%SZ") if 'start_date_dt' in doc.keys() else None
-        old_end = datetime.datetime.strptime(
+        old_end = datetime.strptime(
             doc['end_date_dt'], "%Y-%m-%dT%H:%M:%SZ") if 'end_date_dt' in doc.keys() else None
         doc_id = doc['id']
 
