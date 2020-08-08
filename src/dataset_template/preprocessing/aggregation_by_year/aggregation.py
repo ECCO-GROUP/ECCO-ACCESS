@@ -55,9 +55,8 @@ def export_lineage(output_dir, years, solr_host, config):
             resp_out = json.dumps(lineage_docs)
             f.write(resp_out)
 
+
 # Creates checksum from filename
-
-
 def md5(fname):
     hash_md5 = hashlib.md5()
     with open(fname, 'rb') as f:

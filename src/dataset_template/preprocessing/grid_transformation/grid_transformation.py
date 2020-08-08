@@ -162,10 +162,10 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
 
             # Use hemisphere specific variables if data is hemisphere specific
             if hemi:
-                hemi_dim = config[f'dims_{hemi}']
-                hemi_area_extent = config[f'area_extent_{hemi}']
-                hemi_proj_info = config[f'proj_info_{hemi}']
-                hemi_data_max_lat = config[f'data_max_lat_{hemi}']
+                hemi_dim = config[f'dims{hemi}']
+                hemi_area_extent = config[f'area_extent{hemi}']
+                hemi_proj_info = config[f'proj_info{hemi}']
+                hemi_data_max_lat = config[f'data_max_lat{hemi}']
 
                 source_grid_min_L, source_grid_max_L, source_grid, \
                     data_grid_lons, data_grid_lats = ea.generalized_grid_product(short_name,
@@ -273,7 +273,7 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
                 transform['dataset_s'] = dataset_name
                 transform['pre_transformation_file_path_s'] = source_file_path
                 if hemi:
-                    transform['hemisphere_s'] = hemi
+                    transform['hemisphere_s'] = hemi[1:]
                 transform['origin_checksum_s'] = origin_checksum
                 transform['grid_name_s'] = grid_name
                 transform['field_s'] = field_name
@@ -357,7 +357,7 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
     query_fq = [f'dataset_s:{dataset_name}',
                 'type_s:lineage', f'date_s:{date[:10]}*']
     docs = solr_query(config, solr_host, query_fq)
-    doc_id = solr_query(config, solr_host, query_fq)[0]['id']
+    doc_id = docs[0]['id']
 
     # Update lineage entry in Solr
     update_body = [
