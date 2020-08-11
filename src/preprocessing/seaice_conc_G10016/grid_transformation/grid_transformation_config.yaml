@@ -8,7 +8,7 @@ time_zone_included_with_time: False # Data time values have time zone
 extra_information: [] # Unique things to do for dataset
 data_res: 25/111 # Resolution of dataset
 
-# Default values for non split datasets
+# Values for non split datasets
 data_max_lat: 90.0 # Maximum latitude in dataset
 area_extent: [-180, -90, 180, 90] # [lon_min, lat_min, lon_max, lat_max]
 dims: [360, 180] # [lon, lat]

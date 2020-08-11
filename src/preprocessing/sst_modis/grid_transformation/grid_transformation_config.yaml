@@ -7,6 +7,8 @@ array_precision: float32
 time_zone_included_with_time: False # Data time values have time zone
 extra_information: [] # Unique things to do for dataset
 data_res: 0.083333336 # Resolution of dataset
+
+# Values for non split datasets
 data_max_lat: 90.0 # Maximum latitude in dataset
 area_extent: [-180, -90, 180, 90] # [lon_min, lat_min, lon_max, lat_max]
 dims: [4320, 2160] # [lon, lat]
@@ -17,6 +19,32 @@ proj_info:
     "proj_id": "EPSG:4326",
     "proj4_args": "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs",
   }
+
+# Uncomment below lines and fill in with necessary information
+# if data is stored separately by hemisphere
+# data_max_lat_nh: 90.0
+# data_max_lat_sh: -90.0
+
+# area_extent_nh: []
+# area_extent_sh: []
+
+# dims_nh: []
+# dims_sh: []
+
+# proj_info_nh:
+#   {
+#     "area_id": "3411",
+#     "area_name": "polar_stereographic",
+#     "proj_id": "3411",
+#     "proj4_args": "+init=EPSG:3411",
+#   }
+# proj_info_sh:
+#   {
+#     "area_id": "3412",
+#     "area_name": "polar_stereographic",
+#     "proj_id": "3412",
+#     "proj4_args": "+init=EPSG:3412",
+#   }
 
 extra_transformation_steps: [] # Additional full dataset transformation steps
 
