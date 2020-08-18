@@ -508,7 +508,8 @@ def generalized_aggregate_and_save(DA_year_merged,
                                    binary_dtype,
                                    model_grid_type,
                                    save_binary=True,
-                                   save_netcdf=True):
+                                   save_netcdf=True,
+                                   remove_nan_days_from_data=False):
 
     # if everything comes back nans it means there were no files
     # to load for the entire year.  don't bother saving the
@@ -542,10 +543,18 @@ def generalized_aggregate_and_save(DA_year_merged,
                                                  '-' + str(1).zfill(2), 'ns')
 
                 mon_str = str(year) + '-' + str(month).zfill(2)
+                cur_mon = DA_year_merged.sel(time=mon_str)
 
-                mon_DA = \
-                    DA_year_merged.sel(time=mon_str).mean(axis=0,
-                                                          skipna=skipna_in_mean, keep_attrs=True)
+                if remove_nan_days_from_data:
+                    nonnan_days = []
+                    for i in range(len(cur_mon)):
+                        if(np.count_nonzero(~np.isnan(cur_mon[i].values)) > 0):
+                            nonnan_days.append(cur_mon[i])
+                    if nonnan_days:
+                        cur_mon = xr.concat((nonnan_days), dim='time')
+
+                mon_DA = cur_mon.mean(
+                    axis=0, skipna=skipna_in_mean, keep_attrs=True)
 
                 tb, ct = ea.make_time_bounds_from_ds64(cur_mon_year, 'AVG_MON')
 
