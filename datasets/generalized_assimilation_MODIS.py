@@ -105,19 +105,19 @@ if __name__== "__main__":
     #   * model grid can have multiple tiles (or facets or faces)
     model_grid_dir = Path('./')
     model_grid_filename  = 'ECCO-GRID.nc'
-    model_grid_id   = 'llc90'
+    model_grid_id   = 'llc90'   
     model_grid_type = 'llc'
     model_grid_search_radius_max = 55000.0 # m
     
     # data names
-    product_name = ''
-    product_source = ''
+    product_name = 'AQUA_MODIS_L3m_DAY_SST_sst_9km'
+    product_source = 'modis_generalized'
     
     # output parameters
     # output folder is specified with data idenifier
     mapping_time =  datetime.now().strftime("%Y%m%dT%H%M%S")
-    netcdf_output_dir = Path(f'./data_output_aws_{product_source}/mapped_to_{model_grid_id}/{mapping_time}/netcdf')
-    binary_output_dir = Path(f'./data_output_aws_{product_source}/mapped_to_{model_grid_id}/{mapping_time}/binary')
+    netcdf_output_dir = Path(f'./data_output_aws_{product_source}/mapped_to_' + model_grid_id + '/' + mapping_time + '/netcdf')
+    binary_output_dir = Path(f'./data_output_aws_{product_source}/mapped_to_' + model_grid_id + '/' + mapping_time + '/binary')
     
     # Define precision of output files, float32 is standard
     array_precision = np.float32
@@ -135,23 +135,23 @@ if __name__== "__main__":
     binary_fill_value = -9999
            
     # fields to process
-    data_field_0 = {'name':'',
-                    'long_name':'',
-                    'standard_name':'',
-                    'units':''}
+    data_field_0 = {'name':'sst',
+                    'long_name':'Sea Surface Temperature',
+                    'standard_name':'sea_surface_temperature',
+                    'units':'degree_C'}
     
-    data_field_1 = {'name':'',
-                    'long_name':'',
+    data_field_1 = {'name':'qual_sst',
+                    'long_name':'Quality Levels, Sea Surface Temperature',
                     'standard_name':'',
-                    'units':''}
+                    'units':'N/A'}
     
     data_fields = [data_field_0, data_field_1]
     
     # setup output attributes
-    new_data_attr = {'original_dataset_title':'',
-                     'original_dataset_url':'',
-                     'original_dataset_reference':'',
-                     'original_dataset_product_id':''}
+    new_data_attr = {'original_dataset_title':'MODIS Aqua Level 3 SST Thermal IR Daily 9km Daytime V2019.0',
+                     'original_dataset_url':'https://podaac.jpl.nasa.gov/dataset/MODIS_AQUA_L3_SST_THERMAL_DAILY_9KM_DAYTIME_V2019.0',
+                     'original_dataset_reference':'MODIS_AQUA_L3_SST_THERMAL_DAILY_9KM_DAYTIME_V2019.0',
+                     'original_dataset_product_id':'10.5067/MODSA-1D9D9'}
     
     # get filename format information
     data_file_suffix = '.nc'
@@ -160,29 +160,29 @@ if __name__== "__main__":
     data_shortest_name = 'DAILY'
     
     # data booleans
-    time_zone_included_with_time = True
+    time_zone_included_with_time = False
     remove_nan_days_from_data = False
     do_monthly_aggregation = True
-    skipna_in_mean = False
+    skipna_in_mean = True
     extra_information = []
  
     # Years to process
-    start_year = 0
-    end_year_exclusive = 0
+    start_year = 2009
+    end_year_exclusive = 2010
     years = np.arange(start_year, end_year_exclusive)
 
     # Location of original net (easier if all fields are softlinked to one spot)
-    data_dir = Path('')
+    data_dir = Path('../Data/MODIS/data')
     
     # Save data booleans
-    save_binary = False
+    save_binary = True
     save_netcdf = True
     
     # data grid information
-    data_res = 0
+    data_res = 0.083333336
     data_max_lat = 90
     area_extent = [-180, -90, 180, 90]
-    dims = [0, 0]
+    dims = [4320, 2160]
     
     # Grid projection information
     proj_info = {'area_id':'longlat',
