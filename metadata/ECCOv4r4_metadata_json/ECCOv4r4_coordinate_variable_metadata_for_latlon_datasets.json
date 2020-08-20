@@ -1,0 +1,78 @@
+[
+   {
+      "name": "longitude",
+      "long_name": "longitude",
+      "units": "degrees_east",
+      "standard_name": "longitude",
+      "comment": "uniform grid spacing from -179.75 to 179.75 by 0.5",
+      "axis": "X",
+      "bounds": "longitude_bnds",
+	    "grid_dimension":"2D",
+      "coverage_content_type": "coordinate"
+   },
+   {
+      "name": "latitude",
+      "long_name": "latitude",
+      "units": "degrees_north",
+      "standard_name": "latitude",
+      "comment": "uniform grid spacing from -89.75 to 89.75 by 0.5",
+      "axis": "Y",
+      "bounds": "latitude_bnds",
+	    "grid_dimension":"2D",
+      "coverage_content_type": "coordinate"
+   },
+   {
+      "name": "Z",
+      "long_name": "depth",
+      "units": "m",
+      "standard_name": "depth",
+      "comment": "depth at center of model grid cell.  non-uniform vertical spacing",
+      "axis": "Z",
+      "bounds": "Z_bnds",
+	    "grid_dimension":"3D",
+	    "coverage_content_type": "coordinate"
+   },
+   {
+     "name": "time_step",
+     "long_name": "model time step [hours since 1992-01-01T12:00:00",
+     "grid_dimension":"1D",
+     "units":"hours",
+     "coverage_content_type": "coordinate"
+   },
+   {
+     "name": "time_bnds",
+  	 "long_name": "start and stop time of period or time of snapshot",
+     "grid_dimension":"1D",
+	   "coverage_content_type": "coordinate"
+   },
+   {
+     "name": "latitude_bnds",
+     "units": "degrees_north",
+	   "long_name": "latitude bounds of lat-lon grid cells",
+	   "grid_dimension":"2D",
+	   "coverage_content_type": "coordinate"
+   },
+   {
+  	 "name": "longitude_bnds",
+     "units": "degrees_east",
+	   "long_name": "longitude bounds of lat-lon grid cells",
+  	 "grid_dimension":"2D",
+	   "coverage_content_type": "coordinate"
+   },
+   {
+  	"name": "Z_bnds",
+	  "long_name": "depth bounds of grid cells",
+    "units": "m",
+	  "comment": "identical to model grid depth bounds",
+	  "grid_dimension":"3D",
+	  "coverage_content_type": "coordinate"
+   },   
+   {
+  	"name": "time",
+    "axis": "T",
+	  "standard_name": "time",
+	  "long_name": "center time of averaging period or time of snapshot",
+	  "grid_dimension":"1D",
+	  "coverage_content_type": "coordinate"
+   }
+]
