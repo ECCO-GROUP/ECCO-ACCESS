@@ -35,7 +35,14 @@ grids = []
 
 # Assumes grids conform to metadata standard (model_grid_type)
 for grid_file in grid_files:
-    if grid_file in config['grids_to_use']:
+    if config['grids_to_use']:
+        if grid_file in config['grids_to_use']:
+            ds = xr.open_dataset(path_to_file_dir + grid_file)
+
+            grid_name = ds.attrs['name']
+            grid_type = ds.attrs['type']
+            grids.append((grid_name, grid_type, grid_file))
+    else:
         ds = xr.open_dataset(path_to_file_dir + grid_file)
 
         grid_name = ds.attrs['name']
@@ -62,9 +69,9 @@ if len(docs) > 0:
     for doc in docs:
         grids_in_solr.append(doc['grid_name_s'])
 
-# -----------------------------------------------------
+# =====================================================
 # Create Solr grid-type document for each missing grid type
-# -----------------------------------------------------
+# =====================================================
 for grid_name, grid_type, grid_file in grids:
     if grid_name not in grids_in_solr:
         grid_meta = {}

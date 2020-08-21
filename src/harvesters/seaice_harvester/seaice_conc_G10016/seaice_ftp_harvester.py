@@ -124,7 +124,11 @@ def seaice_ftp_harvester(path_to_file_dir="", s3=None, on_aws=False):
 
     if len(existing_lineage_docs) > 0:
         for doc in existing_lineage_docs:
-            lineage_docs[doc['date_s']] = doc
+            if doc['hemisphere_s']:
+                key = (doc['date_s'], doc['hemisphere_s'])
+            else:
+                key = doc['date_s']
+            lineage_docs[key] = doc
 
     # setup metadata
     meta = []
@@ -189,6 +193,17 @@ def seaice_ftp_harvester(path_to_file_dir="", s3=None, on_aws=False):
                     item['dataset_s'] = config['ds_name']
                     item['hemisphere_s'] = hemi
                     item['source_s'] = f'ftp://{config["host"]}/{url}'
+
+                    # lineage metadta setup to be populated for each granule
+                    lineage_item = {}
+                    lineage_item['type_s'] = 'lineage'
+
+                    # Create or modify lineage entry in Solr
+                    lineage_item['dataset_s'] = item['dataset_s']
+                    # Append hemisphere to date, to avoid overwriting
+                    lineage_item['date_s'] = item["date_s"]
+                    lineage_item['hemisphere_s'] = hemi
+                    lineage_item['source_s'] = item['source_s']
 
                     updating = False
                     aws_upload = False
@@ -271,6 +286,19 @@ def seaice_ftp_harvester(path_to_file_dir="", s3=None, on_aws=False):
 
                 if updating:
                     item['download_time_dt'] = chk_time
+
+                    # Update Solr entry using id if it exists
+                    if hemi:
+                        key = (lineage_item['date_s'], hemi)
+                    else:
+                        key = lineage_item['date_s']
+
+                    if key in lineage_docs.keys():
+                        lineage_item['id'] = lineage_docs[key]['id']
+
+                    lineage_item['harvest_success_b'] = item['harvest_success_b']
+                    lineage_item['pre_transformation_file_path_s'] = item['pre_transformation_file_path_s']
+                    meta.append(lineage_item)
 
                     # add item to metadata json
                     meta.append(item)

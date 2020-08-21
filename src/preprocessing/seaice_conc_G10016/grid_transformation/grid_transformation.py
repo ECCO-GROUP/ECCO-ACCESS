@@ -356,6 +356,8 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
     # Query Solr for lineage entry by date
     query_fq = [f'dataset_s:{dataset_name}',
                 'type_s:lineage', f'date_s:{date[:10]}*']
+    if hemi:
+        query_fq.append(f'hemisphere_s:{hemi[1:]}')
     docs = solr_query(config, solr_host, query_fq)
     doc_id = docs[0]['id']
 
