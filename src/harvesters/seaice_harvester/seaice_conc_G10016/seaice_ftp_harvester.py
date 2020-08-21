@@ -200,7 +200,6 @@ def seaice_ftp_harvester(path_to_file_dir="", s3=None, on_aws=False):
 
                     # Create or modify lineage entry in Solr
                     lineage_item['dataset_s'] = item['dataset_s']
-                    # Append hemisphere to date, to avoid overwriting
                     lineage_item['date_s'] = item["date_s"]
                     lineage_item['hemisphere_s'] = hemi
                     lineage_item['source_s'] = item['source_s']
