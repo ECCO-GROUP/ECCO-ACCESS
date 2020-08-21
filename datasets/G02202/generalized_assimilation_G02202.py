@@ -1,18 +1,16 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import sys
 import numpy as np
 import xarray as xr
-import sys
-from datetime import datetime
-from pathlib import Path
 import pyresample as pr
+from pathlib import Path
+from datetime import datetime
 
-# Generalized functions
-generalized_path = Path('../ECCO-ACCESS/ecco-cloud-utils/ecco-cloud-utils/generalized_functions')
-sys.path.append(str(generalized_path))
-import generalized_functions as gf
-
+# ECCO cloud utils import (includes generalized functions)
+generalized_functions_path = Path('../../ECCO-ACCESS/ecco-cloud-utils/')
+sys.path.append(str(generalized_functions_path))
 import ecco_cloud_utils as ea
 
 import netCDF4 as nc4
@@ -66,11 +64,15 @@ import netCDF4 as nc4
 #                              -- time_bounds_var -- Uses Time_bounds[0][] for start and end times
 #                              -- time_var --------- Uses Time[0] for time value
 #                              -- no_time ---------- No time given in data
+#                              -- no_time_dashes --- No dashes given in the time values
 # 
 # start_year ---------- Year to start reading data from
 # end_year_exclusive -- Year to stop reading data from (exclusive)
 # 
 # data_dir -- Directory of data
+#
+# save_binary -- Tells whether or not to save the binary files to disk
+# save_netcdf -- Tells whether or not to save the netcdf files to disk
 # 
 # data_res ---------- Resolution of data
 # data_max_lat ------ Maximum latitude reached in data
@@ -95,8 +97,8 @@ if __name__== "__main__":
     #   * model grid must be provided as a netcdf file with XC and YC fields (lon, lat)
     #   * the netcdf file must also have an attribute (metadata) field 'title'
     #   * model grid can have multiple tiles (or facets or faces)
-    model_grid_dir = Path('./')
-    model_grid_filename  = 'ECCO-GRID.nc'
+    model_grid_dir = Path('../')
+    model_grid_filename  = 'ECCO_llc90_demo.nc'
     model_grid_id   = 'llc90'
     model_grid_type = 'llc'
     model_grid_search_radius_max = 55000.0 # m
@@ -120,7 +122,7 @@ if __name__== "__main__":
         netcdf_fill_value = nc4.default_fillvals['f4']
 
     elif array_precision == np.float64:
-        binary_output_dtype = '>f8'
+        binary_output_dtype = '>f8' 
         netcdf_fill_value = nc4.default_fillvals['f8']
 
     # ECCO always uses -9999 for missing data.
@@ -132,13 +134,19 @@ if __name__== "__main__":
                     'standard_name':'sea_ice_area_fraction',
                     'units':'1'}
     
-    data_fields = [data_field_0]
+    data_field_1 = {'name':'stdev_of_seaice_conc_cdr',
+                    'long_name':'Passive Microwave Daily Northern Hemisphere Sea Ice Concentration Source Estimated Standard Deviation',
+                    'standard_name':'',
+                    'units':''}
+    
+    data_fields = [data_field_0, data_field_1]
     
     # setup output attributes
-    new_data_attr = {'original_dataset_title':'NOAA/NSIDC Climate Data Record of Passive Microwave Sea Ice Concentration, Version 3',
-                     'original_dataset_url':'https://nsidc.org/data/G02202/versions/3',
-                     'original_dataset_reference':f'Meier, W. N., F. Fetterer, M. Savoie, S. Mallory, R. Duerr, and J. Stroeve. 2017. NOAA/NSIDC Climate Data Record of Passive Microwave Sea Ice Concentration, Version 3. [Indicate subset used]. Boulder, Colorado USA. NSIDC: National Snow and Ice Data Center. doi: https://doi.org/10.7265/N59P2ZTG. {mapping_time}.',
-                     'original_dataset_product_id':'G02202'}
+    new_data_attr = {'original_dataset_title': 'NOAA/NSIDC Climate Data Record of Passive Microwave Sea Ice Concentration, Version 3',
+                    'original_dataset_short_name': 'seaice_conc_daily_icdr_G02202',
+                    'original_dataset_url': 'https://nsidc.org/data/G02202/versions/3',
+                    'original_dataset_reference': 'https://nsidc.org/sites/nsidc.org/files/technical-references/SeaIce_CDR_CATBD_final_Rev-7.pdf',
+                    'original_dataset_doi': '10.7265/N59P2ZTG'}
     
     # get filename format information
     data_file_suffix = '.nc'
@@ -164,14 +172,14 @@ if __name__== "__main__":
     # data grid information
     data_res = 25/111
     data_max_lat = 90
-    area_extent = [-3950000.0, -3950000.0, 3950000.0, 4350000.0]
+    area_extent = [-3850000.0, -5350000.0, 3750000.0, 5850000.0]
     dims = [304, 448]
     
     # proj_info (Optional parameter to gf.grid_product())
     proj_info = {'area_id':'3411',
                  'area_name':'polar_stereographic',
                  'proj_id':'3411',
-                 'proj4_args':'+proj=stere +lat_0=90 +lat_ts=70 +lon_0=-45 +k=1 +x_0=0 +y_0=0 +a=6378273 +b=6356889.449 +units=m +no_defs'}   
+                 'proj4_args':'+init=EPSG:3411'}    
     
     ##  END SPECIFIC PARAMETERS                          ##
     #######################################################
@@ -181,12 +189,12 @@ if __name__== "__main__":
     #######################################################
     ## BEGIN GRID PRODUCT                                ##
 
-    source_grid_min_L, source_grid_max_L, source_grid = gf.generalized_grid_product(product_name,
-                                                                        data_res,
-                                                                        data_max_lat,
-                                                                        area_extent,
-                                                                        dims,
-                                                                        proj_info)
+    source_grid_min_L, source_grid_max_L, source_grid, lons, lats = ea.generalized_grid_product(product_name,
+                                                                                                data_res,
+                                                                                                data_max_lat,
+                                                                                                area_extent,
+                                                                                                dims,
+                                                                                                proj_info)
     
     ## END GRID PRODUCT                                  ##
     #######################################################
@@ -211,7 +219,15 @@ if __name__== "__main__":
         pr.geometry.SwathDefinition(lons=model_grid.XC.values.ravel(), 
                                     lats=model_grid.YC.values.ravel())
    
-    target_grid_radius = 0.5*np.sqrt(model_grid.rA.values.ravel())
+    # Retrieve target_grid_radius from model_grid file
+    if 'effective_grid_radius' in model_grid:
+        target_grid_radius = model_grid.effective_grid_radius.values.ravel()
+    elif 'effective_radius' in model_grid:
+        target_grid_radius = model_grid.effective_radius.values.ravel()
+    elif 'rA' in model_grid:
+        target_grid_radius = 0.5*np.sqrt(model_grid.rA.values.ravel())
+    else:
+        print(f'{model_grid_id} grid not supported')
     
     # Compute the mapping between the data and model grid
     source_indices_within_target_radius_i,\
@@ -230,33 +246,33 @@ if __name__== "__main__":
     #%%    
     #######################################################
     ## BEGIN PROCESSING DATA                             ##
-    
+
+    new_data_attr['interpolated_grid_id'] = model_grid_id
+     
      # process model fields one at a time.
-    for data_field_i, data_field_info in enumerate(data_fields) : #Unique
+    for data_field_info in data_fields :
         # loop through different fields that are present in the 
         # netcdf files and that are requested
-        # they have different name fields and metadata
         data_field = data_field_info['name']
-     
+
         # loop through requested years
         for year in years:
             # get dates and filenames for this year
-            iso_dates_for_year, files = \
-                gf.generalized_get_data_filepaths_for_year(year, data_dir, data_file_suffix,
-                                               data_time_scale, date_format)
-    
-            data_shortest_DA_year_merged = gf.generalized_process_loop_local(data_field_info,
-                                                         data_dir,
-                                                         iso_dates_for_year,
-                                                         files,
-                                                         source_indices_within_target_radius_i,
-                                                         num_source_indices_within_target_radius_i,
-                                                         nearest_source_index_to_target_index_i,
-                                                         model_grid, model_grid_type,
-                                                         array_precision,
-                                                         time_zone_included_with_time,
-                                                         remove_nan_days_from_data,
-                                                         extra_information)
+            iso_dates_for_year, paths = \
+                ea.generalized_get_data_filepaths_for_year(year, data_dir, data_file_suffix,
+                                                           data_time_scale, date_format)
+
+            data_DA_year_merged = ea.generalized_process_loop(data_field_info,
+                                                               iso_dates_for_year,
+                                                               paths,
+                                                               source_indices_within_target_radius_i,
+                                                               num_source_indices_within_target_radius_i,
+                                                               nearest_source_index_to_target_index_i,
+                                                               model_grid, model_grid_type,
+                                                               array_precision,
+                                                               time_zone_included_with_time,
+                                                               extra_information,
+                                                               new_data_attr)
             
             shortest_filename = f'{product_name}_{data_field}_{model_grid_id}_{data_shortest_name}_{year}'
             
@@ -269,19 +285,19 @@ if __name__== "__main__":
             output_dirs = {'binary':binary_output_dir,
                            'netcdf':netcdf_output_dir}
 
-            new_data_attr['interpolated_grid_id'] = model_grid_id
             new_data_attr['new_name'] = f'{data_field}_interpolated_to_{model_grid_id}'
 
-            gf.generalized_aggregate_and_save(data_shortest_DA_year_merged,
-                                  new_data_attr,
-                                  do_monthly_aggregation,
-                                  year,
-                                  skipna_in_mean,
-                                  filenames,
-                                  fill_values,
-                                  output_dirs,
-                                  binary_output_dtype,
-                                  model_grid_type)
+            ea.generalized_aggregate_and_save(data_DA_year_merged,
+                                              new_data_attr,
+                                              do_monthly_aggregation,
+                                              year,
+                                              skipna_in_mean,
+                                              filenames,
+                                              fill_values,
+                                              output_dirs,
+                                              binary_output_dtype,
+                                              model_grid_type,
+                                              remove_nan_days_from_data = remove_nan_days_from_data)
     
     ## END PROCESSING DATA                               ##
     #######################################################

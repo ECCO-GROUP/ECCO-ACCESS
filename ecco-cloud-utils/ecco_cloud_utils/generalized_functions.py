@@ -64,8 +64,6 @@ def generalized_grid_product(product_name,
 
 # %%
 # return dates_in_year_iso, daily_paths
-
-
 def generalized_get_data_filepaths_for_year(year, data_dir, data_file_suffix,
                                             data_time_scale, date_format):
 
@@ -161,8 +159,6 @@ def generalized_get_data_filepaths_for_year(year, data_dir, data_file_suffix,
 
 # %%
 # return data_DA
-
-
 def generalized_transform_to_model_grid_solr(data_field_info, record_date, model_grid,
                                              model_grid_type, array_precision,
                                              record_file_name, original_dataset_metadata,
@@ -261,7 +257,7 @@ def generalized_transform_to_model_grid_solr(data_field_info, record_date, model
     data_DA.attrs['notes'] = record_notes
 
     return data_DA
-
+# %%
 
 # %%
 # return num_files_saved
@@ -270,133 +266,113 @@ def generalized_transform_to_model_grid(source_indices_within_target_radius_i,
                                         nearest_source_index_to_target_index_i,
                                         model_grid, model_grid_type,
                                         record_date, record_filepath,
-                                        data_fields,
+                                        data_field_info,
                                         array_precision,
                                         time_zone_included_with_time,
                                         extra_information,
-                                        new_filename,
-                                        fill_values,
-                                        output_dirs,
-                                        binary_dtype,
-                                        new_data_attr,
-                                        save_binary,
-                                        save_netcdf):
+                                        new_data_attr):
 
-    num_files_saved = 0
+    # initialize notes for this record
+    record_notes = ''
 
-    for data_field_info in data_fields:
-        # initialize notes for this record
-        record_notes = ''
+    # set data info values
+    data_field = data_field_info['name']
+    standard_name = data_field_info['standard_name']
+    long_name = data_field_info['long_name']
+    units = data_field_info['units']
 
-        # set data info values
-        data_field = data_field_info['name']
-        standard_name = data_field_info['standard_name']
-        long_name = data_field_info['long_name']
-        units = data_field_info['units']
+    # create empty data array
+    data_DA = ea.make_empty_record(standard_name, long_name, units,
+                                   record_date,
+                                   model_grid, model_grid_type,
+                                   array_precision)
 
-        # create empty data array
-        data_DA = ea.make_empty_record(standard_name, long_name, units,
-                                       record_date,
-                                       model_grid, model_grid_type,
-                                       array_precision)
+    # add some metadata to the newly formed data array object
+    data_DA.attrs['original_filename'] = record_filepath.name
+    data_DA.attrs['original_field_name'] = data_field
+    data_DA.attrs['interplation_parameters'] = 'bin averaging'
+    data_DA.attrs['interplation_code'] = 'pyresample'
+    data_DA.attrs['interpolation_date'] = \
+        str(np.datetime64(datetime.now(), 'D'))
 
-        # add some metadata to the newly formed data array object
-        data_DA.attrs['original_filename'] = record_filepath.name
-        data_DA.attrs['original_field_name'] = data_field
-        data_DA.attrs['interplation_parameters'] = 'bin averaging'
-        data_DA.attrs['interplation_code'] = 'pyresample'
-        data_DA.attrs['interpolation_date'] = \
-            str(np.datetime64(datetime.now(), 'D'))
+    data_DA.time.attrs['long_name'] = 'center time of averaging period'
 
-        data_DA.time.attrs['long_name'] = 'center time of averaging period'
 
-        data_DA.attrs['original_dataset_title'] = new_data_attr['original_dataset_title']
-        data_DA.attrs['original_dataset_url'] = new_data_attr['original_dataset_url']
-        data_DA.attrs['original_dataset_reference'] = new_data_attr['original_dataset_reference']
-        data_DA.attrs['original_dataset_product_id'] = new_data_attr['original_dataset_product_id']
-        data_DA.attrs['interpolated_grid_id'] = new_data_attr['interpolated_grid_id']
-        model_grid_id = new_data_attr['interpolated_grid_id']
-        data_DA.name = f'{data_field}_interpolated_to_{model_grid_id}'
+    data_DA.attrs['original_dataset_title'] = new_data_attr['original_dataset_title']
+    data_DA.attrs['original_dataset_short_name'] = new_data_attr['original_dataset_short_name']
+    data_DA.attrs['original_dataset_url'] = new_data_attr['original_dataset_url']
+    data_DA.attrs['original_dataset_reference'] = new_data_attr['original_dataset_reference']
+    data_DA.attrs['original_dataset_doi'] = new_data_attr['original_dataset_doi']
+    data_DA.attrs['interpolated_grid_id'] = new_data_attr['interpolated_grid_id']
+    model_grid_id = new_data_attr['interpolated_grid_id']
+    data_DA.name = f'{data_field}_interpolated_to_{model_grid_id}'
 
-        # load the file, do the mapping and update the record times
-        if record_filepath.is_file() == True:
+    # load the file, do the mapping and update the record times
+    if record_filepath.is_file() == True:
 
-            print('reading ', record_filepath.name)
+        print('reading ', record_filepath.name)
 
-            ds = xr.open_dataset(record_filepath, decode_times=True)
+        ds = xr.open_dataset(record_filepath, decode_times=True)
 
-            if 'transpose' in extra_information:
-                orig_data = ds[data_field].values[0, :].T
-            else:
-                orig_data = ds[data_field].values
+        if 'transpose' in extra_information:
+            orig_data = ds[data_field].values[0, :].T
+        else:
+            orig_data = ds[data_field].values
 
-            # see if we have any valid data
-            if np.sum(~np.isnan(orig_data)) > 0:
+        # see if we have any valid data
+        if np.sum(~np.isnan(orig_data)) > 0:
 
-                data_model_projection = ea.transform_to_target_grid(source_indices_within_target_radius_i,
-                                                                    num_source_indices_within_target_radius_i,
-                                                                    nearest_source_index_to_target_index_i,
-                                                                    orig_data, model_grid.XC.shape)
+            data_model_projection = ea.transform_to_target_grid(source_indices_within_target_radius_i,
+                                                                num_source_indices_within_target_radius_i,
+                                                                nearest_source_index_to_target_index_i,
+                                                                orig_data, model_grid.XC.shape)
 
-                # put the new data values into the data_DA array.
-                # --where the mapped data are not nan, replace the original values
-                # --where they are nan, just leave the original values alone
-                data_DA.values = np.where(~np.isnan(data_model_projection),
-                                          data_model_projection, data_DA.values)
-
-            else:
-                print('file loaded but empty')
-                record_notes = record_notes + ' -- empty record -- '
-
-            # update time values
-            if 'time_bounds_var' in extra_information:
-                data_DA.time_start.values[0] = ds.Time_bounds[0][0].values
-                data_DA.time_end.values[0] = ds.Time_bounds[0][1].values
-            elif 'no_time' in extra_information:
-                data_DA.time_start.values[0] = record_date
-                data_DA.time_end.values[0] = record_date
-            elif 'no_time_dashes' in extra_information:
-                new_start_time = f'{ds.time_coverage_start[0:4]}-{ds.time_coverage_start[4:6]}-{ds.time_coverage_start[6:8]}'
-                new_end_time = f'{ds.time_coverage_end[0:4]}-{ds.time_coverage_end[4:6]}-{ds.time_coverage_end[6:8]}'
-                data_DA.time_start.values[0] = new_start_time
-                data_DA.time_end.values[0] = new_end_time
-            elif time_zone_included_with_time:
-                data_DA.time_start.values[0] = ds.time_coverage_start[:-1]
-                data_DA.time_end.values[0] = ds.time_coverage_end[:-1]
-            else:
-                data_DA.time_start.values[0] = ds.time_coverage_start
-                data_DA.time_end.values[0] = ds.time_coverage_end
-
-            if 'time_var' in extra_information:
-                data_DA.time.values[0] = ds.Time[0].values
-            else:
-                data_DA.time.values[0] = record_date
-
-            data_DA.attrs['notes'] = record_notes
-
-            save_filename = f'{new_filename}_{data_field}'
-
-            # TODO: dont save, just return data_DA for a list of transformed data arrays
-            ea.save_to_disk(data_DA,
-                            save_filename,
-                            fill_values['binary'], fill_values['netcdf'],
-                            output_dirs['netcdf'], output_dirs['binary'],
-                            binary_dtype, model_grid_type, save_binary=save_binary,
-                            save_netcdf=save_netcdf)
-
-            num_files_saved += int(save_binary) + int(save_netcdf)
+            # put the new data values into the data_DA array.
+            # --where the mapped data are not nan, replace the original values
+            # --where they are nan, just leave the original values alone
+            data_DA.values = np.where(~np.isnan(data_model_projection),
+                                      data_model_projection, data_DA.values)
 
         else:
-            print(f'no file for {record_date}, file path: {record_filepath}')
-            record_notes = record_notes + ' -- file not found! '
+            print('file loaded but empty')
+            record_notes = record_notes + ' -- empty record -- '
 
-    return num_files_saved
+        # update time values
+        if 'time_bounds_var' in extra_information:
+            data_DA.time_start.values[0] = ds.Time_bounds[0][0].values
+            data_DA.time_end.values[0] = ds.Time_bounds[0][1].values
+        elif 'no_time' in extra_information:
+            data_DA.time_start.values[0] = record_date
+            data_DA.time_end.values[0] = record_date
+        elif 'no_time_dashes' in extra_information:
+            new_start_time = f'{ds.time_coverage_start[0:4]}-{ds.time_coverage_start[4:6]}-{ds.time_coverage_start[6:8]}'
+            new_end_time = f'{ds.time_coverage_end[0:4]}-{ds.time_coverage_end[4:6]}-{ds.time_coverage_end[6:8]}'
+            data_DA.time_start.values[0] = new_start_time
+            data_DA.time_end.values[0] = new_end_time
+        elif time_zone_included_with_time:
+            data_DA.time_start.values[0] = ds.time_coverage_start[:-1]
+            data_DA.time_end.values[0] = ds.time_coverage_end[:-1]
+        else:
+            data_DA.time_start.values[0] = ds.time_coverage_start
+            data_DA.time_end.values[0] = ds.time_coverage_end
+
+        if 'time_var' in extra_information:
+            data_DA.time.values[0] = ds.Time[0].values
+        else:
+            data_DA.time.values[0] = record_date
+
+        data_DA.attrs['notes'] = record_notes
+
+    else:
+        print(f'no file for {record_date}, file path: {record_filepath}')
+        record_notes = record_notes + ' -- file not found! '
+
+    return data_DA
 # %%
 
-# return num_files_saved
-
-
-def generalized_process_loop(data_fields,
+# %%
+# return data_DA_year_merged
+def generalized_process_loop(data_field_info,
                              iso_dates_for_year,
                              paths,
                              source_indices_within_target_radius_i,
@@ -406,16 +382,10 @@ def generalized_process_loop(data_fields,
                              array_precision,
                              time_zone_included_with_time,
                              extra_information,
-                             filenames,
-                             fill_values,
-                             output_dirs,
-                             binary_dtype,
-                             new_data_attr,
-                             save_binary,
-                             save_netcdf):
+                             new_data_attr):
 
-    num_files_saved = 0
-
+    data_DA_year = []
+    
     # Process each date of the year
     for record_date in iso_dates_for_year:
         if paths[record_date] != []:
@@ -423,34 +393,28 @@ def generalized_process_loop(data_fields,
         else:
             record_filepath = Path('')
 
-        dashless_date = record_date.replace('-', '')
-        new_filename = f'{filenames["shortest"]}_{dashless_date}'
-
-        # send filename to the transformation routine, return data array
+        # send filepath to the transformation routine, return data array
         # that contains the original values mapped to new grid
-        num_files_saved += generalized_transform_to_model_grid(source_indices_within_target_radius_i,
-                                                               num_source_indices_within_target_radius_i,
-                                                               nearest_source_index_to_target_index_i,
-                                                               model_grid, model_grid_type,
-                                                               record_date, record_filepath,
-                                                               data_fields,
-                                                               array_precision,
-                                                               time_zone_included_with_time,
-                                                               extra_information,
-                                                               new_filename,
-                                                               fill_values,
-                                                               output_dirs,
-                                                               binary_dtype,
-                                                               new_data_attr,
-                                                               save_binary,
-                                                               save_netcdf)
+        data_DA = generalized_transform_to_model_grid(source_indices_within_target_radius_i,
+                                                       num_source_indices_within_target_radius_i,
+                                                       nearest_source_index_to_target_index_i,
+                                                       model_grid, model_grid_type,
+                                                       record_date, record_filepath,
+                                                       data_field_info,
+                                                       array_precision,
+                                                       time_zone_included_with_time,
+                                                       extra_information,
+                                                       new_data_attr)
 
-    return num_files_saved
+        data_DA_year.append(data_DA)
+
+    data_DA_year_merged = xr.concat((data_DA_year), dim='time')
+
+    return data_DA_year_merged
 # %%
 
+# %%
 # return assimilated_data_DA_year_merged
-
-
 def open_and_merge(data_field_info, iso_dates_for_year, assimilated_paths,
                    model_grid, model_grid_type, array_precision, remove_nan_days_from_data):
 
@@ -495,8 +459,6 @@ def open_and_merge(data_field_info, iso_dates_for_year, assimilated_paths,
 
 # %%
 # returns nothing
-
-
 def generalized_aggregate_and_save(DA_year_merged,
                                    new_data_attr,
                                    do_monthly_aggregation,

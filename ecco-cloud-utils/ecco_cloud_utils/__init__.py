@@ -16,8 +16,9 @@ from .geometry import area_of_latlon_grid_cell
 from .geometry import area_of_latlon_grid
 
 from .generalized_functions import generalized_grid_product
+from .generalized_functions import generalized_process_loop
 from .generalized_functions import generalized_aggregate_and_save
-
+from .generalized_functions import generalized_get_data_filepaths_for_year
 from .generalized_functions import generalized_transform_to_model_grid_solr
 
 from .specific_functions import avhrr_sst_kelvin_to_celcius

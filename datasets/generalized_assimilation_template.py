@@ -1,18 +1,16 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import sys
 import numpy as np
 import xarray as xr
-import sys
-from datetime import datetime
-from pathlib import Path
 import pyresample as pr
+from pathlib import Path
+from datetime import datetime
 
-# Generalized functions
-generalized_functions_path = Path('../ECCO-ACCESS/ecco-cloud-utils/')
+# ECCO cloud utils import (includes generalized functions)
+generalized_functions_path = Path('../../ECCO-ACCESS/ecco-cloud-utils/')
 sys.path.append(str(generalized_functions_path))
-import generalized_functions as gf
-
 import ecco_cloud_utils as ea
 
 import netCDF4 as nc4
@@ -25,10 +23,6 @@ import netCDF4 as nc4
 # precision  
 #     float32 : 'f4'
 #     float64 : 'f8'
-
-### NOTICE ###
-# This code saves a netcdf file for each day, for each data field provided and is done
-# so to work with AWS. As a result, many files can be saved for a single year.
 
 ### Variable Information ###
 # The following lists the variables that may change from one dataset to the next
@@ -103,8 +97,8 @@ if __name__== "__main__":
     #   * model grid must be provided as a netcdf file with XC and YC fields (lon, lat)
     #   * the netcdf file must also have an attribute (metadata) field 'title'
     #   * model grid can have multiple tiles (or facets or faces)
-    model_grid_dir = Path('./')
-    model_grid_filename  = 'ECCO-GRID.nc'
+    model_grid_dir = Path('../')
+    model_grid_filename  = 'ECCO_llc90_demo.nc'
     model_grid_id   = 'llc90'
     model_grid_type = 'llc'
     model_grid_search_radius_max = 55000.0 # m
@@ -116,8 +110,8 @@ if __name__== "__main__":
     # output parameters
     # output folder is specified with data idenifier
     mapping_time =  datetime.now().strftime("%Y%m%dT%H%M%S")
-    netcdf_output_dir = Path(f'./data_output_aws_{product_source}/mapped_to_{model_grid_id}/{mapping_time}/netcdf')
-    binary_output_dir = Path(f'./data_output_aws_{product_source}/mapped_to_{model_grid_id}/{mapping_time}/binary')
+    netcdf_output_dir = Path(f'./data_output_{product_source}/mapped_to_{model_grid_id}/{mapping_time}/netcdf')
+    binary_output_dir = Path(f'./data_output_{product_source}/mapped_to_{model_grid_id}/{mapping_time}/binary')
     
     # Define precision of output files, float32 is standard
     array_precision = np.float32
@@ -148,10 +142,11 @@ if __name__== "__main__":
     data_fields = [data_field_0, data_field_1]
     
     # setup output attributes
-    new_data_attr = {'original_dataset_title':'',
-                     'original_dataset_url':'',
-                     'original_dataset_reference':'',
-                     'original_dataset_product_id':''}
+    new_data_attr = {'original_dataset_title': '',
+                    'original_dataset_short_name': '',
+                    'original_dataset_url': '',
+                    'original_dataset_reference': '',
+                    'original_dataset_doi': ''}
     
     # get filename format information
     data_file_suffix = '.nc'
@@ -174,10 +169,6 @@ if __name__== "__main__":
     # Location of original net (easier if all fields are softlinked to one spot)
     data_dir = Path('')
     
-    # Save data booleans
-    save_binary = False
-    save_netcdf = True
-    
     # data grid information
     data_res = 0
     data_max_lat = 90
@@ -198,13 +189,12 @@ if __name__== "__main__":
     #######################################################
     ## BEGIN GRID PRODUCT                                ##
 
-    source_grid_min_L, source_grid_max_L, source_grid, \
-        data_grid_lons, data_grid_lats = gf.generalized_grid_product(product_name,
-                                                                     data_res,
-                                                                     data_max_lat,
-                                                                     area_extent,
-                                                                     dims,
-                                                                     proj_info)
+    source_grid_min_L, source_grid_max_L, source_grid, lons, lats = ea.generalized_grid_product(product_name,
+                                                                                                data_res,
+                                                                                                data_max_lat,
+                                                                                                area_extent,
+                                                                                                dims,
+                                                                                                proj_info)
     
     ## END GRID PRODUCT                                  ##
     #######################################################
@@ -215,10 +205,8 @@ if __name__== "__main__":
     ## BEGIN MAPPING                                     ## 
    
     # make output directories
-    if save_netcdf:
-        netcdf_output_dir.mkdir(exist_ok=True, parents=True)
-    if save_binary:
-        binary_output_dir.mkdir(exist_ok=True, parents=True)
+    netcdf_output_dir.mkdir(exist_ok=True, parents=True)
+    binary_output_dir.mkdir(exist_ok=True, parents=True)
     
     # load the model grid
     model_grid = xr.open_dataset(model_grid_dir / model_grid_filename)
@@ -231,7 +219,15 @@ if __name__== "__main__":
         pr.geometry.SwathDefinition(lons=model_grid.XC.values.ravel(), 
                                     lats=model_grid.YC.values.ravel())
    
-    target_grid_radius = 0.5*np.sqrt(model_grid.rA.values.ravel())
+    # Retrieve target_grid_radius from model_grid file
+    if 'effective_grid_radius' in model_grid:
+        target_grid_radius = model_grid.effective_grid_radius.values.ravel()
+    elif 'effective_radius' in model_grid:
+        target_grid_radius = model_grid.effective_radius.values.ravel()
+    elif 'rA' in model_grid:
+        target_grid_radius = 0.5*np.sqrt(model_grid.rA.values.ravel())
+    else:
+        print(f'{model_grid_id} grid not supported')
     
     # Compute the mapping between the data and model grid
     source_indices_within_target_radius_i,\
@@ -250,98 +246,59 @@ if __name__== "__main__":
     #%%    
     #######################################################
     ## BEGIN PROCESSING DATA                             ##
-         
-    num_files_saved = 0
-    
-    # loop through requested years
-    for year in years:
-        
-        shortest_filename = f'{product_name}_{model_grid_id}'
-        
-        monthly_filename = f'{product_name}_{model_grid_id}_MONTHLY_{year}'
-                           
-        filenames = {'shortest':shortest_filename,
-                     'monthly':monthly_filename}
-        fill_values = {'binary':binary_fill_value,
-                       'netcdf':netcdf_fill_value}
-        output_dirs = {'binary':binary_output_dir,
-                       'netcdf':netcdf_output_dir}
 
-        new_data_attr['interpolated_grid_id'] = model_grid_id
-        
-        # get dates and filenames for this year
-        iso_dates_for_year, paths = \
-            gf.generalized_get_data_filepaths_for_year(year, data_dir, data_file_suffix,
-                                                       data_time_scale, date_format)
+    new_data_attr['interpolated_grid_id'] = model_grid_id
+     
+     # process model fields one at a time.
+    for data_field_info in data_fields :
+        # loop through different fields that are present in the 
+        # netcdf files and that are requested
+        data_field = data_field_info['name']
 
-        num_files_saved += gf.generalized_process_loop(data_fields,
-                                                     iso_dates_for_year,
-                                                     paths,
-                                                     source_indices_within_target_radius_i,
-                                                     num_source_indices_within_target_radius_i,
-                                                     nearest_source_index_to_target_index_i,
-                                                     model_grid, model_grid_type,
-                                                     array_precision,
-                                                     time_zone_included_with_time,
-                                                     extra_information,
-                                                     filenames,
-                                                     fill_values,
-                                                     output_dirs,
-                                                     binary_output_dtype,
-                                                     new_data_attr,
-                                                     save_binary,
-                                                     save_netcdf)
-    
-    print('num files saved: ', num_files_saved)
+        # loop through requested years
+        for year in years:
+            # get dates and filenames for this year
+            iso_dates_for_year, paths = \
+                ea.generalized_get_data_filepaths_for_year(year, data_dir, data_file_suffix,
+                                                           data_time_scale, date_format)
+
+            data_DA_year_merged = ea.generalized_process_loop(data_field_info,
+                                                               iso_dates_for_year,
+                                                               paths,
+                                                               source_indices_within_target_radius_i,
+                                                               num_source_indices_within_target_radius_i,
+                                                               nearest_source_index_to_target_index_i,
+                                                               model_grid, model_grid_type,
+                                                               array_precision,
+                                                               time_zone_included_with_time,
+                                                               extra_information,
+                                                               new_data_attr)
+            
+            shortest_filename = f'{product_name}_{data_field}_{model_grid_id}_{data_shortest_name}_{year}'
+            
+            monthly_filename = f'{product_name}_{data_field}_{model_grid_id}_MONTHLY_{year}'
+                               
+            filenames = {'shortest':shortest_filename,
+                         'monthly':monthly_filename}
+            fill_values = {'binary':binary_fill_value,
+                           'netcdf':netcdf_fill_value}
+            output_dirs = {'binary':binary_output_dir,
+                           'netcdf':netcdf_output_dir}
+
+            new_data_attr['new_name'] = f'{data_field}_interpolated_to_{model_grid_id}'
+
+            ea.generalized_aggregate_and_save(data_DA_year_merged,
+                                              new_data_attr,
+                                              do_monthly_aggregation,
+                                              year,
+                                              skipna_in_mean,
+                                              filenames,
+                                              fill_values,
+                                              output_dirs,
+                                              binary_output_dtype,
+                                              model_grid_type,
+                                              remove_nan_days_from_data = remove_nan_days_from_data)
     
     ## END PROCESSING DATA                               ##
-    #######################################################
-    #%%
-
-    #%%
-    #######################################################
-    ## BEGIN ACCESSING AND MERGING DATA                  ##    
-
-    assimilated_paths_are_local = True
-
-    if assimilated_paths_are_local:
-        for data_field in data_fields:
-            for year in years:
-                output_file_suffix = f'{data_field["name"]}.nc'
-                
-                iso_dates_for_year, assimilated_paths = \
-                    gf.generalized_get_data_filepaths_for_year(year, netcdf_output_dir, 
-                                                               output_file_suffix,
-                                                               'daily', 'yyyymmdd')
-                    
-                assimilated_DA_merged = gf.open_and_merge(data_field,
-                                                          iso_dates_for_year,
-                                                          assimilated_paths,
-                                                          model_grid, model_grid_type,
-                                                          array_precision,
-                                                          remove_nan_days_from_data)
-                
-                new_data_attr['new_name'] = f'{data_field["name"]}_interpolated_to_{model_grid_id}'
-                
-                shortest_filename = f'{product_name}_{model_grid_id}_DAILY_{year}_{data_field["name"]}'
-                monthly_filename = f'{product_name}_{model_grid_id}_MONTHLY_{year}_{data_field["name"]}'
-                                   
-                filenames = {'shortest':shortest_filename,
-                             'monthly':monthly_filename}
-                
-                gf.generalized_aggregate_and_save(assimilated_DA_merged,
-                                                  new_data_attr,
-                                                  do_monthly_aggregation,
-                                                  year,
-                                                  skipna_in_mean,
-                                                  filenames,
-                                                  fill_values,
-                                                  output_dirs,
-                                                  binary_output_dtype,
-                                                  model_grid_type,
-                                                  save_binary = save_binary,
-                                                  save_netcdf = save_netcdf)
-
-    ## END ACCESSING AND MERGING DATA                    ##
     #######################################################
     #%%
