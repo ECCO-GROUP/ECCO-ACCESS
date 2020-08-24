@@ -232,8 +232,12 @@ def generalized_transform_to_model_grid_solr(data_field_info, record_date, model
 
     # update time values
     if 'time_bounds_var' in extra_information:
-        data_DA.time_start.values[0] = ds.Time_bounds[0][0].values
-        data_DA.time_end.values[0] = ds.Time_bounds[0][1].values
+        if 'Time_bounds' in ds.variables:
+            data_DA.time_start.values[0] = ds.Time_bounds[0][0].values
+            data_DA.time_end.values[0] = ds.Time_bounds[0][1].values
+        elif 'time_bnds' in ds.variables:
+            data_DA.time_start.values[0] = ds.time_bnds[0][0].values
+            data_DA.time_end.values[0] = ds.time_bnds[0][1].values
     elif 'no_time' in extra_information:
         data_DA.time_start.values[0] = record_date
         data_DA.time_end.values[0] = record_date
@@ -250,7 +254,10 @@ def generalized_transform_to_model_grid_solr(data_field_info, record_date, model
         data_DA.time_end.values[0] = ds.time_coverage_end
 
     if 'time_var' in extra_information:
-        data_DA.time.values[0] = ds.Time[0].values
+        if 'Time' in ds.variables:
+            data_DA.time.values[0] = ds.Time[0].values
+        elif 'time' in ds.variables:
+            data_DA.time.values[0] = ds.time[0].values
     else:
         data_DA.time.values[0] = record_date
 
@@ -339,8 +346,12 @@ def generalized_transform_to_model_grid(source_indices_within_target_radius_i,
 
         # update time values
         if 'time_bounds_var' in extra_information:
-            data_DA.time_start.values[0] = ds.Time_bounds[0][0].values
-            data_DA.time_end.values[0] = ds.Time_bounds[0][1].values
+            if 'Time_bounds' in ds.variables:
+                data_DA.time_start.values[0] = ds.Time_bounds[0][0].values
+                data_DA.time_end.values[0] = ds.Time_bounds[0][1].values
+            elif 'time_bnds' in ds.variables:
+                data_DA.time_start.values[0] = ds.time_bnds[0][0].values
+                data_DA.time_end.values[0] = ds.time_bnds[0][1].values
         elif 'no_time' in extra_information:
             data_DA.time_start.values[0] = record_date
             data_DA.time_end.values[0] = record_date
@@ -355,11 +366,12 @@ def generalized_transform_to_model_grid(source_indices_within_target_radius_i,
         else:
             data_DA.time_start.values[0] = ds.time_coverage_start
             data_DA.time_end.values[0] = ds.time_coverage_end
-
+    
         if 'time_var' in extra_information:
-            data_DA.time.values[0] = ds.Time[0].values
-        else:
-            data_DA.time.values[0] = record_date
+            if 'Time' in ds.variables:
+                data_DA.time.values[0] = ds.Time[0].values
+            elif 'time' in ds.variables:
+                data_DA.time.values[0] = ds.time[0].values
 
         data_DA.attrs['notes'] = record_notes
 
