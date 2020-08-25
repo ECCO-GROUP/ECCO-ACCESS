@@ -236,15 +236,12 @@ def run_aggregation(system_path, output_dir, s3=None):
                         # If there are more than one files for this grid/field/date combination (implies hemisphered data),
                         # combine hemispheres on nonempty datafile, if present.
                         if len(opened_datasets) == 2:
-                            if np.count_nonzero(~(opened_datasets[0].values == np.nan)) > 0:
+                            if ~np.isnan(opened_datasets[0].values).all():
                                 data_DA = opened_datasets[0].copy()
-                                data_DA.values = np.where(
-                                    opened_datasets[1].values == np.nan, data_DA.values, opened_datasets[1].values)
+                                data_DA.values = np.where(np.isnan(data_DA.values), opened_datasets[1].values, data_DA.values)
                             else:
                                 data_DA = opened_datasets[1].copy()
-                                data_DA.values = np.where(opened_datasets[0].values == np.nan,
-                                                          data_DA.values,
-                                                          opened_datasets[0].values)
+                                data_DA.values = np.where(np.isnan(data_DA.values), opened_datasets[0].values, data_DA.values)
                         else:
                             data_DA = opened_datasets[0]
                     else:

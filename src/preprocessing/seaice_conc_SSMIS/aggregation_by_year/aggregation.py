@@ -239,17 +239,13 @@ def run_aggregation(system_path, output_dir, s3=None):
                         if len(opened_datasets) == 2:
                             if ~np.isnan(opened_datasets[0].values).all():
                                 data_DA = opened_datasets[0].copy()
-                                data_DA.values = np.where(
-                                    opened_datasets[1].values == np.nan, data_DA.values, opened_datasets[1].values)
+                                data_DA.values = np.where(np.isnan(data_DA.values), opened_datasets[1].values, data_DA.values)
                             else:
                                 data_DA = opened_datasets[1].copy()
-                                data_DA.values = np.where(opened_datasets[0].values == np.nan,
-                                                          data_DA.values,
-                                                          opened_datasets[0].values)
+                                data_DA.values = np.where(np.isnan(data_DA.values), opened_datasets[0].values, data_DA.values)
                         else:
                             data_DA = opened_datasets[0]
                         
-                        data_DA.to_netcdf('./poop.nc')
                     else:
                         data_DA = ea.make_empty_record(field['standard_name_s'], field['long_name_s'], field['units_s'],
                                                        date, model_grid, grid_type, array_precision)
