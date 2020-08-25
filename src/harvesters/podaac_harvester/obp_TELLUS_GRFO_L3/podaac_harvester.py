@@ -169,7 +169,7 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
                 link = '.'.join(link.split('.')[:-1])
                 newfile = link.split("/")[-1]
 
-                if '.nc' not in newfile or '.bz2' not in newfile or '.gz' not in newfile:
+                if '.nc' not in newfile:
                     continue
 
                 date_start_str = elem.find("{%(time)s}start" % namespace).text

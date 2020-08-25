@@ -2,7 +2,7 @@
 # Dataset
 # =====================================================
 ds_name: "seaice_SSMIS" # Name for dataset
-version: 1.5
+version: 1.0
 array_precision: float32
 time_zone_included_with_time: False # Data time values have time zone
 extra_information: ["time_bounds_var", "time_var"] # Unique things to do for dataset
@@ -24,9 +24,6 @@ data_res: "10/111" # Resolution of dataset
 # if data is stored separately by hemisphere
 data_max_lat_nh: 90.0
 data_max_lat_sh: -90.0
-
-# area_extent_nh: [-180, 30.980564, 180, 90]
-# area_extent_sh: [-39.23089, -90, 180, -180]
 
 area_extent_nh: [-3845000, -5345000, 3745000, 5845000]
 area_extent_sh: [-3945000, -3945000, 3945000, 4345000]

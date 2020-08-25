@@ -415,6 +415,7 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
                 item['type_s'] = 'harvested'
                 item['date_s'] = new_date_format
                 item['dataset_s'] = config['ds_name']
+                item['source_s'] = url
 
                 # lineage metadta setup to be populated for each granule
                 lineage_item = {}
@@ -429,7 +430,6 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
                 aws_upload = False
 
                 try:
-                    item['source_s'] = url
 
                     # TODO: find a way to get last modified (see line 436 as well)
                     # get last modified date

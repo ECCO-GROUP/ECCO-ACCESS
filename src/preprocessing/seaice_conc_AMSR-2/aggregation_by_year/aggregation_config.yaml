@@ -1,11 +1,11 @@
 # =====================================================
 # Dataset
 # =====================================================
-ds_name: "seaice_RDEFT4" # Name for dataset
+ds_name: "seaice_AMSR-2" # Name for dataset
 version: 1.0
 array_precision: float32
 remove_nan_days_from_data: False # Remove empty days from data when aggregating
-do_monthly_aggregation: False
+do_monthly_aggregation: True
 skipna_in_mean: True # Controls skipna when calculating monthly mean
 save_binary: True
 save_netcdf: True

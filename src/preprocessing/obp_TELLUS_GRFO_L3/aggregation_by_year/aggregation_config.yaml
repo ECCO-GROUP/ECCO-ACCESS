@@ -1,7 +1,7 @@
 # =====================================================
 # Dataset
 # =====================================================
-ds_name: "seaice_RDEFT4" # Name for dataset
+ds_name: "obp_TELLUS_GRFO_L3" # Name for dataset
 version: 1.0
 array_precision: float32
 remove_nan_days_from_data: False # Remove empty days from data when aggregating
