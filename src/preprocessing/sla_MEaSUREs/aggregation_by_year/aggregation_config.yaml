@@ -21,8 +21,8 @@ solr_collection_name: ecco_datasets # doesn't change
 # Local
 # =====================================================
 # REMEMBER, REPLACE LOCAL PATHS SO THEY POINT TO YOUR /SRC/ DIRECTORY
-output_dir: ../ecco-preprocessing/src/output/
-ecco_utils: /Users/kevinmarlis/Developer/JPL/ecco-preprocessing/src/preprocessing/ecco-access/ECCO-ACCESS/ecco-cloud-utils
+output_dir: /Users/kevinmarlis/Developer/JPL/ecco-preprocessing/src/output/
+ecco_utils: /Users/kevinmarlis/Developer/JPL/ecco-access/ECCO-ACCESS/ecco-cloud-utils/ecco_cloud_utils
 
 # =====================================================
 # AWS
@@ -30,4 +30,3 @@ ecco_utils: /Users/kevinmarlis/Developer/JPL/ecco-preprocessing/src/preprocessin
 source_bucket: ecco-ames
 target_bucket: ecco-ames
 s3_aggregated_path: aggregated/
-

@@ -46,6 +46,6 @@ original_dataset_doi: 10.5067/96JO0KIFDAS8
 # REMEMBER, REPLACE LOCAL PATHS SO THEY POINT TO YOUR /SRC/ DIRECTORY
 solr_host: http://localhost:8983/solr/
 solr_collection_name: ecco_datasets
-target_dir: /Users/kevinmarlis/Developer/JPL/ecco-preprocessing/src/harvesters/seaice_harvester/harvested_granule/SEAICE_CONC_RDEFT4
+target_dir: /Users/kevinmarlis/Developer/JPL/ecco-preprocessing/src/harvesters/nsidc_ftp_harvester/harvested_granule/SEAICE_CONC_RDEFT4
 # AWS
 # target_bucket_name: ecco-preprocess

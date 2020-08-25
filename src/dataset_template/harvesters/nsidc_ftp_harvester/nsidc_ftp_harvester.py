@@ -62,11 +62,11 @@ def solr_update(config, solr_host, update_body, r=False):
 # Pulls data files for given ftp source and date range
 # If not on_aws, saves locally, else saves to s3 bucket
 # Creates Solr entries for dataset, harvested granule, fields, and lineage
-def seaice_ftp_harvester(path_to_file_dir="", s3=None, on_aws=False):
+def nsidc_ftp_harvester(path_to_file_dir="", s3=None, on_aws=False):
     # =====================================================
     # Read configurations from YAML file
     # =====================================================
-    path_to_yaml = path_to_file_dir + "seaice_ftp_harvester_config.yaml"
+    path_to_yaml = path_to_file_dir + "nsidc_ftp_harvester_config.yaml"
     with open(path_to_yaml, "r") as stream:
         config = yaml.load(stream)
 

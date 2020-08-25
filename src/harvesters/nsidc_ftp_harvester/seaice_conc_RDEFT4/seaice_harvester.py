@@ -254,15 +254,14 @@ def getdate(regex, fname):
     return date
 
 
-def solr_query(config, fq):
-    solr_host = config['solr_host']
+def solr_query(config, solr_host, fq):
     solr_collection_name = config['solr_collection_name']
 
     getVars = {'q': '*:*',
                'fq': fq,
                'rows': 300000}
 
-    url = solr_host + solr_collection_name + '/select?'
+    url = f'{solr_host}{solr_collection_name}/select?'
     response = requests.get(url, params=getVars)
     return response.json()['response']['docs']
 
@@ -302,7 +301,9 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
     folder = '/tmp/'+config['ds_name']+'/'
     data_time_scale = config['data_time_scale']
 
+    dataset_name = config['ds_name']
     short_name = config['ds_name'][7:]
+    solr_host = config['solr_host']
     version = '1'
 
     if not on_aws:
@@ -323,16 +324,29 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
 
     # get old data if exists
     docs = {}
+    lineage_docs = {}
 
     fq = ['type_s:harvested', f'dataset_s:{config["ds_name"]}']
-    query_docs = solr_query(config, fq)
+    query_docs = solr_query(config, solr_host, fq)
 
     if len(query_docs) > 0:
         for doc in query_docs:
             docs[doc['filename_s']] = doc
 
     fq = ['type_s:dataset', f'dataset_s:{config["ds_name"]}']
-    query_docs = solr_query(config, fq)
+    query_docs = solr_query(config, solr_host, fq)
+
+    # Query for existing lineage docs
+    fq = ['type_s:lineage', f'dataset_s:{dataset_name}']
+    existing_lineage_docs = solr_query(config, solr_host, fq)
+
+    if len(existing_lineage_docs) > 0:
+        for doc in existing_lineage_docs:
+            if doc['hemisphere_s']:
+                key = (doc['date_s'], doc['hemisphere_s'])
+            else:
+                key = doc['date_s']
+            lineage_docs[key] = doc
 
     # setup metadata
     meta = []
@@ -401,7 +415,15 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
                 item['type_s'] = 'harvested'
                 item['date_s'] = new_date_format
                 item['dataset_s'] = config['ds_name']
-                item['hemisphere_s'] = 'nh'
+
+                # lineage metadta setup to be populated for each granule
+                lineage_item = {}
+                lineage_item['type_s'] = 'lineage'
+
+                # Create or modify lineage entry in Solr
+                lineage_item['dataset_s'] = item['dataset_s']
+                lineage_item['date_s'] = item["date_s"]
+                lineage_item['source_s'] = item['source_s']
 
                 updating = False
                 aws_upload = False
@@ -494,6 +516,17 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
                 if updating:
                     item['download_time_dt'] = chk_time
 
+                    # Update Solr entry using id if it exists
+
+                    key = lineage_item['date_s']
+
+                    if key in lineage_docs.keys():
+                        lineage_item['id'] = lineage_docs[key]['id']
+
+                    lineage_item['harvest_success_b'] = item['harvest_success_b']
+                    lineage_item['pre_transformation_file_path_s'] = item['pre_transformation_file_path_s']
+                    meta.append(lineage_item)
+
                     # add item to metadata json
                     meta.append(item)
                     # store meta for last successful download
@@ -540,7 +573,7 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
     # =====================================================
 
     fq = ['type_s:dataset', 'dataset_s:'+config['ds_name']]
-    docs = solr_query(config, fq)
+    docs = solr_query(config, solr_host, fq)
 
     update = (len(docs) == 1)
 

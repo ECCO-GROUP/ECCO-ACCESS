@@ -60,7 +60,7 @@ solr_collection_name: ecco_datasets # doesn't change
 # =====================================================
 # REMEMBER, REPLACE LOCAL PATHS SO THEY POINT TO YOUR /SRC/ DIRECTORY
 output_dir: ../ecco-preprocessing/src/output/
-ecco_utils: ../ecco-preprocessing/src/preprocessing/ecco-access/ECCO-ACCESS/ecco-cloud-utils
+ecco_utils: ../ecco-access/ECCO-ACCESS/ecco-cloud-utils/ecco_cloud_utils
 
 # =====================================================
 # AWS
