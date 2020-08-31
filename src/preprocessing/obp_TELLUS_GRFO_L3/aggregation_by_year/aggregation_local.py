@@ -7,7 +7,7 @@ from aggregation import run_aggregation
 ##################################################
 if __name__ == "__main__":
     # Pull config information
-    path_to_yaml = f'./aggregation_config.yaml'
+    path_to_yaml = f'{os.path.dirname(sys.argv[0])}/aggregation_config.yaml'
     with open(path_to_yaml, "r") as stream:
         config = yaml.load(stream, yaml.Loader)
 

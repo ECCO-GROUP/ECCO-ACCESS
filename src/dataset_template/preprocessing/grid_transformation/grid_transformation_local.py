@@ -85,7 +85,7 @@ def get_remaining_transformations(config, source_file_path):
 ##################################################
 if __name__ == "__main__":
     # Pull config information
-    path_to_yaml = f'./grid_transformation_config.yaml'
+    path_to_yaml = f'{os.path.dirname(sys.argv[0])}/grid_transformation_config.yaml'
     with open(path_to_yaml, "r") as stream:
         config = yaml.load(stream, yaml.Loader)
 

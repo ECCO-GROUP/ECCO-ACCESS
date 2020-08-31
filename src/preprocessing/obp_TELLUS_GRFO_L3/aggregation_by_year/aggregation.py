@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import yaml
 import hashlib
@@ -98,7 +99,7 @@ def run_aggregation(output_dir, s3=None):
     # =====================================================
     # Read configurations from YAML file
     # =====================================================
-    path_to_yaml = "./aggregation_config.yaml"
+    path_to_yaml = f'{os.path.dirname(sys.argv[0])}/aggregation_config.yaml'
     with open(path_to_yaml, "r") as stream:
         config = yaml.load(stream, yaml.Loader)
 
@@ -106,7 +107,6 @@ def run_aggregation(output_dir, s3=None):
     # Code to import ecco utils locally...
     # =====================================================
     from pathlib import Path
-    import sys
     generalized_functions_path = Path(config['ecco_utils'])
     sys.path.append(str(generalized_functions_path))
     import ecco_cloud_utils as ea # pylint: disable=import-error

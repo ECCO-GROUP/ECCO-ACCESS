@@ -67,7 +67,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir):
     # =====================================================
     # Read configurations from YAML file
     # =====================================================
-    path_to_yaml = f'./grid_transformation_config.yaml'
+    path_to_yaml = f'{os.path.dirname(sys.argv[0])}/grid_transformation_config.yaml'
     with open(path_to_yaml, "r") as stream:
         config = yaml.load(stream, yaml.Loader)
 
@@ -75,7 +75,6 @@ def run_locally(source_file_path, remaining_transformations, output_dir):
     # Code to import ecco utils locally...
     # =====================================================
     from pathlib import Path
-    import sys
     generalized_functions_path = Path(config['ecco_utils'])
     sys.path.append(str(generalized_functions_path))
     import ecco_cloud_utils as ea
@@ -165,10 +164,10 @@ def run_locally(source_file_path, remaining_transformations, output_dir):
 
             # Use hemisphere specific variables if data is hemisphere specific
             if hemi:
-                hemi_dim = config[f'dims_{hemi}']
-                hemi_area_extent = config[f'area_extent_{hemi}']
-                hemi_proj_info = config[f'proj_info_{hemi}']
-                hemi_data_max_lat = config[f'data_max_lat_{hemi}']
+                hemi_dim = config[f'dims{hemi}']
+                hemi_area_extent = config[f'area_extent{hemi}']
+                hemi_proj_info = config[f'proj_info{hemi}']
+                hemi_data_max_lat = config[f'data_max_lat{hemi}']
 
                 source_grid_min_L, source_grid_max_L, source_grid, \
                     data_grid_lons, data_grid_lats = ea.generalized_grid_product(short_name,
@@ -390,7 +389,6 @@ def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors
     # Code to import ecco utils locally...
     # =====================================================
     from pathlib import Path
-    import sys
     generalized_functions_path = Path(config['ecco_utils'])
     sys.path.append(str(generalized_functions_path))
     import ecco_cloud_utils as ea
