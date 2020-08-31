@@ -52,9 +52,9 @@ def solr_update(config, solr_host, update_body, r=False):
 
 
 # Calls run_locally and catches any errors
-def run_locally_wrapper(system_path, source_file_path, remaining_transformations, output_dir):
+def run_locally_wrapper(source_file_path, remaining_transformations, output_dir):
     try:
-        run_locally(system_path, source_file_path,
+        run_locally(source_file_path,
                     remaining_transformations, output_dir)
     except Exception as e:
         print(e)
@@ -63,13 +63,13 @@ def run_locally_wrapper(system_path, source_file_path, remaining_transformations
 
 # Performs and saves locally all remaining transformations for a given source granule
 # Updates Solr with transformation entries and updates lineage, and dataset entries
-def run_locally(system_path, source_file_path, remaining_transformations, output_dir):
+def run_locally(source_file_path, remaining_transformations, output_dir):
     # =====================================================
     # Read configurations from YAML file
     # =====================================================
-    path_to_yaml = f'{system_path}/grid_transformation_config.yaml'
+    path_to_yaml = f'./grid_transformation_config.yaml'
     with open(path_to_yaml, "r") as stream:
-        config = yaml.load(stream)
+        config = yaml.load(stream, yaml.Loader)
 
     # =====================================================
     # Code to import ecco utils locally...

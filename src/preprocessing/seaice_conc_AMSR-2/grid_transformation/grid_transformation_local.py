@@ -84,19 +84,17 @@ def get_remaining_transformations(config, source_file_path):
 
 ##################################################
 if __name__ == "__main__":
-    system_path = os.path.dirname(os.path.abspath(sys.argv[0]))
-
     # Pull config information
-    path_to_yaml = f'{system_path}/grid_transformation_config.yaml'
+    path_to_yaml = f'./grid_transformation_config.yaml'
     with open(path_to_yaml, "r") as stream:
-        config = yaml.load(stream)
+        config = yaml.load(stream, yaml.Loader)
 
     dataset_name = config['ds_name']
     output_dir = config['output_dir']
     solr_host = config['solr_host_local']
 
     if not os.path.exists(output_dir):
-        os.mkdir(output_dir)
+        os.makedirs(output_dir)
 
     # Get all harvested granules for this dataset
     fq = [f'dataset_s:{dataset_name}', 'type_s:harvested']
@@ -118,8 +116,7 @@ if __name__ == "__main__":
 
         # Perform remaining transformations
         if remaining_transformations:
-            run_locally_wrapper(
-                system_path, f, remaining_transformations, output_dir)
+            run_locally_wrapper(f, remaining_transformations, output_dir)
 
             # Add granule year to years_updated
             year = granule['date_s'][:4]
