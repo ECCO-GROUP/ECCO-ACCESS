@@ -62,13 +62,14 @@ def unzip_gz(local_fp, folder):
 # Pulls data files for given PODAAC id and date range
 # If not on_aws, saves locally, else saves to s3 bucket
 # Creates Solr entries for dataset, harvested granule, fields, and lineage
-def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
+def podaac_harvester(path_to_file_dir="./", s3=None, on_aws=False):
     # =====================================================
     # Read configurations from YAML file
     # =====================================================
     path_to_yaml = f'{path_to_file_dir}podaac_harvester_config.yaml'
+    # path_to_yaml = './podaac_harvester_config.yaml'
     with open(path_to_yaml, "r") as stream:
-        config = yaml.load(stream)
+        config = yaml.load(stream, yaml.Loader)
 
     # =====================================================
     # Setup AWS Target Bucket
@@ -112,7 +113,7 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
 
     # if target paths don't exist, make them
     if not os.path.exists(folder):
-        os.mkdir(folder)
+        os.makedirs(folder)
 
     if not os.path.exists(target_dir):
         os.makedirs(target_dir)
@@ -169,20 +170,12 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
                 link = '.'.join(link.split('.')[:-1])
                 newfile = link.split("/")[-1]
 
-                if '.nc' not in newfile:
-                    continue
-
                 date_start_str = elem.find("{%(time)s}start" % namespace).text
                 date_end_str = elem.find("{%(time)s}end" % namespace).text
 
                 # Ignore granules with start time less than wanted start time
                 if int(date_start_str[:4]) < int(config['start'][:4]):
                     continue
-
-                if len(date_start_str) > 19:
-                    date_start_str = date_start_str[:19] + 'Z'
-                if len(date_end_str) > 19:
-                    date_end_str = date_end_str[:19] + 'Z'
 
                 start_datetime = datetime.strptime(date_start_str, date_regex)
                 end_datetime = datetime.strptime(date_end_str, date_regex)
@@ -211,7 +204,7 @@ def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
                     item['modified_time_dt'] = mod_time
 
                 except:
-                    print('Cannot find last modified time. Downloading granule.')
+                    print('Cannot find last modified time.  Downloading granule.')
                     mod_date_time = now
 
                 # If granule doesn't exist or previously failed or has been updated since last harvest

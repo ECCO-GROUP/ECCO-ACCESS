@@ -11,7 +11,7 @@ import xarray as xr
 # Read configurations from YAML file
 # =====================================================
 
-path_to_file_dir = os.path.dirname(os.path.abspath(sys.argv[0])) + '/grids/'
+path_to_file_dir = os.path.dirname(os.path.abspath(sys.argv[0])) + "/grids/"
 
 path_to_yaml = os.path.dirname(
     os.path.abspath(sys.argv[0])) + "/grids_config.yaml"

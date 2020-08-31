@@ -1,12 +1,12 @@
 # =====================================================
 # Dataset
 # =====================================================
-ds_name: "sss_SMAP" # Name for dataset
+ds_name: "obp_AOD1B" # Name for dataset
 version: 1.0
 array_precision: float32
 remove_nan_days_from_data: False # Remove empty days from data when aggregating
-do_monthly_aggregation: False
-skipna_in_mean: False # Controls skipna when calculating monthly mean
+do_monthly_aggregation: True
+skipna_in_mean: True # Controls skipna when calculating monthly mean
 save_binary: True
 save_netcdf: True
 
@@ -30,4 +30,3 @@ ecco_utils: C:/Users/dunca/Documents/JPL/Code/ECCO-ACCESS/ecco-cloud-utils/
 source_bucket: ecco-ames
 target_bucket: ecco-ames
 s3_aggregated_path: aggregated/
-

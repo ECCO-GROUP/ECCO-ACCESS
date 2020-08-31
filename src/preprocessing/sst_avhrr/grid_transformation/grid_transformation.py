@@ -140,7 +140,7 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
         # =====================================================
         grid_factors = f'{grid_name}{hemi}_factors_path_s'
 
-        if grid_factors in dataset_metadata.keys():
+        if (grid_factors in dataset_metadata.keys()) and (grid_name != 'TPOSE'):
             factors_path = dataset_metadata[grid_factors]
 
             print(f'===Loading {grid_name} factors===')

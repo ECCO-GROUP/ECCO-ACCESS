@@ -278,14 +278,14 @@ def solr_update(config, update_body, r=False):
         requests.post(url, json=update_body)
 
 
-def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
+def seaice_harvester(path_to_file_dir="./", s3=None, on_aws=False):
     # =====================================================
     # Read configurations from YAML file
     # =====================================================
     # TODO decide on command line argument for different dataset configs
     path_to_yaml = path_to_file_dir + "seaice_harvester_config.yaml"
     with open(path_to_yaml, "r") as stream:
-        config = yaml.load(stream)
+        config = yaml.load(stream, yaml.Loader)
 
     # =====================================================
     # Setup AWS Target Bucket
@@ -317,7 +317,7 @@ def seaice_harvester(path_to_file_dir="", s3=None, on_aws=False):
     # if target path doesn't exist, make it
     # if tmp folder for downloaded files doesn't exist, create it in temp lambda storage
     if not os.path.exists(folder):
-        os.mkdir(folder)
+        os.makedirs(folder)
 
     if not os.path.exists(target_dir):
         os.makedirs(target_dir)
