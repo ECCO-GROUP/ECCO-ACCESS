@@ -5,8 +5,8 @@ import hashlib
 import requests
 import numpy as np
 import xarray as xr
-from datetime import datetime
-from netCDF4 import default_fillvals  # pylint: disable=import-error
+from netCDF4 import default_fillvals  # pylint: disable=no-name-in-module
+from datetime import datetime, timedelta
 
 
 np.warnings.filterwarnings('ignore')
@@ -55,9 +55,8 @@ def export_lineage(output_dir, years, solr_host, config):
             resp_out = json.dumps(lineage_docs)
             f.write(resp_out)
 
+
 # Creates checksum from filename
-
-
 def md5(fname):
     hash_md5 = hashlib.md5()
     with open(fname, 'rb') as f:
@@ -110,7 +109,7 @@ def run_aggregation(system_path, output_dir, s3=None):
     import sys
     generalized_functions_path = Path(config['ecco_utils'])
     sys.path.append(str(generalized_functions_path))
-    import ecco_cloud_utils as ea
+    import ecco_cloud_utils as ea # pylint: disable=import-error
 
     # =====================================================
     # Set configuration options and Solr metadata
@@ -188,9 +187,10 @@ def run_aggregation(system_path, output_dir, s3=None):
             if data_time_scale == 'daily':
                 dates_in_year = np.arange(
                     f'{year}-01-01', f'{int(year)+1}-01-01', dtype='datetime64[D]')
+
             elif data_time_scale == 'monthly':
-                dates_in_year = np.arange(
-                    f'{year}-01', f'{int(year)+1}-01', dtype='datetime64[M]')
+                dates_in_year = np.arange(f'{year}-01', f'{int(year)+1}-01', dtype='datetime64[M]')
+                dates_in_year = [f'{date}-01' for date in dates_in_year]
 
             # Iterate through dataset fields
             for field in fields:
@@ -203,54 +203,63 @@ def run_aggregation(system_path, output_dir, s3=None):
                 daily_DA_year = []
 
                 for date in dates_in_year:
-
                     # Query for date
                     fq = [f'dataset_s:{dataset_name}', 'type_s:transformation',
                           f'grid_name_s:{grid_name}', f'field_s:{field_name}', f'date_s:{date}*']
 
                     docs = solr_query(config, solr_host, fq)
 
+                    # If first of month is not found, query with 7 day tolerance only for monthly data
+                    if not docs and data_time_scale == 'monthly':
+                        start_month_date = datetime.strptime(date, '%Y-%m-%d')
+                        tolerance_days = []
+
+                        for i in range(1,8):
+                            plus_date = start_month_date + timedelta(days=i)
+                            neg_date = start_month_date - timedelta(days=i)
+
+                            tolerance_days.append(datetime.strftime(plus_date, '%Y-%m-%d'))
+                            tolerance_days.append(datetime.strftime(neg_date, '%Y-%m-%d'))
+
+                        for tol_date in tolerance_days:
+                            fq = [f'dataset_s:{dataset_name}', 'type_s:transformation', f'grid_name_s:{grid_name}', f'field_s:{field_name}', f'date_s:{tol_date}*']
+                            docs = solr_query(config, solr_host, fq)
+
+                            if docs:
+                                break
+                    
                     # If transformed file is present for date, grid, and field combination
                     # open the file, otherwise make empty record
-
-                    # Combines hemisphere data into one file, if data is in hemisphere format
-                    if docs:
-                        opened_datasets = []
-
-                        for doc in docs:
-                            # if running on AWS, get file from s3
-                            if doc['transformation_file_path_s'][:5] == 's3://':
-                                source_bucket_name, key_name = split_s3_bucket_key(
-                                    doc['transformation_file_path_s'])
-                                obj = s3.Object(source_bucket_name, key_name)
-                                data_DA = xr.open_dataarray(
-                                    obj, decode_times=True)
-                                # f = obj.get()['Body'].read()
-                                # data = np.frombuffer(f, dtype=dt, count=-1)
-                            else:
-                                data_DA = xr.open_dataarray(
-                                    doc['transformation_file_path_s'], decode_times=True)
-
-                            opened_datasets.append(data_DA)
-
-                        # If there are more than one files for this grid/field/date combination (implies hemisphered data),
-                        # combine hemispheres on nonempty datafile, if present.
-                        if len(opened_datasets) == 2:
-                            if np.count_nonzero(~(opened_datasets[0].values == np.nan)) > 0:
-                                data_DA = opened_datasets[0].copy()
-                                data_DA.values = np.where(
-                                    opened_datasets[1].values == np.nan, data_DA.values, opened_datasets[1].values)
-                            else:
-                                data_DA = opened_datasets[1].copy()
-                                data_DA.values = np.where(opened_datasets[0].values == np.nan,
-                                                          data_DA.values,
-                                                          opened_datasets[0].values)
+                    opened_datasets = []
+                    for doc in docs:
+                        # if running on AWS, get file from s3
+                        if doc['transformation_file_path_s'][:5] == 's3://':
+                            source_bucket_name, key_name = split_s3_bucket_key(
+                                doc['transformation_file_path_s'])
+                            obj = s3.Object(source_bucket_name, key_name)
+                            data_DA = xr.open_dataarray(
+                                obj, decode_times=True)
+                            # f = obj.get()['Body'].read()
+                            # data = np.frombuffer(f, dtype=dt, count=-1)
                         else:
-                            data_DA = opened_datasets[0]
-                    else:
-                        data_DA = ea.make_empty_record(field['standard_name_s'], field['long_name_s'], field['units_s'],
-                                                       date, model_grid, grid_type, array_precision)
+                            data_DA = xr.open_dataarray(
+                                doc['transformation_file_path_s'], decode_times=True)
 
+                        opened_datasets.append(data_DA)
+
+                    # If there are more than one files for this grid/field/date combination (implies hemisphered data),
+                    # combine hemispheres on nonempty datafile, if present.
+                    if len(opened_datasets) == 2:
+                        if ~np.isnan(opened_datasets[0].values).all():
+                            data_DA = opened_datasets[0].copy()
+                            data_DA.values = np.where(np.isnan(data_DA.values), opened_datasets[1].values, data_DA.values)
+                        else:
+                            data_DA = opened_datasets[1].copy()
+                            data_DA.values = np.where(np.isnan(data_DA.values), opened_datasets[0].values, data_DA.values)
+                    elif len(opened_datasets) == 1:
+                        data_DA = opened_datasets[0]
+                    else:
+                        data_DA = ea.make_empty_record(field['standard_name_s'], field['long_name_s'], field['units_s'], date, model_grid, grid_type, array_precision)
                     # Append each day's data to annual list
                     daily_DA_year.append(data_DA)
 
@@ -442,36 +451,6 @@ def run_aggregation(system_path, output_dir, s3=None):
                         if r.status_code != 200:
                             print(
                                 f'Failed to update Solr aggregation entry for {field_name} in {dataset_name} for {year} and grid {grid_name}')
-
-    # Update Solr dataset entry status and years_updated to empty
-    update_body = [
-        {
-            "id": dataset_metadata['id'],
-            "status_s": {"set": 'aggregated'},
-            "years_updated_ss": {"set": []}}
-    ]
-
-    r = solr_update(config, solr_host, update_body, r=True)
-
-    if r.status_code != 200:
-        print(
-            f'Failed to update Solr dataset entry with aggregation information for {dataset_name}')
-
-    # Export annual lineage JSON file for each year updated
-    print("=========exporting data lineage=========")
-    export_lineage(output_dir, years, solr_host, config)
-    print("=========exporting data lineage DONE=========")
-
-                       # Add aggregation file path fields to lineage entry
-       for key, value in output_filepaths.items():
-            update_body[0][f'{grid_name}_{field_name}_aggregated_{key}_path_s'] = {
-                "set": value}
-
-        r = solr_update(config, solr_host, update_body, r=True)
-
-        if r.status_code != 200:
-            print(
-                f'Failed to update Solr aggregation entry for {field_name} in {dataset_name} for {year} and grid {grid_name}')
 
     # Update Solr dataset entry status and years_updated to empty
     update_body = [

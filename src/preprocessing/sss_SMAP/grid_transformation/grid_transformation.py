@@ -85,6 +85,7 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
     # =====================================================
     file_name = source_file_path.split('/')[-1]
     dataset_name = config['ds_name']
+    transformation_version = config['version']
 
     solr_host = config['solr_host_local']
 
@@ -98,6 +99,7 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
     harvested_metadata = solr_query(config, solr_host, query_fq)[0]
     origin_checksum = harvested_metadata['checksum_s']
     date = harvested_metadata['date_s']
+    
 
     # If data is stored in hemispheres, use that hemisphere when naming files and updating Solr
     # Otherwise, leave it blank
@@ -139,8 +141,9 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
         # Make model grid factors if not present locally
         # =====================================================
         grid_factors = f'{grid_name}{hemi}_factors_path_s'
+        grid_factors_version = f'{grid_name}{hemi}_factors_version_f'
 
-        if grid_factors in dataset_metadata.keys():
+        if grid_factors_version in dataset_metadata.keys() and transformation_version == dataset_metadata[grid_factors_version]:
             factors_path = dataset_metadata[grid_factors]
 
             print(f'===Loading {grid_name} factors===')
@@ -233,7 +236,8 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
                 {
                     "id": doc_id,
                     f'{grid_name}{hemi}_factors_path_s': {"set": factors_path},
-                    f'{grid_name}{hemi}_factors_stored_dt': {"set": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}
+                    f'{grid_name}{hemi}_factors_stored_dt': {"set": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")},
+                    f'{grid_name}{hemi}_factors_version_f': {"set": transformation_version}
                 }
             ]
 
@@ -341,7 +345,7 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
                     "transformation_in_progress_b": {"set": False},
                     "success_b": {"set": success},
                     "transformation_checksum_s": {"set": md5(transformed_location)},
-                    "transformation_version_f": {"set": config['version']}
+                    "transformation_version_f": {"set": transformation_version}
                 }
             ]
 
@@ -358,7 +362,7 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
                 'type_s:lineage', f'date_s:{date[:10]}*']
     if hemi:
         query_fq.append(f'hemisphere_s:{hemi[1:]}')
-    
+        
     docs = solr_query(config, solr_host, query_fq)
     doc_id = solr_query(config, solr_host, query_fq)[0]['id']
 

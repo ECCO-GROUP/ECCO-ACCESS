@@ -53,8 +53,8 @@ def unzip_gz(local_fp, folder):
     with gzip.open(local_fp, "rb") as f_in, open(local_fp[:-3], "wb") as f_out:
         shutil.copyfileobj(f_in, f_out)
         os.remove(local_fp)
-    newfile_ext = os.path.splitext(
-        os.listdir(folder)[0])[1]
+
+    newfile_ext = os.path.splitext(os.listdir(folder)[0])[1]
     local_fp = f'{local_fp[:-3]}{newfile_ext}'
     return local_fp
 

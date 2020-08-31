@@ -2,7 +2,7 @@
 # Dataset
 # =====================================================
 ds_name: "sst_AVHRR" # Name for dataset
-version: 1.0
+version: 1.5
 array_precision: float32
 time_zone_included_with_time: True # Data time values have time zone
 extra_information: ["no_time_dashes"] # Unique things to do for dataset

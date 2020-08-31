@@ -85,6 +85,7 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
     # =====================================================
     file_name = source_file_path.split('/')[-1]
     dataset_name = config['ds_name']
+    transformation_version = config['version']
 
     solr_host = config['solr_host_local']
 
@@ -98,6 +99,7 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
     harvested_metadata = solr_query(config, solr_host, query_fq)[0]
     origin_checksum = harvested_metadata['checksum_s']
     date = harvested_metadata['date_s']
+    
 
     # If data is stored in hemispheres, use that hemisphere when naming files and updating Solr
     # Otherwise, leave it blank
@@ -139,8 +141,9 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
         # Make model grid factors if not present locally
         # =====================================================
         grid_factors = f'{grid_name}{hemi}_factors_path_s'
+        grid_factors_version = f'{grid_name}{hemi}_factors_version_f'
 
-        if grid_factors in dataset_metadata.keys():
+        if grid_factors_version in dataset_metadata.keys() and transformation_version == dataset_metadata[grid_factors_version]:
             factors_path = dataset_metadata[grid_factors]
 
             print(f'===Loading {grid_name} factors===')
@@ -162,10 +165,10 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
 
             # Use hemisphere specific variables if data is hemisphere specific
             if hemi:
-                hemi_dim = config[f'dims{hemi}']
-                hemi_area_extent = config[f'area_extent{hemi}']
-                hemi_proj_info = config[f'proj_info{hemi}']
-                hemi_data_max_lat = config[f'data_max_lat{hemi}']
+                hemi_dim = config[f'dims_{hemi}']
+                hemi_area_extent = config[f'area_extent_{hemi}']
+                hemi_proj_info = config[f'proj_info_{hemi}']
+                hemi_data_max_lat = config[f'data_max_lat_{hemi}']
 
                 source_grid_min_L, source_grid_max_L, source_grid, \
                     data_grid_lons, data_grid_lats = ea.generalized_grid_product(short_name,
@@ -233,7 +236,8 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
                 {
                     "id": doc_id,
                     f'{grid_name}{hemi}_factors_path_s': {"set": factors_path},
-                    f'{grid_name}{hemi}_factors_stored_dt': {"set": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}
+                    f'{grid_name}{hemi}_factors_stored_dt': {"set": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")},
+                    f'{grid_name}{hemi}_factors_version_f': {"set": transformation_version}
                 }
             ]
 
@@ -273,7 +277,7 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
                 transform['dataset_s'] = dataset_name
                 transform['pre_transformation_file_path_s'] = source_file_path
                 if hemi:
-                    transform['hemisphere_s'] = hemi[1:]
+                    transform['hemisphere_s'] = hemi
                 transform['origin_checksum_s'] = origin_checksum
                 transform['grid_name_s'] = grid_name
                 transform['field_s'] = field_name
@@ -341,7 +345,7 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
                     "transformation_in_progress_b": {"set": False},
                     "success_b": {"set": success},
                     "transformation_checksum_s": {"set": md5(transformed_location)},
-                    "transformation_version_f": {"set": config['version']}
+                    "transformation_version_f": {"set": transformation_version}
                 }
             ]
 
@@ -358,9 +362,9 @@ def run_locally(system_path, source_file_path, remaining_transformations, output
                 'type_s:lineage', f'date_s:{date[:10]}*']
     if hemi:
         query_fq.append(f'hemisphere_s:{hemi[1:]}')
-
+        
     docs = solr_query(config, solr_host, query_fq)
-    doc_id = docs[0]['id']
+    doc_id = solr_query(config, solr_host, query_fq)[0]['id']
 
     # Update lineage entry in Solr
     update_body = [
@@ -428,8 +432,7 @@ def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors
                                                         record_date, model_grid, model_grid_type, array_precision)
                         success = False
                         break
-        except Exception as e:
-            print(e)
+        except:
             field_DA = ea.make_empty_record(data_field_info['standard_name_s'], data_field_info['long_name_s'], data_field_info['units_s'],
                                             record_date, model_grid, model_grid_type, array_precision)
             success = False
