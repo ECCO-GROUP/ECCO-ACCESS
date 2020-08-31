@@ -94,13 +94,13 @@ def solr_update(config, solr_host, update_body, r=False):
 
 
 # Aggregates data into annual files, saves them, and updates Solr
-def run_aggregation(system_path, output_dir, s3=None):
+def run_aggregation(output_dir, s3=None):
     # =====================================================
     # Read configurations from YAML file
     # =====================================================
-    path_to_yaml = system_path + "/aggregation_config.yaml"
+    path_to_yaml = "./aggregation_config.yaml"
     with open(path_to_yaml, "r") as stream:
-        config = yaml.load(stream)
+        config = yaml.load(stream, yaml.Loader)
 
     # =====================================================
     # Code to import ecco utils locally...
