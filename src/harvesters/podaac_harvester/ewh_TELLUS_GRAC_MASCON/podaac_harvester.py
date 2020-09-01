@@ -6,6 +6,8 @@ import yaml
 import shutil
 import hashlib
 import requests
+import numpy as np
+import xarray as xr
 from xml.etree.ElementTree import parse
 from datetime import datetime, timedelta
 from urllib.request import urlopen, urlcleanup, urlretrieve
@@ -62,11 +64,12 @@ def unzip_gz(local_fp, folder):
 # Pulls data files for given PODAAC id and date range
 # If not on_aws, saves locally, else saves to s3 bucket
 # Creates Solr entries for dataset, harvested granule, fields, and lineage
-def podaac_harvester(s3=None, on_aws=False):
+def podaac_harvester(path_to_file_dir="", s3=None, on_aws=False):
     # =====================================================
     # Read configurations from YAML file
     # =====================================================
-    path_to_yaml = f'{os.path.dirname(sys.argv[0])}/podaac_harvester_config.yaml'
+    path_to_yaml = f'{path_to_file_dir}podaac_harvester_config.yaml'
+    # path_to_yaml = './podaac_harvester_config.yaml'
     with open(path_to_yaml, "r") as stream:
         config = yaml.load(stream, yaml.Loader)
 
@@ -96,12 +99,12 @@ def podaac_harvester(s3=None, on_aws=False):
     else:
         print(
             f'!!downloading files to {folder} and uploading to {target_bucket_name}/{dataset_name}')
-
-    if config['aggregated']:
+    
+    if aggregated:
         url = f'{config["host"]}&datasetId={config["podaac_id"]}'
     else:
         url = f'{config["host"]}&datasetId={config["podaac_id"]}&endTime={end_time}&startTime={start_time}'
-
+    print(url)
     namespace = {"podaac": "http://podaac.jpl.nasa.gov/opensearch/",
                  "opensearch": "http://a9.com/-/spec/opensearch/1.1/",
                  "atom": "http://www.w3.org/2005/Atom",
@@ -115,7 +118,7 @@ def podaac_harvester(s3=None, on_aws=False):
 
     # if target paths don't exist, make them
     if not os.path.exists(folder):
-        os.mkdir(folder)
+        os.makedirs(folder)
 
     if not os.path.exists(target_dir):
         os.makedirs(target_dir)
@@ -172,9 +175,6 @@ def podaac_harvester(s3=None, on_aws=False):
                 link = '.'.join(link.split('.')[:-1])
                 newfile = link.split("/")[-1]
 
-                if '.nc' not in newfile or '.bz2' not in newfile or '.gz' not in newfile:
-                    continue
-
                 date_start_str = elem.find("{%(time)s}start" % namespace).text
                 date_end_str = elem.find("{%(time)s}end" % namespace).text
 
@@ -182,16 +182,12 @@ def podaac_harvester(s3=None, on_aws=False):
                 if date_start_str.replace('-', '') < start_time and not aggregated:
                     continue
 
-                if len(date_start_str) > 19:
-                    date_start_str = date_start_str[:19] + 'Z'
-                if len(date_end_str) > 19:
-                    date_end_str = date_end_str[:19] + 'Z'
-
                 start_datetime = datetime.strptime(date_start_str, date_regex)
                 end_datetime = datetime.strptime(date_end_str, date_regex)
 
-                start.append(start_datetime)
-                end.append(end_datetime)
+                if not aggregated:
+                    start.append(start_datetime)
+                    end.append(end_datetime)
 
                 # granule metadata setup to be populated for each granule
                 item = {}
@@ -214,8 +210,9 @@ def podaac_harvester(s3=None, on_aws=False):
                     item['modified_time_dt'] = mod_time
 
                 except:
-                    print('Cannot find last modified time. Downloading granule.')
+                    print('Cannot find last modified time.  Downloading granule.')
                     mod_date_time = now
+                    item['modified_time_dt'] = chk_time
 
                 # If granule doesn't exist or previously failed or has been updated since last harvest
                 updating = (not newfile in docs.keys()) or (not docs[newfile]['harvest_success_b']) \
@@ -223,6 +220,7 @@ def podaac_harvester(s3=None, on_aws=False):
 
                 # If updating, download file
                 if updating:
+
                     local_fp = f'{folder}{dataset_name}_granule.nc' if on_aws else f'{target_dir}{newfile}'
 
                     # If file doesn't exist locally, download it
@@ -250,6 +248,85 @@ def podaac_harvester(s3=None, on_aws=False):
                     else:
                         print('File already downloaded and up to date')
 
+                    if aggregated:
+                        # Break up into granules
+                        ds = xr.open_dataset(local_fp)
+
+                        ds_times = [time for time in np.datetime_as_string(ds.time.values) if start_time[:9] <= time.replace('-','')[:9] <= end_time[:9]]
+                        for time in ds_times:
+                            new_ds = ds.sel(time=time)
+                            file_name = f'{config["short_name"]}_{time.replace("-","")[:8]}.nc'
+                            local_fp = f'{folder}{dataset_name}_granule.nc' if on_aws else f'{target_dir}{file_name}'
+
+                            time_s = f'{time[:-10]}Z'
+                            
+                            # ADD ALL THE METADATA BIZNESS
+                            ag_item = {}
+                            ag_item['type_s'] = 'harvested'
+                            ag_item['date_s'] = time_s
+                            ag_item['dataset_s'] = dataset_name
+                            ag_item['source_s'] = link
+                            ag_item['modified_time_s'] = time_s
+
+                            # Create or modify lineage entry in Solr
+                            ag_lineage_item = {}
+                            ag_lineage_item['type_s'] = 'lineage'
+                            ag_lineage_item['dataset_s'] = ag_item['dataset_s']
+                            ag_lineage_item['date_s'] = ag_item['date_s']
+                            ag_lineage_item['source_s'] = ag_item['source_s']
+                            
+                            try:
+                                new_ds.to_netcdf(path=local_fp)
+
+                                # Create checksum for file
+                                ag_item['checksum_s'] = md5(local_fp)
+                                ag_item['pre_transformation_file_path_s'] = local_fp
+                                ag_item['harvest_success_b'] = True
+                                ag_item['filename_s'] = file_name
+                                ag_item['file_size_l'] = os.path.getsize(local_fp)
+
+                                if on_aws:
+                                    output_filename = f'{dataset_name}/{file_name}' if on_aws else file_name
+                                    aws_upload = True
+                                    print("=========uploading file to s3=========")
+                                    target_bucket.upload_file(local_fp, output_filename)
+                                    ag_item['pre_transformation_file_path_s'] = f's3://{config["target_bucket_name"]}/{output_filename}'
+                                    print("======uploading file to s3 DONE=======")
+
+                                start.append(datetime.strptime(time[:-3], '%Y-%m-%dT%H:%M:%S.%f'))
+                                end.append(datetime.strptime(time[:-3], '%Y-%m-%dT%H:%M:%S.%f'))
+
+                            except Exception as e:
+                                print(e)
+                                if aws_upload:
+                                    print("======aws upload unsuccessful=======")
+                                    ag_item['message_s'] = 'aws upload unsuccessful'
+
+                                else:
+                                    print(f'Download {file_name} failed.')
+                                    print("======file not successful=======")
+
+                                ag_item['harvest_success_b'] = False
+                                ag_item['filename_s'] = ''
+                                ag_item['pre_transformation_file_path_s'] = ''
+                                ag_item['file_size_l'] = 0
+
+                            ag_item['download_time_dt'] = chk_time
+
+                            # Update Solr entry using id if it exists
+                            if ag_item['date_s'] in lineage_docs.keys():
+                                ag_lineage_item['id'] = lineage_docs[ag_item['date_s']]['id']
+
+                            ag_lineage_item['harvest_success_b'] = ag_item['harvest_success_b']
+                            ag_lineage_item['pre_transformation_file_path_s'] = ag_item['pre_transformation_file_path_s']
+                            meta.append(ag_lineage_item)
+
+                            # add item to metadata json
+                            meta.append(ag_item)
+                            last_success_item = ag_item
+
+                        local_fp = f'{folder}{dataset_name}_granule.nc' if on_aws else f'{target_dir}{newfile}'
+                    
                     # Create checksum for file
                     item['checksum_s'] = md5(local_fp)
 
@@ -295,13 +372,14 @@ def podaac_harvester(s3=None, on_aws=False):
                     lineage_item['id'] = lineage_docs[item['date_s']]['id']
 
                 lineage_item['harvest_success_b'] = item['harvest_success_b']
-                lineage_item['pre_transformation_file_path_s'] = item['pre_transformation_file_path_s']
-                meta.append(lineage_item)
+                lineage_item['pre_transformation_file_path_s'] = item['pre_transformation_file_path_s']  
 
                 # add item to metadata json
-                meta.append(item)
-                # store meta for last successful download
-                last_success_item = item
+                if not aggregated:
+                    meta.append(lineage_item)
+                    meta.append(item)
+                    # store meta for last successful download
+                    last_success_item = item
 
         # Check if more granules are available
         next = xml.find("{%(atom)s}link[@rel='next']" % namespace)
