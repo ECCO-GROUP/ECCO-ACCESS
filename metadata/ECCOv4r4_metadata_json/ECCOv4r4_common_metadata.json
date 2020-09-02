@@ -221,11 +221,6 @@
       "value": "https://podaac.jpl.nasa.gov"
    },
    {
-      "name": "reference",
-      "type": "s",
-      "value": "DOI TBD"
-   },
-   {
       "name": "references",
       "type": "s",
       "value": "ECCO Consortium, Fukumori, I., Wang, O., Fenty, I., Forget, G., Heimbach, P., & Ponte, R. M. 2020. Synopsis of the ECCO Central Production Global Ocean and Sea-Ice State Estimate (Version 4 Release 4).doi:10.5281/zenodo.3765929"
@@ -258,7 +253,7 @@
    {
       "name": "id",
       "type": "s",
-      "value": "TBD_DATASET"
+      "value": "TBD_DOI"
    },
    {
       "name": "uuid",
