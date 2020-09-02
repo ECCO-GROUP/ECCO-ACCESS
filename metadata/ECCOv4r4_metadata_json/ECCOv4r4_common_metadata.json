@@ -47,15 +47,10 @@
    {
       "name": "creator_url",
       "type": "s",
-      "value": "TBD_DATASET https://doi.org/xxxxx"
+      "value": "https://ecco.jpl.nasa.gov"
    },
    {
       "name": "date_created",
-      "type": "s",
-      "value": "TBD_DATASET"
-   },
-   {
-      "name": "GCMD_keywords",
       "type": "s",
       "value": "TBD_DATASET"
    },
@@ -95,7 +90,7 @@
       "grid_dimension":"2D"
    },
    {
-      "name": "geospatial_bound_crs",
+      "name": "geospatial_bounds_crs",
       "type": "s",
       "value": "EPSG:4326",
       "grid_dimension":"2D"
@@ -198,7 +193,7 @@
    {
       "name": "project",
       "type": "s",
-      "value": "Estimating the Circulation and Climate of the Ocean"
+      "value": "Estimating the Circulation and Climate of the Ocean (ECCO)"
    },
    {
       "name": "publisher_email",
@@ -223,7 +218,7 @@
    {
       "name": "publisher_url",
       "type": "s",
-      "value": "podaac.jpl.nasa.gov"
+      "value": "https://podaac.jpl.nasa.gov"
    },
    {
       "name": "reference",
@@ -273,7 +268,7 @@
    {
       "name": "keywords",
       "type": "s",
-      "value": "ECCO, State Estimate, Estimating the Circulation and Climate of the Ocean, ocean, sea-ice"
+      "value": "ECCO, State Estimate, Estimating the Circulation and Climate of the Ocean"
    }
 ]
 
