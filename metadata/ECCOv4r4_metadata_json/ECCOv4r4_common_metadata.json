@@ -20,7 +20,7 @@
       "value": "These fields are provided on a regular lat-lon grid. They have been mapped to the regular lat-lon grid from the original ECCO lat-lon-cap 90 (llc90) native model grid."
    },
    {
-      "name": "conventions",
+      "name": "Conventions",
       "type": "s",
       "value": "CF-1.8, ACDD-1.3"
    },
@@ -133,7 +133,7 @@
    {
       "name": "history",
       "type": "s",
-      "value": "Inagural release of an ECCO \"Central Estimate\" solution to PO.DAAC"
+      "value": "Inaugural release of an ECCO \"Central Estimate\" solution to PO.DAAC"
    },
    {
       "name": "institution",
@@ -206,7 +206,7 @@
       "value": "podaac@podaac.jpl.nasa.gov"
    },
    {
-      "name": "publisher_insitution",
+      "name": "publisher_institution",
       "type": "s",
       "value": "PO.DAAC"
    },
