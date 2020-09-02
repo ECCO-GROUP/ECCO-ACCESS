@@ -695,7 +695,7 @@
    {
       "name": "SALT",
       "long_name": "Salinity",
-      "units": 0.001,
+      "units": "0.001",
       "standard_name": "sea_water_salinity",
       "comments_1": "Defined using CF convention \"Sea water salinity is the salt content of sea water, often on the Practical Salinity Scale of 1978. However, the unqualified term 'salinity' is generic and does not necessarily imply any particular method of calculation. The units of salinity are dimensionless and the units attribute should normally be given as 1e-3 or 0.001 i.e. parts per thousand.\" see  https://cfconventions.org/Data/cf-standard-names/73/build/cf-standard-name-table.html",
       "comments_2": "",
@@ -730,7 +730,7 @@
    {
       "name": "SIarea",
       "long_name": "Sea-ice concentration",
-      "units": 1,
+      "units": "1",
       "standard_name": "sea_ice_area_fraction",
       "comments_1": "Fraction of ocean grid cell covered with sea-ice [0 to 1]. CF Standard Name Table v73:  'Area fraction' is the fraction of a grid cell's horizontal area that has some characteristic of interest. It is evaluated as the area of interest divided by the grid cell area. It may be expressed as a fraction, a percentage, or any other dimensionless representation of a fraction. Sea ice area fraction is area of the sea surface occupied by sea ice. It is also called 'sea ice concentration'. 'Sea ice' means all ice floating in the sea which has formed from freezing sea water, rather than by other processes such as calving of land ice to form icebergs.  https://cfconventions.org/Data/cf-standard-names/73/build/cf-standard-name-table.html",
       "comments_2": "Defined using CF Standard Name Table v73: \"Area fraction\" is the fraction of a grid cell's horizontal area that has some characteristic of interest. It is evaluated as the area of interest divided by the grid cell area. It may be expressed as a fraction, a percentage, or any other dimensionless representation of a fraction. Sea ice area fraction is area of the sea surface occupied by sea ice. It is also called 'sea ice concentration'. 'Sea ice' means all ice floating in the sea which has formed from freezing sea water and precipitation, rather than by other processes such as calving of land ice to form icebergs.  https://cfconventions.org/Data/cf-standard-names/73/build/cf-standard-name-table.html",
