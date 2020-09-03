@@ -20,7 +20,7 @@
       "value": "These fields are provided on a regular lat-lon grid. They have been mapped to the regular lat-lon grid from the original ECCO lat-lon-cap 90 (llc90) native model grid."
    },
    {
-      "name": "conventions",
+      "name": "Conventions",
       "type": "s",
       "value": "CF-1.8, ACDD-1.3"
    },
@@ -47,15 +47,10 @@
    {
       "name": "creator_url",
       "type": "s",
-      "value": "TBD_DATASET https://doi.org/xxxxx"
+      "value": "https://ecco.jpl.nasa.gov"
    },
    {
       "name": "date_created",
-      "type": "s",
-      "value": "TBD_DATASET"
-   },
-   {
-      "name": "GCMD_keywords",
       "type": "s",
       "value": "TBD_DATASET"
    },
@@ -95,7 +90,7 @@
       "grid_dimension":"2D"
    },
    {
-      "name": "geospatial_bound_crs",
+      "name": "geospatial_bounds_crs",
       "type": "s",
       "value": "EPSG:4326",
       "grid_dimension":"2D"
@@ -133,7 +128,7 @@
    {
       "name": "history",
       "type": "s",
-      "value": "Inagural release of an ECCO \"Central Estimate\" solution to PO.DAAC"
+      "value": "Inaugural release of an ECCO \"Central Estimate\" solution to PO.DAAC"
    },
    {
       "name": "institution",
@@ -198,7 +193,7 @@
    {
       "name": "project",
       "type": "s",
-      "value": "Estimating the Circulation and Climate of the Ocean"
+      "value": "Estimating the Circulation and Climate of the Ocean (ECCO)"
    },
    {
       "name": "publisher_email",
@@ -206,7 +201,7 @@
       "value": "podaac@podaac.jpl.nasa.gov"
    },
    {
-      "name": "publisher_insitution",
+      "name": "publisher_institution",
       "type": "s",
       "value": "PO.DAAC"
    },
@@ -223,12 +218,7 @@
    {
       "name": "publisher_url",
       "type": "s",
-      "value": "podaac.jpl.nasa.gov"
-   },
-   {
-      "name": "reference",
-      "type": "s",
-      "value": "DOI TBD"
+      "value": "https://podaac.jpl.nasa.gov"
    },
    {
       "name": "references",
@@ -263,7 +253,7 @@
    {
       "name": "id",
       "type": "s",
-      "value": "TBD_DATASET"
+      "value": "TBD_DOI"
    },
    {
       "name": "uuid",
@@ -273,7 +263,7 @@
    {
       "name": "keywords",
       "type": "s",
-      "value": "ECCO, State Estimate, Estimating the Circulation and Climate of the Ocean, ocean, sea-ice"
+      "value": "ECCO, State Estimate, Estimating the Circulation and Climate of the Ocean"
    }
 ]
 
