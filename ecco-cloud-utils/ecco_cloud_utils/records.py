@@ -60,6 +60,11 @@ def make_empty_record(standard_name, long_name, units,
                 {'XC': (('lat', 'lon'), model_grid.XC)})
             data_DA = data_DA.assign_coords(
                 {'YC': (('lat', 'lon'), model_grid.YC)})
+        elif 'XC' in model_grid and 'YC' in model_grid:
+            data_DA = data_DA.assign_coords(
+                {'XC': (('NY', 'NX'), model_grid.XC)})
+            data_DA = data_DA.assign_coords(
+                {'YC': (('NY', 'NX'), model_grid.YC)})
         else:
             print('Unsupported model grid format')
             return []
