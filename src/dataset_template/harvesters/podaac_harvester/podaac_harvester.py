@@ -115,7 +115,7 @@ def podaac_harvester(s3=None, on_aws=False):
 
     # if target paths don't exist, make them
     if not os.path.exists(folder):
-        os.mkdir(folder)
+        os.makedirs(folder)
 
     if not os.path.exists(target_dir):
         os.makedirs(target_dir)
