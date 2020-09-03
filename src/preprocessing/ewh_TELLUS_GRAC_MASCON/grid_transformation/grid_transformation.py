@@ -319,8 +319,6 @@ def run_locally(source_file_path, remaining_transformations, output_dir):
 
             if not os.path.exists(output_path):
                 os.makedirs(output_path)
-                
-            # field_DA.name = 'before_saving'
 
             field_DS = field_DA.to_dataset()
             field_DS.to_netcdf(output_path + output_filename)
