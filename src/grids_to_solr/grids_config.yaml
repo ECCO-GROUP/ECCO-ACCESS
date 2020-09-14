@@ -3,5 +3,4 @@
 solr_host: http://localhost:8983/solr/
 solr_collection_name: ecco_datasets
 
-
-grids_to_use: ['2x2deg_demo.nc', 'ECCO_llc90_demo.nc', 'TPOSE_with_eff_grid_radius_v03.nc']
+grids_to_use: ["TPOSE_with_eff_grid_radius_v03.nc"]

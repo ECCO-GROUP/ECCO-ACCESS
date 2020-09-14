@@ -10,13 +10,12 @@ import xarray as xr
 # =====================================================
 # Read configurations from YAML file
 # =====================================================
-
 path_to_file_dir = os.path.dirname(os.path.abspath(sys.argv[0])) + "/grids/"
 
 path_to_yaml = os.path.dirname(
     os.path.abspath(sys.argv[0])) + "/grids_config.yaml"
 with open(path_to_yaml, "r") as stream:
-    config = yaml.load(stream)
+    config = yaml.load(stream, yaml.Loader)
 
 solr_host = config['solr_host']
 solr_collection_name = config['solr_collection_name']
@@ -24,9 +23,8 @@ solr_collection_name = config['solr_collection_name']
 # =====================================================
 # Scan directory for grid types
 # =====================================================
-grid_files = [f for f in os.listdir(path_to_file_dir)
-              if os.path.isfile(os.path.join(path_to_file_dir, f))
-              ]
+grid_files = [f for f in os.listdir(path_to_file_dir) if os.path.isfile(
+    os.path.join(path_to_file_dir, f))]
 
 # =====================================================
 # Extract grid names from netCDF

@@ -179,7 +179,7 @@ def osisaf_ftp_harvester(s3=None, on_aws=False):
 
                 for newfile in files:
                     try:
-                        if '.nc' not in newfile or '.bz2' not in newfile or '.gz' not in newfile:
+                        if '.nc' not in newfile and '.bz2' not in newfile and '.gz' not in newfile:
                             continue
 
                         url = f'{urlbase}{newfile}'
