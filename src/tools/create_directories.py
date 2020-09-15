@@ -6,19 +6,20 @@ from shutil import copyfile
 
 # list all template folders
 transformation_template_path = Path(
-    f'{Path(__file__).parents[1]}/preprocessing/grid_transformation')
+    f'{Path(__file__).parents[1]}/dataset_template/preprocessing/grid_transformation')
 aggregation_template_path = Path(
-    f'{Path(__file__).parents[1]}/preprocessing/aggregation_by_year')
+    f'{Path(__file__).parents[1]}/dataset_template/preprocessing/aggregation_by_year')
 podaac_template_path = Path(
-    f'{Path(__file__).parents[1]}/harvesters/podaac_harvester')
+    f'{Path(__file__).parents[1]}/dataset_template/harvesters/podaac_harvester')
 osisaf_template_path = Path(
-    f'{Path(__file__).parents[1]}/harvesters/osisaf_ftp_harvester')
+    f'{Path(__file__).parents[1]}/dataset_template/harvesters/osisaf_ftp_harvester')
 nsidc_template_path = Path(
-    f'{Path(__file__).parents[1]}/harvesters/nsidc_ftp_harvester')
+    f'{Path(__file__).parents[1]}/dataset_template/harvesters/nsidc_ftp_harvester')
+
 
 # path to harvester and preprocessing folders
-path_to_harvesters = Path(f'{Path(__file__).parents[2]}/harvesters')
-path_to_preprocessing = Path(f'{Path(__file__).parents[2]}/preprocessing')
+path_to_harvesters = Path(f'{Path(__file__).parents[1]}/harvesters')
+path_to_preprocessing = Path(f'{Path(__file__).parents[1]}/preprocessing')
 
 # create new directories -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 use_sys_arg = False
