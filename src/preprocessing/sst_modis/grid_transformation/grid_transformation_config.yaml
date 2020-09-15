@@ -68,3 +68,6 @@ ecco_utils: /Users/kevinmarlis/Developer/JPL/ecco-access/ECCO-ACCESS/ecco-cloud-
 source_bucket: ecco-preprocess
 target_bucket: ecco-ames
 aws_output_dir: sst_MODIS_transformed/
+
+# New on 9/15
+aws_output_suffix: .nc
