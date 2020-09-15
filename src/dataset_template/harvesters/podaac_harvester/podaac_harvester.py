@@ -24,7 +24,6 @@ def md5(fname):
 
 def metadata_maker(config, date, link, mod_time, on_aws, target_bucket, local_fp, file_name, chk_time, lineage_docs, item_id):
     dataset_name = config['ds_name']
-    aws_upload = False
     harvest_success = False
 
     item = {}
@@ -48,33 +47,32 @@ def metadata_maker(config, date, link, mod_time, on_aws, target_bucket, local_fp
     if date in lineage_docs.keys():
         lineage_item['id'] = lineage_docs[date]['id']
 
+    # Create checksum for file
+    harvest_success = True
+    item['harvest_success_b'] = {"set": harvest_success}
+    item['pre_transformation_file_path_s'] = {"set": local_fp}
+    item['filename_s'] = {"set": file_name}
+
     try:
-        # Create checksum for file
-        harvest_success = True
-        item['harvest_success_b'] = {"set": harvest_success}
-        item['pre_transformation_file_path_s'] = {"set": local_fp}
-        item['filename_s'] = {"set": file_name}
         item['file_size_l'] = {"set": os.path.getsize(local_fp)}
         item['checksum_s'] = {"set": md5(local_fp)}
+    except Exception as e:
+        print(e)
+        print(f'Failed updating file_size and checksum for {file_name}')
+        print('=======failed file_size and checksum======')
 
+    try:
         if on_aws:
             output_filename = f'{dataset_name}/{file_name}'
-            aws_upload = True
             print("=========uploading file to s3=========")
             target_bucket.upload_file(local_fp, output_filename)
             item['pre_transformation_file_path_s'] = {
                 "set": f's3://{config["target_bucket_name"]}/{output_filename}'}
             print("======uploading file to s3 DONE=======")
-
     except Exception as e:
         print(e)
-        if aws_upload:
-            print("======aws upload unsuccessful=======")
-            item['message_s'] = {"set": 'aws upload unsuccessful'}
-
-        else:
-            print(f'Download {file_name} failed.')
-            print("======file not successful=======")
+        print("======aws upload unsuccessful=======")
+        item['message_s'] = {"set": 'aws upload unsuccessful'}
 
         harvest_success = False
         item['harvest_success_b'] = {"set": harvest_success}
@@ -359,6 +357,8 @@ def podaac_harvester(s3=None, on_aws=False):
 
             except Exception as e:
                 print(e)
+                print(f'{file_name} unsuccessful')
+                print("======file not successful=======")
 
         # Check if more granules are available
         next = xml.find("{%(atom)s}link[@rel='next']" % namespace)
