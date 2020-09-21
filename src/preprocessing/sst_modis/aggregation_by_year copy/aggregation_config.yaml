@@ -30,3 +30,4 @@ ecco_utils: /Users/kevinmarlis/Developer/JPL/ecco-access/ECCO-ACCESS/ecco-cloud-
 source_bucket: ecco-ames
 target_bucket: ecco-ames
 s3_aggregated_path: aggregated/
+
