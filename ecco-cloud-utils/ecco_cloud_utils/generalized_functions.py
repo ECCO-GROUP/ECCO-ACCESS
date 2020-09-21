@@ -64,6 +64,8 @@ def generalized_grid_product(product_name,
 
 # %%
 # return dates_in_year_iso, daily_paths
+
+
 def generalized_get_data_filepaths_for_year(year, data_dir, data_file_suffix,
                                             data_time_scale, date_format):
 
@@ -159,6 +161,8 @@ def generalized_get_data_filepaths_for_year(year, data_dir, data_file_suffix,
 
 # %%
 # return data_DA
+
+
 def generalized_transform_to_model_grid_solr(data_field_info, record_date, model_grid,
                                              model_grid_type, array_precision,
                                              record_file_name, original_dataset_metadata,
@@ -268,6 +272,8 @@ def generalized_transform_to_model_grid_solr(data_field_info, record_date, model
 
 # %%
 # return num_files_saved
+
+
 def generalized_transform_to_model_grid(source_indices_within_target_radius_i,
                                         num_source_indices_within_target_radius_i,
                                         nearest_source_index_to_target_index_i,
@@ -303,7 +309,6 @@ def generalized_transform_to_model_grid(source_indices_within_target_radius_i,
         str(np.datetime64(datetime.now(), 'D'))
 
     data_DA.time.attrs['long_name'] = 'center time of averaging period'
-
 
     data_DA.attrs['original_dataset_title'] = new_data_attr['original_dataset_title']
     data_DA.attrs['original_dataset_short_name'] = new_data_attr['original_dataset_short_name']
@@ -366,7 +371,7 @@ def generalized_transform_to_model_grid(source_indices_within_target_radius_i,
         else:
             data_DA.time_start.values[0] = ds.time_coverage_start
             data_DA.time_end.values[0] = ds.time_coverage_end
-    
+
         if 'time_var' in extra_information:
             if 'Time' in ds.variables:
                 data_DA.time.values[0] = ds.Time[0].values
@@ -384,6 +389,8 @@ def generalized_transform_to_model_grid(source_indices_within_target_radius_i,
 
 # %%
 # return data_DA_year_merged
+
+
 def generalized_process_loop(data_field_info,
                              iso_dates_for_year,
                              paths,
@@ -397,7 +404,7 @@ def generalized_process_loop(data_field_info,
                              new_data_attr):
 
     data_DA_year = []
-    
+
     # Process each date of the year
     for record_date in iso_dates_for_year:
         if paths[record_date] != []:
@@ -408,15 +415,15 @@ def generalized_process_loop(data_field_info,
         # send filepath to the transformation routine, return data array
         # that contains the original values mapped to new grid
         data_DA = generalized_transform_to_model_grid(source_indices_within_target_radius_i,
-                                                       num_source_indices_within_target_radius_i,
-                                                       nearest_source_index_to_target_index_i,
-                                                       model_grid, model_grid_type,
-                                                       record_date, record_filepath,
-                                                       data_field_info,
-                                                       array_precision,
-                                                       time_zone_included_with_time,
-                                                       extra_information,
-                                                       new_data_attr)
+                                                      num_source_indices_within_target_radius_i,
+                                                      nearest_source_index_to_target_index_i,
+                                                      model_grid, model_grid_type,
+                                                      record_date, record_filepath,
+                                                      data_field_info,
+                                                      array_precision,
+                                                      time_zone_included_with_time,
+                                                      extra_information,
+                                                      new_data_attr)
 
         data_DA_year.append(data_DA)
 
@@ -427,6 +434,8 @@ def generalized_process_loop(data_field_info,
 
 # %%
 # return assimilated_data_DA_year_merged
+
+
 def open_and_merge(data_field_info, iso_dates_for_year, assimilated_paths,
                    model_grid, model_grid_type, array_precision, remove_nan_days_from_data):
 
@@ -471,6 +480,8 @@ def open_and_merge(data_field_info, iso_dates_for_year, assimilated_paths,
 
 # %%
 # returns nothing
+
+
 def generalized_aggregate_and_save(DA_year_merged,
                                    new_data_attr,
                                    do_monthly_aggregation,
@@ -481,6 +492,7 @@ def generalized_aggregate_and_save(DA_year_merged,
                                    output_dirs,
                                    binary_dtype,
                                    model_grid_type,
+                                   on_aws='',
                                    save_binary=True,
                                    save_netcdf=True,
                                    remove_nan_days_from_data=False):
@@ -558,6 +570,9 @@ def generalized_aggregate_and_save(DA_year_merged,
 
             mon_DA_year_merged = xr.concat((mon_DA_year), dim='time')
 
+        save_netcdf = save_netcdf and not on_aws
+        save_binary = save_binary or on_aws
+
         #######################################################
         ## BEGIN SAVE TO DISK                                ##
 
@@ -578,4 +593,5 @@ def generalized_aggregate_and_save(DA_year_merged,
 
         ## END   SAVE TO DISK                                ##
         #######################################################
+
  # %%
