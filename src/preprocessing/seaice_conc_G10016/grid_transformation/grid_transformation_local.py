@@ -3,27 +3,27 @@ import sys
 import glob
 import yaml
 import requests
+import importlib
 import itertools
 import numpy as np
 import xarray as xr
 from collections import defaultdict
-from grid_transformation import run_locally_wrapper, solr_query, solr_update
 
 
 # Determines grid/field combinations that have yet to be transformed for a given granule
 # Returns dictionary where key is grid and value is list of fields
-def get_remaining_transformations(config, source_file_path):
+def get_remaining_transformations(config, source_file_path, grid_transformation):
     dataset_name = config['ds_name']
     solr_host = config['solr_host_local']
 
     # Query for grids
     fq = ['type_s:grid']
-    docs = solr_query(config, solr_host, fq)
+    docs = grid_transformation.solr_query(config, solr_host, fq)
     grids = [doc['grid_name_s'] for doc in docs]
 
     # Query for fields
     fq = ['type_s:field', f'dataset_s:{dataset_name}']
-    docs = solr_query(config, solr_host, fq)
+    docs = grid_transformation.solr_query(config, solr_host, fq)
     fields = [field_entry for field_entry in docs]
 
     # Cartesian product of grid/field combinations
@@ -32,7 +32,7 @@ def get_remaining_transformations(config, source_file_path):
     # Query for existing transformations
     fq = [f'dataset_s:{dataset_name}', 'type_s:transformation',
           f'pre_transformation_file_path_s:"{source_file_path}"']
-    docs = solr_query(config, solr_host, fq)
+    docs = grid_transformation.solr_query(config, solr_host, fq)
 
     if len(docs) > 0:
 
@@ -52,7 +52,7 @@ def get_remaining_transformations(config, source_file_path):
                 # Query for harvested granule checksum
                 fq = [f'dataset_s:{dataset_name}', 'type_s:harvested',
                       f'pre_transformation_file_path_s:"{source_file_path}"']
-                harvested_checksum = solr_query(config, solr_host, fq)[
+                harvested_checksum = grid_transformation.solr_query(config, solr_host, fq)[
                     0]['checksum_s']
 
                 origin_checksum = existing_transformations[(grid, field_name)]
@@ -60,7 +60,7 @@ def get_remaining_transformations(config, source_file_path):
                 # Query for existing transformation
                 fq = [f'dataset_s:{dataset_name}', 'type_s:transformation',
                       f'pre_transformation_file_path_s:"{source_file_path}"']
-                transformation = solr_query(config, solr_host, fq)[0]
+                transformation = grid_transformation.solr_query(config, solr_host, fq)[0]
 
                 # Compare transformation version number and config version number
                 # Compare origin checksum for transformed file
@@ -81,11 +81,15 @@ def get_remaining_transformations(config, source_file_path):
 
     return dict(grid_field_dict)
 
+def main(path=''):
+    import grid_transformation 
+    grid_transformation = importlib.reload(grid_transformation)
 
-##################################################
-if __name__ == "__main__":
     # Pull config information
-    path_to_yaml = f'{os.path.dirname(sys.argv[0])}/grid_transformation_config.yaml'
+    if path:
+        path_to_yaml = f'{path}/grid_transformation_config.yaml'
+    else:
+        path_to_yaml = f'{os.path.dirname(sys.argv[0])}/grid_transformation_config.yaml'
     with open(path_to_yaml, "r") as stream:
         config = yaml.load(stream, yaml.Loader)
 
@@ -98,7 +102,7 @@ if __name__ == "__main__":
 
     # Get all harvested granules for this dataset
     fq = [f'dataset_s:{dataset_name}', 'type_s:harvested']
-    harvested_granules = solr_query(config, solr_host, fq)
+    harvested_granules = grid_transformation.solr_query(config, solr_host, fq)
 
     years_updated = []
 
@@ -112,11 +116,11 @@ if __name__ == "__main__":
             continue
 
         # Get transformations to be completed for this file
-        remaining_transformations = get_remaining_transformations(config, f)
+        remaining_transformations = get_remaining_transformations(config, f, grid_transformation)
 
         # Perform remaining transformations
         if remaining_transformations:
-            run_locally_wrapper(f, remaining_transformations, output_dir)
+            grid_transformation.run_locally_wrapper(f, remaining_transformations, output_dir, path=path)
 
             # Add granule year to years_updated
             year = granule['date_s'][:4]
@@ -129,7 +133,7 @@ if __name__ == "__main__":
 
     # Query Solr for dataset metadata
     fq = [f'dataset_s:{dataset_name}', 'type_s:dataset']
-    dataset_metadata = solr_query(config, solr_host, fq)[0]
+    dataset_metadata = grid_transformation.solr_query(config, solr_host, fq)[0]
 
     # Combine Solr dataset entry years_updated list with transformation years_updated
     if 'years_updated_ss' in dataset_metadata.keys():
@@ -148,9 +152,13 @@ if __name__ == "__main__":
         "years_updated_ss": {"set": dataset_years_updated}
     }]
 
-    r = solr_update(config, solr_host, update_body, r=True)
+    r = grid_transformation.solr_update(config, solr_host, update_body, r=True)
 
     if r.status_code == 200:
         print('Successfully updated Solr dataset entry with transformation information')
     else:
         print('Failed to update Solr dataset entry with transformation information')
+
+##################################################
+if __name__ == "__main__":
+    main()

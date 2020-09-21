@@ -1,7 +1,11 @@
 import os
 import sys
+import importlib
 
-from podaac_harvester import podaac_harvester
+def main(path=''):
+	import podaac_harvester
+	podaac_harvester = importlib.reload(podaac_harvester)
+	podaac_harvester.podaac_harvester(path=path, on_aws=False)
 
 if __name__ == '__main__':
-    podaac_harvester(on_aws=False)
+    main()

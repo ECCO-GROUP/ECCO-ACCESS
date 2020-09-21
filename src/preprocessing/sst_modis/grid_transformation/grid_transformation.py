@@ -52,10 +52,10 @@ def solr_update(config, solr_host, update_body, r=False):
 
 
 # Calls run_locally and catches any errors
-def run_locally_wrapper(source_file_path, remaining_transformations, output_dir):
+def run_locally_wrapper(source_file_path, remaining_transformations, output_dir, path=''):
     try:
         run_locally(source_file_path,
-                    remaining_transformations, output_dir)
+                    remaining_transformations, output_dir, path=path)
     except Exception as e:
         print(e)
         print('Unable to run local transformation')
@@ -63,11 +63,14 @@ def run_locally_wrapper(source_file_path, remaining_transformations, output_dir)
 
 # Performs and saves locally all remaining transformations for a given source granule
 # Updates Solr with transformation entries and updates lineage, and dataset entries
-def run_locally(source_file_path, remaining_transformations, output_dir):
+def run_locally(source_file_path, remaining_transformations, output_dir, path=''):
     # =====================================================
     # Read configurations from YAML file
     # =====================================================
-    path_to_yaml = f'{os.path.dirname(sys.argv[0])}/grid_transformation_config.yaml'
+    if path:
+        path_to_yaml = f'{path}/grid_transformation_config.yaml'
+    else:
+        path_to_yaml = f'{os.path.dirname(sys.argv[0])}/grid_transformation_config.yaml'
     with open(path_to_yaml, "r") as stream:
         config = yaml.load(stream, yaml.Loader)
 

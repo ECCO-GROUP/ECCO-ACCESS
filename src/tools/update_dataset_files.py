@@ -6,15 +6,15 @@ from shutil import copyfile
 
 # list all template folders
 transformation_template_path = Path(
-    f'{Path(__file__).parents[1]}/dataset_template/preprocessing/grid_transformation')
+    f'{Path(__file__).resolve().parents[1]}/dataset_template/preprocessing/grid_transformation')
 aggregation_template_path = Path(
-    f'{Path(__file__).parents[1]}/dataset_template/preprocessing/aggregation_by_year')
+    f'{Path(__file__).resolve().parents[1]}/dataset_template/preprocessing/aggregation_by_year')
 podaac_template_path = Path(
-    f'{Path(__file__).parents[1]}/dataset_template/harvesters/podaac_harvester')
+    f'{Path(__file__).resolve().parents[1]}/dataset_template/harvesters/podaac_harvester')
 osisaf_template_path = Path(
-    f'{Path(__file__).parents[1]}/dataset_template/harvesters/osisaf_ftp_harvester')
+    f'{Path(__file__).resolve().parents[1]}/dataset_template/harvesters/osisaf_ftp_harvester')
 nsidc_template_path = Path(
-    f'{Path(__file__).parents[1]}/dataset_template/harvesters/nsidc_ftp_harvester')
+    f'{Path(__file__).resolve().parents[1]}/dataset_template/harvesters/nsidc_ftp_harvester')
 
 # update to template -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # zip list of harvester names and their template paths
@@ -22,8 +22,8 @@ harvesters_list = zip(['podaac_harvester', 'osisaf_ftp_harvester', 'nsidc_ftp_ha
                       podaac_template_path, osisaf_template_path, nsidc_template_path])
 
 # path to harvester and preprocessing folders
-path_to_harvesters = Path(f'{Path(__file__).parents[1]}/harvesters')
-path_to_preprocessing = Path(f'{Path(__file__).parents[1]}/preprocessing')
+path_to_harvesters = Path(f'{Path(__file__).resolve().parents[1]}/harvesters')
+path_to_preprocessing = Path(f'{Path(__file__).resolve().parents[1]}/preprocessing')
 
 # harvesters --------------------------------------------------------------------------------------------------------------------------
 update_harvesters = True
@@ -51,10 +51,12 @@ dirs = [dataset for dataset in os.listdir(
 # for each dataset, copy each template file to the file already present (excluding the configuration file)
 # same process for transformation and aggregation but with different directory names
 
-update_preprocessing = False
+update_preprocessing = True
 
 if update_preprocessing:
     for dataset in dirs:
+        if 'modis' in dataset:
+            continue
         ds_transformation_path = Path(
             f'{path_to_preprocessing}/{dataset}/grid_transformation')
         ds_aggregation_path = Path(

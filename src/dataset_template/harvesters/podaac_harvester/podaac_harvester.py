@@ -130,11 +130,15 @@ def unzip_gz(local_fp, folder):
 # Pulls data files for given PODAAC id and date range
 # If not on_aws, saves locally, else saves to s3 bucket
 # Creates Solr entries for dataset, harvested granule, fields, and lineage
-def podaac_harvester(s3=None, on_aws=False):
+def podaac_harvester(path='', s3=None, on_aws=False):
     # =====================================================
     # Read configurations from YAML file
     # =====================================================
-    path_to_yaml = f'{os.path.dirname(sys.argv[0])}/podaac_harvester_config.yaml'
+    if path:
+        path_to_yaml = f'{path}/podaac_harvester_config.yaml'
+    else:
+        path_to_yaml = f'{os.path.dirname(sys.argv[0])}/podaac_harvester_config.yaml'
+
     with open(path_to_yaml, "r") as stream:
         config = yaml.load(stream, yaml.Loader)
 

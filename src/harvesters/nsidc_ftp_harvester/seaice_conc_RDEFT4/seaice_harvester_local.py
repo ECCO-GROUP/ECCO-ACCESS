@@ -1,10 +1,12 @@
-# for local run
-import sys
 import os
+import sys
+import importlib
 
-from seaice_harvester import seaice_harvester
+def main(path=''):
+	import seaice_harvester
+	seaice_harvester = importlib.reload(seaice_harvester)
+	seaice_harvester.seaice_harvester(path=path, on_aws=False)
 
 if __name__ == '__main__':
-    path_to_file_dir = os.path.dirname(os.path.abspath(sys.argv[0])) + '/'
-    seaice_harvester(path_to_file_dir, on_aws=False)
+    main()
 

@@ -95,11 +95,14 @@ def solr_update(config, solr_host, update_body, r=False):
 
 
 # Aggregates data into annual files, saves them, and updates Solr
-def run_aggregation(output_dir, s3=None):
+def run_aggregation(output_dir, s3=None, path=''):
     # =====================================================
     # Read configurations from YAML file
     # =====================================================
-    path_to_yaml = f'{os.path.dirname(sys.argv[0])}/aggregation_config.yaml'
+    if path:
+        path_to_yaml = f'{path}/aggregation_config.yaml'
+    else:
+        path_to_yaml = f'{os.path.dirname(sys.argv[0])}/aggregation_config.yaml'
     with open(path_to_yaml, "r") as stream:
         config = yaml.load(stream, yaml.Loader)
 
