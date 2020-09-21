@@ -55,9 +55,8 @@ def generalized_grid_product(product_name,
     # Define the 'swath' (in the terminology of the pyresample module)
     # as the lats/lon pairs of the source observation grid
     # The routine needs the lats and lons to be one-dimensional vectors.
-    source_grid = \
-        pr.geometry.SwathDefinition(lons=data_grid_lons.ravel(),
-                                    lats=data_grid_lats.ravel())
+    source_grid = pr.geometry.SwathDefinition(lons=data_grid_lons.ravel(),
+                                              lats=data_grid_lats.ravel())
 
     return (source_grid_min_L, source_grid_max_L, source_grid, data_grid_lons, data_grid_lats)
 # %%
