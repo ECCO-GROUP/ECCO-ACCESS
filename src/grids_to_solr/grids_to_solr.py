@@ -1,11 +1,11 @@
-from urllib.request import urlopen, urlcleanup, urlretrieve
-from datetime import datetime
-import json
-import requests
 import os
 import sys
+import json
 import yaml
+import requests
 import xarray as xr
+from datetime import datetime
+from urllib.request import urlopen, urlcleanup, urlretrieve
 
 # =====================================================
 # Read configurations from YAML file
