@@ -106,6 +106,7 @@ if __name__ == '__main__':
 	# path to harvester and preprocessing folders
 	path_to_harvesters = Path(f'{Path(__file__).resolve().parents[1]}/harvesters')
 	path_to_preprocessing = Path(f'{Path(__file__).resolve().parents[1]}/preprocessing')
+	path_to_grids = Path(f'{Path(__file__).resolve().parents[1]}/grids_to_solr')
 	datasets = os.listdir(path_to_preprocessing)
 
 	while True:
@@ -117,66 +118,91 @@ if __name__ == '__main__':
 		print('5) Y/N for datasets')
 		chosen_option = input('Enter option number: ')
 
-		#log = {'ds':['harvest e','transform e','aggregation e']}
-		log = {}
-
-		if chosen_option == '1':
-			log = run_harvester(datasets, path_to_harvesters, log)
-			log = run_transformation(datasets, path_to_preprocessing, log)
-			log = run_aggregation(datasets, path_to_preprocessing, log)
-			break
-		elif chosen_option == '2':
-			log = run_harvester(datasets, path_to_harvesters, log)
-			break
-		elif chosen_option == '3':
-			log = run_harvester(datasets, path_to_harvesters, log)
-			log = run_transformation(datasets, path_to_preprocessing, log)
-			break
-		elif chosen_option == '4':
-			while True:
-				wanted_ds = input('\nEnter wanted dataset: ')
-				if wanted_ds not in datasets:
-					print(f'Invalid dataset, "{wanted_ds}", please enter a valid dataset')
-				else:
-					break
-			while True:
-				valid_steps = True
-				wanted_steps = input('\nEnter wanted pipeline steps: ').lower().split()
-				for step in wanted_steps:
-					if (step not in ['harvest', 'transform', 'aggregate', 'all']):
-						print(f'Invalid step, "{step}", please enter a valid pipeline step')
-						valid_steps = False
-				if valid_steps:
-					break
-			for step in wanted_steps:
-				if step == 'harvest':
-					log = run_harvester([wanted_ds], path_to_harvesters, log)
-				elif step == 'transform':
-					log = run_transformation([wanted_ds], path_to_preprocessing, log)
-				elif step == 'aggregate':
-					log = run_aggregation([wanted_ds], path_to_preprocessing, log)
-				elif step == 'all':
-					log = run_harvester([wanted_ds], path_to_harvesters, log)
-					log = run_transformation([wanted_ds], path_to_preprocessing, log)
-					log = run_aggregation([wanted_ds], path_to_preprocessing, log)
-			break
-		elif chosen_option == '5':
-			for ds in datasets:
-				while True:
-					yes_no = input(f'\nRun pipeline for {ds}? (Y/N): ').upper()
-					if (yes_no != 'E') and (yes_no != 'N') and (yes_no != 'Y'):
-						print(f'Unknown option entered, "{yes_no}", please enter a valid option')
-					else:
-						break
-				if yes_no == 'Y':
-					log = run_harvester([ds], path_to_harvesters, log)
-					log = run_transformation([ds], path_to_preprocessing, log)
-					log = run_aggregation([ds], path_to_preprocessing, log)
-				elif yes_no == 'E':
-					break
-				else: #yes_no == 'N'
-					continue
+		if chosen_option in ['1', '2', '3', '4', '5']:
 			break
 		else:
 			print(f'Unknown option entered, "{chosen_option}", please enter a valid option\n')
+
+	#log = {'ds':['harvest e','transform e','aggregation e']}
+	log = {}
+
+	while True:
+		run_grids = input('\nRun grids_to_solr? (Y/N): ').upper()
+		if run_grids not in ['Y', 'N']:
+			print(f'Invalid response, "{run_grids}", please enter a valid response')
+		elif run_grids == 'N':
+			break
+		else:
+			try:
+				print(f'\n\033[93mRunning grids_to_solr\033[0m')
+				print('=========================================================')
+				grids_to_solr = 'grids_to_solr'
+				sys.path.insert(1, str(path_to_grids))
+				try:
+					ret_import = importlib.reload(ret_import)
+				except:
+					ret_import = importlib.import_module(grids_to_solr)
+				ret_import.main(path=path_to_grids)
+				sys.path.remove(str(path_to_grids))
+				log.setdefault('grids',[]).append(f'\tgrids_to_solr \033[92msuccessful\033[0m')
+				print('\033[92mgrids_to_solr successful\033[0m')
+			except:
+				sys.path.remove(str(path_to_grids))
+				print('\033[91mgrids_to_solr failed\033[0m')
+				log.setdefault('grids',[]).append(f'\tgrids_to_solr \033[91mfailed\033[0m: {e}')
+			print('=========================================================')
+			break
+
+	if chosen_option == '1':
+		log = run_harvester(datasets, path_to_harvesters, log)
+		log = run_transformation(datasets, path_to_preprocessing, log)
+		log = run_aggregation(datasets, path_to_preprocessing, log)
+	elif chosen_option == '2':
+		log = run_harvester(datasets, path_to_harvesters, log)
+	elif chosen_option == '3':
+		log = run_harvester(datasets, path_to_harvesters, log)
+		log = run_transformation(datasets, path_to_preprocessing, log)
+	elif chosen_option == '4':
+		while True:
+			wanted_ds = input('\nEnter wanted dataset: ')
+			if wanted_ds not in datasets:
+				print(f'Invalid dataset, "{wanted_ds}", please enter a valid dataset')
+			else:
+				break
+		while True:
+			valid_steps = True
+			wanted_steps = input('\nEnter wanted pipeline steps: ').lower().split()
+			for step in wanted_steps:
+				if (step not in ['harvest', 'transform', 'aggregate', 'all']):
+					print(f'Invalid step, "{step}", please enter a valid pipeline step')
+					valid_steps = False
+			if valid_steps:
+				break
+		for step in wanted_steps:
+			if step == 'harvest':
+				log = run_harvester([wanted_ds], path_to_harvesters, log)
+			elif step == 'transform':
+				log = run_transformation([wanted_ds], path_to_preprocessing, log)
+			elif step == 'aggregate':
+				log = run_aggregation([wanted_ds], path_to_preprocessing, log)
+			elif step == 'all':
+				log = run_harvester([wanted_ds], path_to_harvesters, log)
+				log = run_transformation([wanted_ds], path_to_preprocessing, log)
+				log = run_aggregation([wanted_ds], path_to_preprocessing, log)
+	elif chosen_option == '5':
+		for ds in datasets:
+			while True:
+				yes_no = input(f'\nRun pipeline for {ds}? (Y/N): ').upper()
+				if (yes_no != 'E') and (yes_no != 'N') and (yes_no != 'Y'):
+					print(f'Unknown option entered, "{yes_no}", please enter a valid option')
+				else:
+					break
+			if yes_no == 'Y':
+				log = run_harvester([ds], path_to_harvesters, log)
+				log = run_transformation([ds], path_to_preprocessing, log)
+				log = run_aggregation([ds], path_to_preprocessing, log)
+			elif yes_no == 'E':
+				break
+			else: #yes_no == 'N'
+				continue
 	print_log(log)
