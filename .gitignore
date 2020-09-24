@@ -1,5 +1,6 @@
-# netCDF data files
+# data files
 *.nc
+*.bz2
 
 # json output
 *.json
