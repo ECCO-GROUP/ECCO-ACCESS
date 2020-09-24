@@ -6,6 +6,7 @@ import importlib
 import itertools
 import numpy as np
 import xarray as xr
+from pathlib import Path
 from collections import defaultdict
 
 
@@ -95,7 +96,7 @@ def main(path=''):
         config = yaml.load(stream, yaml.Loader)
 
     dataset_name = config['ds_name']
-    output_dir = config['output_dir']
+    output_dir = f'{Path(__file__).resolve().parents[3]}/output/'
     solr_host = config['solr_host_local']
 
     if not os.path.exists(output_dir):

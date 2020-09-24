@@ -6,6 +6,7 @@ import hashlib
 import requests
 import numpy as np
 import xarray as xr
+from pathlib import Path
 from netCDF4 import default_fillvals  # pylint: disable=no-name-in-module
 from datetime import datetime, timedelta
 
@@ -109,8 +110,7 @@ def run_aggregation(output_dir, s3=None, path=''):
     # =====================================================
     # Code to import ecco utils locally...
     # =====================================================
-    from pathlib import Path
-    generalized_functions_path = Path(config['ecco_utils'])
+    generalized_functions_path = Path(f'{Path(__file__).resolve().parents[5]}/ECCO-ACCESS/ecco-cloud-utils/')
     sys.path.append(str(generalized_functions_path))
     import ecco_cloud_utils as ea  # pylint: disable=import-error
 

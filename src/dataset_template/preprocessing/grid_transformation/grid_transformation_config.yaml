@@ -56,18 +56,10 @@ solr_host_aws: http://ec2-3-16-187-19.us-east-2.compute.amazonaws.com:8983/solr/
 solr_collection_name: ecco_datasets # doesn't change
 
 # =====================================================
-# Local
-# =====================================================
-# REMEMBER, REPLACE LOCAL PATHS SO THEY POINT TO YOUR /SRC/ DIRECTORY
-output_dir: ../ecco-preprocessing/src/output/
-ecco_utils: ../ecco-access/ECCO-ACCESS/ecco-cloud-utils/ecco_cloud_utils
-
-# =====================================================
 # AWS
 # =====================================================
 source_bucket: ecco-preprocess
 target_bucket: ecco-ames
-aws_output_dir: {ds_name}_transformed/
 aws_output_suffix: .nc
 
 

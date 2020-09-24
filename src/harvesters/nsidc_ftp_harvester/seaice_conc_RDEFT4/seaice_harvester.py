@@ -4,6 +4,7 @@ import datetime
 # from datetime import datetime, timedelta
 import sys
 from os import path
+from pathlib import Path
 import os
 import re
 # from urllib.request import urlopen, urlcleanup, urlretrieve
@@ -299,11 +300,14 @@ def seaice_harvester(path='', s3=None, on_aws=False):
     # =====================================================
     # Download raw data files
     # =====================================================
-    target_dir = config['target_dir'] + '/'
-    folder = '/tmp/'+config['ds_name']+'/'
+    dataset_name = config['ds_name']
+    parent_path = f'{Path(__file__).resolve().parents[1]}'
+    if '\\' in parent_path:
+        parent_path = parent_path.replace('\\', '/')
+    target_dir = f'{parent_path}/harvested_granule/{dataset_name}/'
+    folder = f'/tmp/{dataset_name}/'
     data_time_scale = config['data_time_scale']
 
-    dataset_name = config['ds_name']
     short_name = config['ds_name'][7:]
     solr_host = config['solr_host']
     version = '1'

@@ -8,6 +8,7 @@ import hashlib
 import requests
 import numpy as np
 import xarray as xr
+from pathlib import Path
 from xml.etree.ElementTree import parse
 from datetime import datetime, timedelta
 from urllib.request import urlopen, urlcleanup, urlretrieve
@@ -147,7 +148,10 @@ def podaac_harvester(path='', s3=None, on_aws=False):
     # Initializing required values
     # =====================================================
     dataset_name = config['ds_name']
-    target_dir = f'{config["target_dir"]}/'
+    parent_path = f'{Path(__file__).resolve().parents[1]}'
+    if '\\' in parent_path:
+        parent_path = parent_path.replace('\\', '/')
+    target_dir = f'{parent_path}/harvested_granule/{dataset_name}/'
     date_regex = config['date_regex']
     aggregated = config['aggregated']
     start_time = config['start']

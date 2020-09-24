@@ -35,22 +35,22 @@ if use_sys_arg:
     harvest_type = sys.argv[1]
 elif use_user_input:
     ds_name = input('Enter ds_name ({main field}_{dataset name}): ')
-    harvest_type = input('Enter harvester type (podaac, nsidc, osisaf): ')
+    harvest_type = input('Enter harvester type (PODAAC, NSIDC, OSISAF): ').upper()
 elif use_hard_coded_name:
     ds_name = 'test_create'
-    harvest_type = 'podaac'
+    harvest_type = 'PODAAC'
 
 # harvester -----------------------------------------------------------------------------------------------------------------------
 # get correct directories for wanted harvester type
-if harvest_type == 'podaac':
+if harvest_type == 'PODAAC':
     new_harvester_path = Path(
         f'{path_to_harvesters}/podaac_harvester/{ds_name}')
     template_path_to_use = podaac_template_path
-elif harvest_type == 'nsidc':
+elif harvest_type == 'NSIDC':
     new_harvester_path = Path(
         f'{path_to_harvesters}/nsidc_ftp_harvester/{ds_name}')
     template_path_to_use = nsidc_template_path
-elif harvest_type == 'osisaf':
+elif harvest_type == 'OSISAF':
     new_harvester_path = Path(
         f'{path_to_harvesters}/osisaf_ftp_harvester/{ds_name}')
     template_path_to_use = osisaf_template_path

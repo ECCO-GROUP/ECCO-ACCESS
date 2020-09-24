@@ -11,6 +11,8 @@ def print_log(log):
 	print('=========================================================')
 	for ds,steps in log.items():
 		print(f'\033[93mPipeline status for {ds}\033[0m:')
+		if ds == 'obp_AOD1B' or ds == 'ewh_TELLUS_GRAC_MASCON':
+			print(f'\033[91mMascon datasets not currently supported\033[0m')
 		print(*steps, sep='\n')
 
 def run_harvester(datasets, path_to_harvesters, log):
@@ -127,7 +129,7 @@ if __name__ == '__main__':
 	log = {}
 
 	while True:
-		run_grids = input('\nRun grids_to_solr? (Y/N): ').upper()
+		run_grids = input('\nUpdate Solr with local grid files? (Y/N): ').upper()
 		if run_grids not in ['Y', 'N']:
 			print(f'Invalid response, "{run_grids}", please enter a valid response')
 		elif run_grids == 'N':
@@ -154,14 +156,16 @@ if __name__ == '__main__':
 			break
 
 	if chosen_option == '1':
-		log = run_harvester(datasets, path_to_harvesters, log)
-		log = run_transformation(datasets, path_to_preprocessing, log)
-		log = run_aggregation(datasets, path_to_preprocessing, log)
+		for ds in datasets:
+			log = run_harvester([ds], path_to_harvesters, log)
+			log = run_transformation([ds], path_to_preprocessing, log)
+			log = run_aggregation([ds], path_to_preprocessing, log)
 	elif chosen_option == '2':
 		log = run_harvester(datasets, path_to_harvesters, log)
 	elif chosen_option == '3':
-		log = run_harvester(datasets, path_to_harvesters, log)
-		log = run_transformation(datasets, path_to_preprocessing, log)
+		for ds in datasets:
+			log = run_harvester([ds], path_to_harvesters, log)
+			log = run_transformation([ds], path_to_preprocessing, log)
 	elif chosen_option == '4':
 		while True:
 			wanted_ds = input('\nEnter wanted dataset: ')

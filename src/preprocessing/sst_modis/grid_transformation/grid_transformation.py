@@ -52,12 +52,12 @@ def solr_update(config, solr_host, update_body, r=False):
 
 # Calls run_locally and catches any errors
 def run_locally_wrapper(source_file_path, remaining_transformations, output_dir, path=''):
-    try:
-        run_locally(source_file_path,
-                    remaining_transformations, output_dir, path=path)
-    except Exception as e:
-        print(e)
-        print('Unable to run local transformation')
+    # try:
+    run_locally(source_file_path,
+                remaining_transformations, output_dir, path=path)
+    # except Exception as e:
+    #     print(e)
+    #     print('Unable to run local transformation')
 
 
 # Performs and saves locally all remaining transformations for a given source granule
@@ -76,8 +76,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, path=''
     # =====================================================
     # Code to import ecco utils locally...
     # =====================================================
-    from pathlib import Path
-    generalized_functions_path = Path(config['ecco_utils'])
+    generalized_functions_path = Path(f'{Path(__file__).resolve().parents[5]}/ECCO-ACCESS/ecco-cloud-utils/')
     sys.path.append(str(generalized_functions_path))
     import ecco_cloud_utils as ea  # pylint: disable=import-error
 
@@ -95,6 +94,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, path=''
     dataset_metadata = solr_query(config, solr_host, fq)[0]
 
     # Query Solr for harvested entry to get origin_checksum and date
+    print(source_file_path)
     query_fq = [f'dataset_s:{dataset_name}', 'type_s:harvested',
                 f'pre_transformation_file_path_s:"{source_file_path}"']
     harvested_metadata = solr_query(config, solr_host, query_fq)[0]
@@ -223,6 +223,9 @@ def run_locally(source_file_path, remaining_transformations, output_dir, path=''
 
             factors_path += f'{grid_name}_factors'
 
+            if '\\' in factors_path:
+                factors_path = factors_path.replace('\\', '/')
+
             with open(factors_path, 'wb') as f:
                 pickle.dump(factors, f)
 
@@ -318,6 +321,9 @@ def run_locally(source_file_path, remaining_transformations, output_dir, path=''
             output_path = f'{output_dir}{dataset_name}/{grid_name}/transformed/{field_name}/'
             transformed_location = f'{output_path}{output_filename}'
 
+            if '\\' in transformed_location:
+                transformed_location = transformed_location.replace('\\', '/')
+
             if not os.path.exists(output_path):
                 os.makedirs(output_path)
 
@@ -409,7 +415,7 @@ def run_using_aws(s3, filename):
     source_bucket_name = config['source_bucket']
     target_bucket_name = config['target_bucket']
     output_suffix = config['aws_output_suffix']
-    output_dir = config['aws_output_dir']
+    output_dir = f'{dataset_name}_transformed/'
     transformation_version = config['version']
 
     solr_host = config['solr_host_aws']
@@ -656,7 +662,7 @@ def run_using_aws(s3, filename):
 
         # Local saving
         output_filename = f'{grid_name}_{field_name}_{basefilename}'
-        output_path = f'{config["output_dir"]}/{grid_name}/transformed/{field_name}/'
+        output_path = f'{output_dir}/{grid_name}/transformed/{field_name}/'
 
         if not os.path.exists(output_path):
             os.makedirs(output_path)
@@ -671,8 +677,8 @@ def run_using_aws(s3, filename):
 
         # AWS saving
         # output_filename = output_dir + basefilename + output_suffix
-        aws_output_filename = output_dir + basefilename + output_suffix
-        path = "s3://" + target_bucket_name + '/' + aws_output_filename
+        aws_output_filename = f'{output_dir}{basefilename}{output_suffix}'
+        path = f's3://{target_bucket_name}/{aws_output_filename}'
 
         target_bucket.upload_file(
             output_path + output_filename, aws_output_filename)
@@ -741,13 +747,10 @@ def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors
     # =====================================================
     # Code to import ecco utils locally...
     # =====================================================
-    from pathlib import Path
-    generalized_functions_path = Path(config['ecco_utils'])
+    generalized_functions_path = Path(f'{Path(__file__).resolve().parents[5]}/ECCO-ACCESS/ecco-cloud-utils/')
     sys.path.append(str(generalized_functions_path))
     import ecco_cloud_utils as ea  # pylint: disable=import-error
-
-    dataset_name = config['ds_name']
-
+    
     # Check if ends in z and Drop if it does
     if record_date[-1] == 'Z':
         record_date = record_date[:-1]

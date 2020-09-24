@@ -78,7 +78,12 @@ def main(path=''):
             grid_meta['type_s'] = 'grid'
             grid_meta['grid_type_s'] = grid_type
             grid_meta['grid_name_s'] = grid_name
-            grid_meta['grid_path_s'] = path_to_file_dir + grid_file
+
+            grid_path = path_to_file_dir + grid_file
+            if '\\' in grid_path:
+                grid_path = grid_path.replace('\\', '/')
+            grid_meta['grid_path_s'] = grid_path
+            
             grid_meta['date_added_dt'] = datetime.utcnow().strftime(
                 "%Y-%m-%dT%H:%M:%SZ")
             grid_metas.append(grid_meta)

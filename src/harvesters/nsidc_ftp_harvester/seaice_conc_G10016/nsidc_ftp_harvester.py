@@ -9,6 +9,7 @@ import hashlib
 import requests
 import numpy as np
 from ftplib import FTP
+from pathlib import Path
 from dateutil import parser
 from datetime import datetime
 from xml.etree.ElementTree import parse
@@ -86,10 +87,13 @@ def nsidc_ftp_harvester(path='', s3=None, on_aws=False):
     # =====================================================
     # Initializing required values
     # =====================================================
-    target_dir = config['target_dir'] + '/'
-    folder = '/tmp/'+config['ds_name']+'/'
-    data_time_scale = config['data_time_scale']
     dataset_name = config['ds_name']
+    parent_path = f'{Path(__file__).resolve().parents[1]}'
+    if '\\' in parent_path:
+        parent_path = parent_path.replace('\\', '/')
+    target_dir = f'{parent_path}/harvested_granule/{dataset_name}/'
+    folder = f'/tmp/{dataset_name}/'
+    data_time_scale = config['data_time_scale']
 
     ftp = FTP(config['host'])
     ftp.login(config['user'])
