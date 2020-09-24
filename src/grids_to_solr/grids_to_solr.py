@@ -5,7 +5,7 @@ import yaml
 import requests
 import xarray as xr
 from datetime import datetime
-from urllib.request import urlopen, urlcleanup, urlretrieve
+
 
 def main(path=''):
     # =====================================================
@@ -49,7 +49,6 @@ def main(path=''):
             grid_name = ds.attrs['name']
             grid_type = ds.attrs['type']
             grids.append((grid_name, grid_type, grid_file))
-
 
     # =====================================================
     # Query for Solr Grid-type Documents

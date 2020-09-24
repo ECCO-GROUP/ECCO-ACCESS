@@ -68,5 +68,6 @@ ecco_utils: ../ecco-access/ECCO-ACCESS/ecco-cloud-utils/ecco_cloud_utils
 source_bucket: ecco-preprocess
 target_bucket: ecco-ames
 aws_output_dir: {ds_name}_transformed/
+aws_output_suffix: .nc
 
 

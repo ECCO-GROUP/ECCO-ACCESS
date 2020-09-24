@@ -80,7 +80,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, path=''
     from pathlib import Path
     generalized_functions_path = Path(config['ecco_utils'])
     sys.path.append(str(generalized_functions_path))
-    import ecco_cloud_utils as ea
+    import ecco_cloud_utils as ea  # pylint: disable=import-error
 
     # =====================================================
     # Set configuration options
@@ -101,7 +101,6 @@ def run_locally(source_file_path, remaining_transformations, output_dir, path=''
     harvested_metadata = solr_query(config, solr_host, query_fq)[0]
     origin_checksum = harvested_metadata['checksum_s']
     date = harvested_metadata['date_s']
-    
 
     # If data is stored in hemispheres, use that hemisphere when naming files and updating Solr
     # Otherwise, leave it blank
@@ -364,7 +363,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, path=''
                 'type_s:lineage', f'date_s:{date[:10]}*']
     if hemi:
         query_fq.append(f'hemisphere_s:{hemi[1:]}')
-        
+
     docs = solr_query(config, solr_host, query_fq)
     doc_id = solr_query(config, solr_host, query_fq)[0]['id']
 
