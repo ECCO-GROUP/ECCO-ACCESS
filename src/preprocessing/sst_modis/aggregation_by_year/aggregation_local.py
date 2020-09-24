@@ -3,7 +3,6 @@ import sys
 import yaml
 import importlib
 
-
 def main(path=''):
     import aggregation
     aggregation = importlib.reload(aggregation)
@@ -21,7 +20,7 @@ def main(path=''):
 
     aggregation.run_aggregation(output_dir, path=path)
 
-
 ##################################################
 if __name__ == "__main__":
-    main()
+	main()
+

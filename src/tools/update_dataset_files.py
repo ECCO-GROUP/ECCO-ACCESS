@@ -23,7 +23,8 @@ harvesters_list = zip(['podaac_harvester', 'osisaf_ftp_harvester', 'nsidc_ftp_ha
 
 # path to harvester and preprocessing folders
 path_to_harvesters = Path(f'{Path(__file__).resolve().parents[1]}/harvesters')
-path_to_preprocessing = Path(f'{Path(__file__).resolve().parents[1]}/preprocessing')
+path_to_preprocessing = Path(
+    f'{Path(__file__).resolve().parents[1]}/preprocessing')
 
 # harvesters --------------------------------------------------------------------------------------------------------------------------
 update_harvesters = True
@@ -55,8 +56,6 @@ update_preprocessing = True
 
 if update_preprocessing:
     for dataset in dirs:
-        if 'modis' in dataset:
-            continue
         ds_transformation_path = Path(
             f'{path_to_preprocessing}/{dataset}/grid_transformation')
         ds_aggregation_path = Path(

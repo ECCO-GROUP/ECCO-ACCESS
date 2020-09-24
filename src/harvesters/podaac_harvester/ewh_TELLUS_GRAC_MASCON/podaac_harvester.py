@@ -21,6 +21,8 @@ def md5(fname):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
 
+# Creates metadata entry for a harvested granule and uploads to AWS if needed
+
 
 def metadata_maker(config, date, link, mod_time, on_aws, target_bucket, local_fp, file_name, chk_time, lineage_docs, item_id):
     dataset_name = config['ds_name']
@@ -69,14 +71,14 @@ def metadata_maker(config, date, link, mod_time, on_aws, target_bucket, local_fp
             item['pre_transformation_file_path_s'] = {
                 "set": f's3://{config["target_bucket_name"]}/{output_filename}'}
             print("======uploading file to s3 DONE=======")
+
     except Exception as e:
         print(e)
         print("======aws upload unsuccessful=======")
-        item['message_s'] = {"set": 'aws upload unsuccessful'}
 
         harvest_success = False
+        item['message_s'] = {"set": 'aws upload unsuccessful'}
         item['harvest_success_b'] = {"set": harvest_success}
-
         item['pre_transformation_file_path_s'] = {"set": ''}
         item['filename_s'] = {"set": ''}
         item['file_size_l'] = {"set": 0}
@@ -115,18 +117,6 @@ def solr_update(config, solr_host, update_body, r=False):
         requests.post(url, json=update_body)
 
 
-# Unzips downloaded .gz files
-# Returns file path
-def unzip_gz(local_fp, folder):
-    with gzip.open(local_fp, "rb") as f_in, open(local_fp[:-3], "wb") as f_out:
-        shutil.copyfileobj(f_in, f_out)
-        os.remove(local_fp)
-    newfile_ext = os.path.splitext(
-        os.listdir(folder)[0])[1]
-    local_fp = f'{local_fp[:-3]}{newfile_ext}'
-    return local_fp
-
-
 # Pulls data files for given PODAAC id and date range
 # If not on_aws, saves locally, else saves to s3 bucket
 # Creates Solr entries for dataset, harvested granule, fields, and lineage
@@ -158,7 +148,6 @@ def podaac_harvester(path='', s3=None, on_aws=False):
     # =====================================================
     dataset_name = config['ds_name']
     target_dir = f'{config["target_dir"]}/'
-    folder = f'/tmp/{dataset_name}/'
     date_regex = config['date_regex']
     aggregated = config['aggregated']
     start_time = config['start']
@@ -168,7 +157,7 @@ def podaac_harvester(path='', s3=None, on_aws=False):
         print(f'!!downloading files to {target_dir}')
     else:
         print(
-            f'!!downloading files to {folder} and uploading to {target_bucket_name}/{dataset_name}')
+            f'!!downloading files and uploading to {target_bucket_name}/{dataset_name}')
 
     if config['aggregated']:
         url = f'{config["host"]}&datasetId={config["podaac_id"]}'
@@ -187,9 +176,6 @@ def podaac_harvester(path='', s3=None, on_aws=False):
     more = True
 
     # if target paths don't exist, make them
-    if not os.path.exists(folder):
-        os.makedirs(folder)
-
     if not os.path.exists(target_dir):
         os.makedirs(target_dir)
 
@@ -220,7 +206,6 @@ def podaac_harvester(path='', s3=None, on_aws=False):
     chk_time = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
     now = datetime.utcnow()
     updating = False
-    aws_upload = False
 
     # While available granules exist
     while more:
@@ -231,7 +216,6 @@ def podaac_harvester(path='', s3=None, on_aws=False):
         # Loops through available granules to download
         for elem in items:
             updating = False
-            aws_upload = False
 
             # Prepares information necessary for download and metadata
             try:
@@ -282,7 +266,7 @@ def podaac_harvester(path='', s3=None, on_aws=False):
 
                 # If updating, download file
                 if updating:
-                    local_fp = f'{folder}{dataset_name}_granule.nc' if on_aws else f'{target_dir}{newfile}'
+                    local_fp = f'{target_dir}{newfile}'
 
                     if newfile in docs.keys():
                         item_id = docs[newfile]['id']
@@ -296,20 +280,12 @@ def podaac_harvester(path='', s3=None, on_aws=False):
                         urlcleanup()
                         urlretrieve(link, local_fp)
 
-                        # unzip .gz files
-                        if newfile[-3:] == '.gz':
-                            local_fp = unzip_gz(local_fp, folder)
-
                     # If file exists, but is out of date, download it
                     elif datetime.fromtimestamp(os.path.getmtime(local_fp)) <= mod_date_time:
                         print(f'Updating: {local_fp}')
 
                         urlcleanup()
                         urlretrieve(link, local_fp)
-
-                        # unzip .gz files
-                        if newfile[-3:] == '.gz':
-                            local_fp = unzip_gz(local_fp, folder)
 
                     else:
                         print('File already downloaded and up to date')
@@ -324,7 +300,7 @@ def podaac_harvester(path='', s3=None, on_aws=False):
                         for time in ds_times:
                             new_ds = ds.sel(time=time)
                             file_name = f'{config["short_name"]}_{time.replace("-","")[:8]}.nc'
-                            local_fp = f'{folder}{dataset_name}_granule.nc' if on_aws else f'{target_dir}{file_name}'
+                            local_fp = f'{target_dir}{file_name}'
 
                             new_ds.to_netcdf(path=local_fp)
                             time_s = f'{time[:-10]}Z'
@@ -348,7 +324,7 @@ def podaac_harvester(path='', s3=None, on_aws=False):
                             end.append(datetime.strptime(
                                 time[:-3], '%Y-%m-%dT%H:%M:%S.%f'))
 
-                        local_fp = f'{folder}{dataset_name}_granule.nc' if on_aws else f'{target_dir}{newfile}'
+                        local_fp = f'{target_dir}{newfile}'
 
                     else:
                         item, lineage_item = metadata_maker(config, date_start_str, link, mod_time, on_aws,
@@ -362,7 +338,6 @@ def podaac_harvester(path='', s3=None, on_aws=False):
             except Exception as e:
                 print(e)
                 print(f'{file_name} unsuccessful')
-                print("======file not successful=======")
 
         # Check if more granules are available
         next = xml.find("{%(atom)s}link[@rel='next']" % namespace)

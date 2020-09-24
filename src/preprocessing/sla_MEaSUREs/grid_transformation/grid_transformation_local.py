@@ -1,6 +1,5 @@
 import os
 import sys
-import glob
 import yaml
 import requests
 import importlib
@@ -60,7 +59,8 @@ def get_remaining_transformations(config, source_file_path, grid_transformation)
                 # Query for existing transformation
                 fq = [f'dataset_s:{dataset_name}', 'type_s:transformation',
                       f'pre_transformation_file_path_s:"{source_file_path}"']
-                transformation = grid_transformation.solr_query(config, solr_host, fq)[0]
+                transformation = grid_transformation.solr_query(
+                    config, solr_host, fq)[0]
 
                 # Compare transformation version number and config version number
                 # Compare origin checksum for transformed file
@@ -81,8 +81,9 @@ def get_remaining_transformations(config, source_file_path, grid_transformation)
 
     return dict(grid_field_dict)
 
+
 def main(path=''):
-    import grid_transformation 
+    import grid_transformation
     grid_transformation = importlib.reload(grid_transformation)
 
     # Pull config information
@@ -116,11 +117,13 @@ def main(path=''):
             continue
 
         # Get transformations to be completed for this file
-        remaining_transformations = get_remaining_transformations(config, f, grid_transformation)
+        remaining_transformations = get_remaining_transformations(
+            config, f, grid_transformation)
 
         # Perform remaining transformations
         if remaining_transformations:
-            grid_transformation.run_locally_wrapper(f, remaining_transformations, output_dir, path=path)
+            grid_transformation.run_locally_wrapper(
+                f, remaining_transformations, output_dir, path=path)
 
             # Add granule year to years_updated
             year = granule['date_s'][:4]
@@ -158,6 +161,7 @@ def main(path=''):
         print('Successfully updated Solr dataset entry with transformation information')
     else:
         print('Failed to update Solr dataset entry with transformation information')
+
 
 ##################################################
 if __name__ == "__main__":

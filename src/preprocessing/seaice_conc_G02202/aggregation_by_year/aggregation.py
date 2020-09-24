@@ -112,7 +112,7 @@ def run_aggregation(output_dir, s3=None, path=''):
     from pathlib import Path
     generalized_functions_path = Path(config['ecco_utils'])
     sys.path.append(str(generalized_functions_path))
-    import ecco_cloud_utils as ea # pylint: disable=import-error
+    import ecco_cloud_utils as ea  # pylint: disable=import-error
 
     # =====================================================
     # Set configuration options and Solr metadata
@@ -181,7 +181,13 @@ def run_aggregation(output_dir, s3=None, path=''):
         grid_name = grid['grid_name_s']
         grid_type = grid['grid_type_s']
 
-        model_grid = xr.open_dataset(grid_path, decode_times=True)
+        if grid_path[:5] == 's3://':
+            source_bucket_name, key_name = split_s3_bucket_key(grid_path)
+            obj = s3.Object(source_bucket_name, key_name)
+            # TODO: not sure if xarray can open s3 obj
+            model_grid = xr.open_dataset(obj, decode_times=True)
+        else:
+            model_grid = xr.open_dataset(grid_path, decode_times=True)
 
         # Iterate through years
         for year in years:
@@ -192,7 +198,8 @@ def run_aggregation(output_dir, s3=None, path=''):
                     f'{year}-01-01', f'{int(year)+1}-01-01', dtype='datetime64[D]')
 
             elif data_time_scale == 'monthly':
-                dates_in_year = np.arange(f'{year}-01', f'{int(year)+1}-01', dtype='datetime64[M]')
+                dates_in_year = np.arange(
+                    f'{year}-01', f'{int(year)+1}-01', dtype='datetime64[M]')
                 dates_in_year = [f'{date}-01' for date in dates_in_year]
 
             # Iterate through dataset fields
@@ -217,20 +224,23 @@ def run_aggregation(output_dir, s3=None, path=''):
                         start_month_date = datetime.strptime(date, '%Y-%m-%d')
                         tolerance_days = []
 
-                        for i in range(1,8):
+                        for i in range(1, 8):
                             plus_date = start_month_date + timedelta(days=i)
                             neg_date = start_month_date - timedelta(days=i)
 
-                            tolerance_days.append(datetime.strftime(plus_date, '%Y-%m-%d'))
-                            tolerance_days.append(datetime.strftime(neg_date, '%Y-%m-%d'))
+                            tolerance_days.append(
+                                datetime.strftime(plus_date, '%Y-%m-%d'))
+                            tolerance_days.append(
+                                datetime.strftime(neg_date, '%Y-%m-%d'))
 
                         for tol_date in tolerance_days:
-                            fq = [f'dataset_s:{dataset_name}', 'type_s:transformation', f'grid_name_s:{grid_name}', f'field_s:{field_name}', f'date_s:{tol_date}*']
+                            fq = [f'dataset_s:{dataset_name}', 'type_s:transformation',
+                                  f'grid_name_s:{grid_name}', f'field_s:{field_name}', f'date_s:{tol_date}*']
                             docs = solr_query(config, solr_host, fq)
 
                             if docs:
                                 break
-                    
+
                     # If transformed file is present for date, grid, and field combination
                     # open the file, otherwise make empty record
                     opened_datasets = []
@@ -240,8 +250,7 @@ def run_aggregation(output_dir, s3=None, path=''):
                             source_bucket_name, key_name = split_s3_bucket_key(
                                 doc['transformation_file_path_s'])
                             obj = s3.Object(source_bucket_name, key_name)
-                            data_DA = xr.open_dataarray(
-                                obj, decode_times=True)
+                            data_DA = xr.open_dataarray(obj, decode_times=True)
                             # f = obj.get()['Body'].read()
                             # data = np.frombuffer(f, dtype=dt, count=-1)
                         else:
@@ -255,14 +264,17 @@ def run_aggregation(output_dir, s3=None, path=''):
                     if len(opened_datasets) == 2:
                         if ~np.isnan(opened_datasets[0].values).all():
                             data_DA = opened_datasets[0].copy()
-                            data_DA.values = np.where(np.isnan(data_DA.values), opened_datasets[1].values, data_DA.values)
+                            data_DA.values = np.where(
+                                np.isnan(data_DA.values), opened_datasets[1].values, data_DA.values)
                         else:
                             data_DA = opened_datasets[1].copy()
-                            data_DA.values = np.where(np.isnan(data_DA.values), opened_datasets[0].values, data_DA.values)
+                            data_DA.values = np.where(
+                                np.isnan(data_DA.values), opened_datasets[0].values, data_DA.values)
                     elif len(opened_datasets) == 1:
                         data_DA = opened_datasets[0]
                     else:
-                        data_DA = ea.make_empty_record(field['standard_name_s'], field['long_name_s'], field['units_s'], date, model_grid, grid_type, array_precision)
+                        data_DA = ea.make_empty_record(
+                            field['standard_name_s'], field['long_name_s'], field['units_s'], date, model_grid, grid_type, array_precision)
                     # Append each day's data to annual list
                     daily_DA_year.append(data_DA)
 
@@ -322,11 +334,32 @@ def run_aggregation(output_dir, s3=None, path=''):
                                                       output_dirs,
                                                       binary_dtype,
                                                       grid_type,
+                                                      on_aws=s3,
                                                       save_binary=config['save_binary'],
                                                       save_netcdf=config['save_netcdf'],
                                                       remove_nan_days_from_data=config['remove_nan_days_from_data'])
 
+                    # Upload files to s3
+                    if s3:
+                        target_bucket_name = config['target_bucket_name']
+                        s3_aggregated_path = config['s3_aggregated_path']
+                        s3_output_dir = f'{s3_aggregated_path}{dataset_name}_transformed_by_year'
+                        target_bucket = s3.Bucket(target_bucket_name)
+
+                        if config['do_monthly_aggregation']:
+                            target_bucket.upload_file(
+                                output_filepaths['daily_bin'], output_filenames['shortest'])
+                            if data_time_scale.upper() != 'MONTHLY':
+                                target_bucket.upload_file(
+                                    output_filepaths['monthly_bin'], output_filenames['monthly'])
+                        else:
+                            target_bucket.upload_file(
+                                output_filepaths['daily_bin'], output_filenames['shortest'])
+
+                        s3_path = f's3://{target_bucket_name}/{s3_output_dir}'
+
                     success = True
+
                 except Exception as e:
                     print(e)
                     success = False
@@ -336,19 +369,6 @@ def run_aggregation(output_dir, s3=None, path=''):
                                         'monthly_netCDF': ''}
 
                 aggregation_successes = aggregation_successes and success
-
-                # Upload files to s3
-                if s3:
-                    target_bucket_name = config['target_bucket_name']
-                    s3_aggregated_path = config['s3_aggregated_path']
-                    s3_output_dir = f'{s3_aggregated_path}{dataset_name}_transformed_by_year'
-                    target_bucket = s3.Bucket(target_bucket_name)
-
-                    # Upload shortest and monthly aggregated files to target bucket
-                    for filename in output_filenames:
-                        target_bucket.upload_file(bin_output_dir, filename)
-
-                    s3_path = f's3://{target_bucket_name}/{s3_output_dir}'
 
                 # Query Solr for existing aggregation
                 fq = [f'dataset_s:{dataset_name}', 'type_s:aggregation',
@@ -388,7 +408,7 @@ def run_aggregation(output_dir, s3=None, path=''):
                             "set": output_filepaths['monthly_netCDF']}
 
                     if s3:
-                        update_body[0]['s3_path'] = s3_path
+                        update_body[0]['s3_path_s'] = {"set": s3_path}
 
                 else:
                     # Create new aggregation entry if it doesn't exist

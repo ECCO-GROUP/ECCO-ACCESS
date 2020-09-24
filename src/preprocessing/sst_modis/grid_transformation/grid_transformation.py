@@ -10,7 +10,6 @@ import xarray as xr
 import pyresample as pr
 from pathlib import Path
 from datetime import datetime
-from netCDF4 import default_fillvals  # pylint: disable=import-error
 
 np.warnings.filterwarnings('ignore')
 
@@ -80,7 +79,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, path=''
     from pathlib import Path
     generalized_functions_path = Path(config['ecco_utils'])
     sys.path.append(str(generalized_functions_path))
-    import ecco_cloud_utils as ea
+    import ecco_cloud_utils as ea  # pylint: disable=import-error
 
     # =====================================================
     # Set configuration options
@@ -404,7 +403,7 @@ def run_using_aws(s3, filename):
 
     # Must import ecco_cloud_utils as ea, but can't until it is released
     # TODO ask Ian about releasing ecco_cloud_utils
-    import ecco_cloud_utils as ea
+    import ecco_cloud_utils as ea  # pylint: disable=import-error
 
     dataset_name = config['ds_name']
     source_bucket_name = config['source_bucket']
@@ -745,7 +744,7 @@ def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors
     from pathlib import Path
     generalized_functions_path = Path(config['ecco_utils'])
     sys.path.append(str(generalized_functions_path))
-    import ecco_cloud_utils as ea
+    import ecco_cloud_utils as ea  # pylint: disable=import-error
 
     dataset_name = config['ds_name']
 
