@@ -174,7 +174,7 @@ if __name__ == '__main__':
                 log.setdefault('grids', []).append(
                     f'\tgrids_to_solr \033[92msuccessful\033[0m')
                 print('\033[92mgrids_to_solr successful\033[0m')
-            except:
+            except Exception as e:
                 sys.path.remove(str(path_to_grids))
                 print('\033[91mgrids_to_solr failed\033[0m')
                 log.setdefault('grids', []).append(
