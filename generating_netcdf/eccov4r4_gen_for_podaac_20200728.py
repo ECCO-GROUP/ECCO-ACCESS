@@ -17,7 +17,12 @@ import xarray as xr
 import datetime
 from pprint import pprint
 from collections import OrderedDict
-
+sys.path.append('/Users/ifenty/ecco-data-pub')
+sys.path.append('/Users/ifenty/ecco-data-pub/_ecco_podaac_nc_write_tail')
+sys.path.append('/Users/ifenty/ecco-data-pub/doc')
+sys.path.append('/Users/ifenty/modules/ecco-data-pub/_ecco_podaac_nc_write_tail/')
+from ecco_podaac import apply_some_metadata_modifiers
+from os.path import basename
 
 def get_coordinate_attribute_to_data_vars(G):
     coord_attr = dict()
@@ -228,7 +233,7 @@ for avg in avgs:
     
     ## TIME STEPS TO LOAD
     
-    all_avail_time_steps = ecco.get_time_steps_from_mds_files(mds_diags_root_dir)
+    all_avail_time_steps = ecco.get_time_steps_from_mds_files(mds_diags_root_dir,,'ETAN*/')
     pprint(all_avail_time_steps)
     
     time_steps_to_load = all_avail_time_steps[:2]
@@ -544,7 +549,12 @@ for avg in avgs:
                
             # add coordinate attribute to the variables
             coord_attrs, coord_G= get_coordinate_attribute_to_data_vars(G)
-    
+            for keytmp in coord_attrs.keys():
+                coord_attrs[keytmp]=coord_attrs[keytmp].replace('time_step','')
+                coord_attrs[keytmp]=" ".join(coord_attrs[keytmp].split())
+            coord_G=coord_G.replace('time_step','')
+            coord_G=" ".join(coord_G.split())
+
             G.attrs['coordinates'] = coord_G
 
             # PROVIDE SPECIFIC ENCODING DIRECTIVES FOR EACH DATA VAR
@@ -621,6 +631,13 @@ for avg in avgs:
             print(filename)
                     
             netcdf_output_filename = output_dir / filename
+
+            # ADD THE NEW LOGIC TO MODIFY THE OUTPUT DATASET HERE >>>
+            # Get a function to apply to the xr Dataset just before write to netCDF.
+            func = apply_some_metadata_modifiers(netcdf_output_filename.name)
+            # Apply decorated function to modify the dataset in place.
+            G = func(G)
+            # <<< ENCLOSED SNIPPET CONTAINS ALL CHANGES YOUD NEED TO MAKE TO THE WRITE SCRIPT
             
             sort_all_attrs(G)
             G.to_netcdf(netcdf_output_filename, encoding=encoding)
