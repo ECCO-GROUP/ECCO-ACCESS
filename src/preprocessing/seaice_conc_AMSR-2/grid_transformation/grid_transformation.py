@@ -751,7 +751,7 @@ def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors
     sys.path.append(str(generalized_functions_path))
     import ecco_cloud_utils as ea  # pylint: disable=import-error
     
-    # Check if ends in z and Drop if it does
+    # Check if ends in z and drop it if it does
     if record_date[-1] == 'Z':
         record_date = record_date[:-1]
 
@@ -765,7 +765,18 @@ def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors
     original_dataset_metadata = {
         key: dataset_metadata[key] for key in dataset_metadata.keys() if 'original' in key}
 
-    extra_transformations = config['extra_transformation_steps']
+    pre_transformations = config['pre_transformation_steps']
+    post_transformations = config['post_transformation_steps']
+
+    if pre_transformations:
+        for func_to_run in pre_transformations:
+            callable_func = getattr(ea, func_to_run)
+            try:
+                ds = callable_func(ds)
+            except Exception as e:
+                print(e)
+                print(f'Pre-transformation {func_to_run} failed.')
+                return []
 
     # fields is a list of dictionaries
     for data_field_info in fields:
@@ -776,8 +787,8 @@ def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors
                                                                    model_grid_name)
             success = True
 
-            if extra_transformations:
-                for func_to_run in extra_transformations:
+            if post_transformations:
+                for func_to_run in post_transformations:
                     callable_func = getattr(ea, func_to_run)
                     try:
                         field_DA = callable_func(field_DA)

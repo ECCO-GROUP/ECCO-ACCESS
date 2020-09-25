@@ -48,12 +48,6 @@ solr_host_aws: http://ec2-3-16-187-19.us-east-2.compute.amazonaws.com:8983/solr/
 solr_collection_name: ecco_datasets # doesn't change
 
 # =====================================================
-# Local
-# =====================================================
-# REMEMBER, REPLACE LOCAL PATHS SO THEY POINT TO YOUR /SRC/ DIRECTORY
-target_dir: /Users/kevinmarlis/Developer/JPL/ecco-preprocessing/src/harvesters/podaac_harvester/harvested_granule/SSS_AQUARIUS_MONTHLY
-
-# =====================================================
 # AWS
 # =====================================================
 target_bucket_name: ecco-preprocess

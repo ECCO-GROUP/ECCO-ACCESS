@@ -2,7 +2,7 @@
 # Dataset
 # =====================================================
 ds_name: "ewh_TELLUS_GRAC_MASCON" # Name for dataset
-version: 1.0
+version: 1.0 # Update this value if any changes are made to this file
 array_precision: float32
 time_zone_included_with_time: True # Data time values have time zone
 extra_information: ['time_var', 'time_bounds_var'] # Unique things to do for dataset
@@ -46,7 +46,8 @@ proj_info:
 #     "proj4_args": "+init=EPSG:3412",
 #   }
 
-extra_transformation_steps: [] # Additional full dataset transformation steps
+pre_transformation_steps: [] # List of functions to call on the DataSet before transformation
+post_transformation_steps: [] # List of functions to call on the DataArrays after transformation
 
 # =====================================================
 # Solr
@@ -56,17 +57,9 @@ solr_host_aws: http://ec2-3-16-187-19.us-east-2.compute.amazonaws.com:8983/solr/
 solr_collection_name: ecco_datasets # doesn't change
 
 # =====================================================
-# Local
-# =====================================================
-# REMEMBER, REPLACE LOCAL PATHS SO THEY POINT TO YOUR /SRC/ DIRECTORY
-output_dir: C:/Users/dunca/Documents/JPL/Code/ecco-preprocessing/src/output/
-ecco_utils: C:/Users/dunca/Documents/JPL/Code/ECCO-ACCESS/ecco-cloud-utils/
-
-# =====================================================
 # AWS
 # =====================================================
 source_bucket: ecco-preprocess
 target_bucket: ecco-ames
-aws_output_dir: ewh_TELLUS_GRAC_MASCON_transformed/
-
+aws_output_suffix: .nc
 

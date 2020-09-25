@@ -221,10 +221,14 @@ def run_aggregation(output_dir, s3=None, path=''):
 
                     # If first of month is not found, query with 7 day tolerance only for monthly data
                     if not docs and data_time_scale == 'monthly':
+                        if config['monthly_tolerance']:
+                            tolerance = int(config['monthly_tolerance'])
+                        else:
+                            tolerance = 8
                         start_month_date = datetime.strptime(date, '%Y-%m-%d')
                         tolerance_days = []
 
-                        for i in range(1, 8):
+                        for i in range(1, tolerance):
                             plus_date = start_month_date + timedelta(days=i)
                             neg_date = start_month_date - timedelta(days=i)
 
