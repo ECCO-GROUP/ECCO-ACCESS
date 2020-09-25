@@ -233,7 +233,7 @@ for avg in avgs:
     
     ## TIME STEPS TO LOAD
     
-    all_avail_time_steps = ecco.get_time_steps_from_mds_files(mds_diags_root_dir,,'ETAN*/')
+    all_avail_time_steps = ecco.get_time_steps_from_mds_files(mds_diags_root_dir,'ETAN*/')
     pprint(all_avail_time_steps)
     
     time_steps_to_load = all_avail_time_steps[:2]
