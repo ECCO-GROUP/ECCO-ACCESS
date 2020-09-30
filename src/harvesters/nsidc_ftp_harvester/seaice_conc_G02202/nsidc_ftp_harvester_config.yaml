@@ -11,7 +11,7 @@ date_regex: "%Y-%m-%dT%H:%M:%SZ" # does not change
 # =====================================================
 # Dataset
 # =====================================================
-ds_name: "seaice_G02202" # Name for dataset
+ds_name: "seaice_conc_daily_icdr_G02202" # Name for dataset
 ddir: "pub/DATASETS/NOAA/G02202_V3/" #ex: pub/DATASETS/NOAA/G10016/
 aggregated: false # if data is available aggregated
 short_name: "seaice_conc_daily_icdr_G02202"

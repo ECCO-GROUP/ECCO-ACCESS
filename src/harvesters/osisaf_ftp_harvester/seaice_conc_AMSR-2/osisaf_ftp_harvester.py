@@ -149,178 +149,183 @@ def osisaf_ftp_harvester(path='', s3=None, on_aws=False):
     start_time = datetime.strptime(
         config['start'], "%Y%m%dT%H:%M:%SZ")
     end_time = datetime.strptime(config['end'], "%Y%m%dT%H:%M:%SZ")
-    start_year = config['start'][:4]
-    end_year = config['end'][:4]
-    years = np.arange(int(start_year), int(end_year) + 1)
 
-    # Iterate through years from start and end dates given in config
-    for year in years:
+    start_date_dashes = f'{config["start"][:4]}-{config["start"][4:6]}-{config["start"][6:8]}'
+    end_date_dashes = f'{config["end"][:4]}-{config["end"][4:6]}-{config["end"][6:8]}'
 
-        for month in range(1, 13):
-            # Requires month to be two digits
-            if month < 10:
-                month = '0' + str(month)
+    # Construct list of dates corresponding to data time scale
+    dates_in_year = list(np.arange(
+        start_date_dashes, end_date_dashes, dtype='datetime64[D]'))
+    dates_in_year.append(end_date_dashes)
+    dates_in_year = set([(f'{date}'[:4], f'{date}'[5:7])
+                         for date in dates_in_year])
 
-            # build source urlbase
-            urlbase = f'{config["ddir"]}{year}/{month}/'
+    dates_in_year = sorted(dates_in_year)
 
-            # Iterate through hemispheres given in config
-            for region in config['regions']:
+    for year, month in dates_in_year:
 
-                hemi = 'nh' if region == 'north' else 'sh'
+        # build source urlbase
+        urlbase = f'{config["ddir"]}{year}/{month}/'
+        try:
+            files = []
+            ftp.dir(urlbase, files.append)
+            files = [e.split()[-1] for e in files]
+        except:
+            print(f'Error finding files at {urlbase}')
 
-                files = []
+        # Iterate through hemispheres given in config
+        for region in config['regions']:
 
-                # Retrieve list of files from urlbase
+            hemi = 'nh' if region == 'north' else 'sh'
+
+            # Apply filename filter to only get requested files
+            hemi_files = [
+                filename for filename in files if config["filename_filter"] in filename and hemi in filename]
+
+            if not hemi_files:
+                print('No granules found')
+
+            for newfile in hemi_files:
                 try:
-                    ftp.dir(urlbase, files.append)
-                    files = [e.split()[-1] for e in files]
-                    # Apply filename filter to only get requested files
-                    files = [
-                        filename for filename in files if f'{hemi}_{config["filename_filter"]}' in filename]
+                    if '.nc' not in newfile and '.bz2' not in newfile and '.gz' not in newfile:
+                        continue
 
-                    if not files:
-                        print('No granules found')
-                except:
-                    print(f'Error finding files at {urlbase}')
+                    url = f'{urlbase}{newfile}'
 
-                for newfile in files:
+                    date = getdate(config['regex'], newfile)
+                    date_time = datetime.strptime(date, "%Y%m%d")
+                    new_date_format = f'{date[:4]}-{date[4:6]}-{date[6:]}T00:00:00Z'
+
+                    # Ignore granules with start time less than wanted start time
+                    if (start_time > date_time):
+                        continue
+
+                    if (end_time < date_time):
+                        break
+
+                    granule_dates.append(datetime.strptime(
+                        new_date_format, config['date_regex']))
+
+                    # granule metadata setup to be populated for each granule
+                    item = {}
+                    item['type_s'] = 'harvested'
+                    item['date_s'] = new_date_format
+                    item['dataset_s'] = config['ds_name']
+                    item['hemisphere_s'] = hemi
+                    item['source_s'] = f'ftp://{config["host"]}/{url}'
+
+                    # lineage metadta setup to be populated for each granule
+                    lineage_item = {}
+                    lineage_item['type_s'] = 'lineage'
+
+                    # Create or modify lineage entry in Solr
+                    lineage_item['dataset_s'] = item['dataset_s']
+                    lineage_item['date_s'] = item["date_s"]
+                    lineage_item['hemisphere_s'] = hemi
+                    lineage_item['source_s'] = item['source_s']
+
+                    updating = False
+                    aws_upload = False
+
+                    # Attempt to get last modified time of file
                     try:
-                        if '.nc' not in newfile and '.bz2' not in newfile and '.gz' not in newfile:
-                            continue
+                        mod_time = ftp.voidcmd("MDTM "+url)[4:]
+                        mod_date_time = parser.parse(mod_time)
+                        mod_time = mod_date_time.strftime(
+                            "%Y-%m-%dT%H:%M:%SZ")
+                        item['modified_time_dt'] = mod_time
+                    except:
+                        print(
+                            'Cannot find last modified time. Downloading granule.')
+                        mod_date_time = now
 
-                        url = f'{urlbase}{newfile}'
+                    # If granule doesn't exist or previously failed or has been updated since last harvest
+                    updating = (not newfile in docs.keys()) or (not docs[newfile]['harvest_success_b']) \
+                        or (datetime.strptime(docs[newfile]['download_time_dt'], "%Y-%m-%dT%H:%M:%SZ") <= mod_date_time)
 
-                        date = getdate(config['regex'], newfile)
-                        date_time = datetime.strptime(date, "%Y%m%d")
-                        new_date_format = f'{date[:4]}-{date[4:6]}-{date[6:]}T00:00:00Z'
-
-                        # Ignore granules with start time less than wanted start time
-                        if (start_time > date_time) or (end_time < date_time):
-                            continue
-
-                        granule_dates.append(datetime.strptime(
-                            new_date_format, config['date_regex']))
-
-                        # granule metadata setup to be populated for each granule
-                        item = {}
-                        item['type_s'] = 'harvested'
-                        item['date_s'] = new_date_format
-                        item['dataset_s'] = config['ds_name']
-                        item['hemisphere_s'] = hemi
-                        item['source_s'] = f'ftp://{config["host"]}/{url}'
-
-                        # lineage metadta setup to be populated for each granule
-                        lineage_item = {}
-                        lineage_item['type_s'] = 'lineage'
-
-                        # Create or modify lineage entry in Solr
-                        lineage_item['dataset_s'] = item['dataset_s']
-                        lineage_item['date_s'] = item["date_s"]
-                        lineage_item['hemisphere_s'] = hemi
-                        lineage_item['source_s'] = item['source_s']
-
-                        updating = False
-                        aws_upload = False
-
-                        # Attempt to get last modified time of file
-                        try:
-                            mod_time = ftp.voidcmd("MDTM "+url)[4:]
-                            mod_date_time = parser.parse(mod_time)
-                            mod_time = mod_date_time.strftime(
-                                "%Y-%m-%dT%H:%M:%SZ")
-                            item['modified_time_dt'] = mod_time
-                        except:
-                            print(
-                                'Cannot find last modified time. Downloading granule.')
-                            mod_date_time = now
-
-                        # If granule doesn't exist or previously failed or has been updated since last harvest
-                        updating = (not newfile in docs.keys()) or (not docs[newfile]['harvest_success_b']) \
-                            or (datetime.strptime(docs[newfile]['download_time_dt'], "%Y-%m-%dT%H:%M:%SZ") <= mod_date_time)
-
-                        # If updating, download file
-                        if updating:
-                            local_fp = f'{folder}{config["ds_name"]}_granule.nc' if on_aws else target_dir + newfile
-
-                            # If file doesn't exist locally, download it
-                            if not os.path.exists(local_fp):
-                                print(f'Downloading: {local_fp}')
-
-                                # new ftp retrieval
-                                with open(local_fp, 'wb') as f:
-                                    ftp.retrbinary('RETR '+url, f.write)
-
-                            # If file exists, but is out of date, download it
-                            elif datetime.fromtimestamp(os.path.getmtime(local_fp)) <= mod_date_time:
-                                print(f'Updating: {local_fp}')
-
-                                # new ftp retrieval
-                                with open(local_fp, 'wb') as f:
-                                    ftp.retrbinary('RETR '+url, f.write)
-
-                            else:
-                                print('File already downloaded and up to date')
-
-                            # Create checksum for file
-                            item['checksum_s'] = md5(local_fp)
-
-                            output_filename = f'{dataset_name}/{newfile}' if on_aws else newfile
-
-                            item['pre_transformation_file_path_s'] = f'{target_dir}{newfile}'
-
-                            # =====================================================
-                            # Push data to s3 bucket
-                            # =====================================================
-
-                            if on_aws:
-                                aws_upload = True
-                                print("=========uploading file to s3=========")
-                                target_bucket.upload_file(
-                                    local_fp, output_filename)
-                                item['pre_transformation_file_path_s'] = f's3://{config["target_bucket_name"]}/{output_filename}'
-                                print("======uploading file to s3 DONE=======")
-
-                            item['harvest_success_b'] = True
-                            item['filename_s'] = newfile
-                            item['file_size_l'] = os.path.getsize(local_fp)
-
-                    except Exception as e:
-                        print(e)
-                        if updating:
-                            if aws_upload:
-                                print("======aws upload unsuccessful=======")
-                                item['message_s'] = 'aws upload unsuccessful'
-
-                            else:
-                                print(f'Download {newfile} failed.')
-                                print("======file not successful=======")
-
-                            item['harvest_success_b'] = False
-                            item['filename'] = ''
-                            item['pre_transformation_file_path_s'] = ''
-                            item['file_size_l'] = 0
-
+                    # If updating, download file
                     if updating:
-                        item['download_time_dt'] = chk_time
+                        local_fp = f'{folder}{config["ds_name"]}_granule.nc' if on_aws else target_dir + newfile
 
-                        # Update Solr entry using id if it exists
-                        if hemi:
-                            key = (lineage_item['date_s'], hemi)
+                        # If file doesn't exist locally, download it
+                        if not os.path.exists(local_fp):
+                            print(f'Downloading: {local_fp}')
+
+                            # new ftp retrieval
+                            with open(local_fp, 'wb') as f:
+                                ftp.retrbinary('RETR '+url, f.write)
+
+                        # If file exists, but is out of date, download it
+                        elif datetime.fromtimestamp(os.path.getmtime(local_fp)) <= mod_date_time:
+                            print(f'Updating: {local_fp}')
+
+                            # new ftp retrieval
+                            with open(local_fp, 'wb') as f:
+                                ftp.retrbinary('RETR '+url, f.write)
+
                         else:
-                            key = lineage_item['date_s']
+                            print(
+                                f'{newfile} already downloaded and up to date')
 
-                        if key in lineage_docs.keys():
-                            lineage_item['id'] = lineage_docs[key]['id']
+                        # Create checksum for file
+                        item['checksum_s'] = md5(local_fp)
 
-                        lineage_item['harvest_success_b'] = item['harvest_success_b']
-                        lineage_item['pre_transformation_file_path_s'] = item['pre_transformation_file_path_s']
-                        meta.append(lineage_item)
+                        output_filename = f'{dataset_name}/{newfile}' if on_aws else newfile
 
-                        # add item to metadata json
-                        meta.append(item)
-                        # store meta for last successful download
-                        last_success_item = item
+                        item['pre_transformation_file_path_s'] = f'{target_dir}{newfile}'
+
+                        # =====================================================
+                        # Push data to s3 bucket
+                        # =====================================================
+
+                        if on_aws:
+                            aws_upload = True
+                            print("=========uploading file to s3=========")
+                            target_bucket.upload_file(
+                                local_fp, output_filename)
+                            item['pre_transformation_file_path_s'] = f's3://{config["target_bucket_name"]}/{output_filename}'
+                            print("======uploading file to s3 DONE=======")
+
+                        item['harvest_success_b'] = True
+                        item['filename_s'] = newfile
+                        item['file_size_l'] = os.path.getsize(local_fp)
+
+                except Exception as e:
+                    print(e)
+                    if updating:
+                        if aws_upload:
+                            print("======aws upload unsuccessful=======")
+                            item['message_s'] = 'aws upload unsuccessful'
+
+                        else:
+                            print(f'Download {newfile} failed.')
+                            print("======file not successful=======")
+
+                        item['harvest_success_b'] = False
+                        item['filename'] = ''
+                        item['pre_transformation_file_path_s'] = ''
+                        item['file_size_l'] = 0
+
+                if updating:
+                    item['download_time_dt'] = chk_time
+
+                    # Update Solr entry using id if it exists
+                    if hemi:
+                        key = (lineage_item['date_s'], hemi)
+                    else:
+                        key = lineage_item['date_s']
+
+                    if key in lineage_docs.keys():
+                        lineage_item['id'] = lineage_docs[key]['id']
+
+                    lineage_item['harvest_success_b'] = item['harvest_success_b']
+                    lineage_item['pre_transformation_file_path_s'] = item['pre_transformation_file_path_s']
+                    meta.append(lineage_item)
+
+                    # add item to metadata json
+                    meta.append(item)
+                    # store meta for last successful download
+                    last_success_item = item
 
     ftp.quit()
 
