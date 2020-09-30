@@ -61,7 +61,7 @@ def run_locally_wrapper(source_file_path, remaining_transformations, output_dir,
 
 
 # Performs and saves locally all remaining transformations for a given source granule
-# Updates Solr with transformation entries and updates lineage, and dataset entries
+# Updates Solr with transformation entries and updates descendants, and dataset entries
 def run_locally(source_file_path, remaining_transformations, output_dir, path=''):
     # =====================================================
     # Read configurations from YAML file
@@ -76,7 +76,8 @@ def run_locally(source_file_path, remaining_transformations, output_dir, path=''
     # =====================================================
     # Code to import ecco utils locally...
     # =====================================================
-    generalized_functions_path = Path(f'{Path(__file__).resolve().parents[5]}/ECCO-ACCESS/ecco-cloud-utils/')
+    generalized_functions_path = Path(
+        f'{Path(__file__).resolve().parents[5]}/ECCO-ACCESS/ecco-cloud-utils/')
     sys.path.append(str(generalized_functions_path))
     import ecco_cloud_utils as ea  # pylint: disable=import-error
 
@@ -363,16 +364,16 @@ def run_locally(source_file_path, remaining_transformations, output_dir, path=''
 
         print(f'======saving {file_name} output DONE=======')
 
-    # Query Solr for lineage entry by date
+    # Query Solr for descendants entry by date
     query_fq = [f'dataset_s:{dataset_name}',
-                'type_s:lineage', f'date_s:{date[:10]}*']
+                'type_s:descendants', f'date_s:{date[:10]}*']
     if hemi:
         query_fq.append(f'hemisphere_s:{hemi[1:]}')
 
     docs = solr_query(config, solr_host, query_fq)
     doc_id = solr_query(config, solr_host, query_fq)[0]['id']
 
-    # Update lineage entry in Solr
+    # Update descendants entry in Solr
     update_body = [
         {
             "id": doc_id,
@@ -380,7 +381,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, path=''
         }
     ]
 
-    # Add transformaiton file path fields to lineage entry
+    # Add transformaiton file path fields to descendants entry
     for key, path in transformation_file_paths.items():
         update_body[0][key] = {"set": path}
 
@@ -388,7 +389,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, path=''
 
     if r.status_code != 200:
         print(
-            f'Failed to update Solr with lineage information for {dataset_name} on {date}')
+            f'Failed to update Solr with descendants information for {dataset_name} on {date}')
 
 
 def run_using_aws_wrapper(s3, filename):
@@ -715,16 +716,16 @@ def run_using_aws(s3, filename):
 
     print("======saving output DONE=======")
 
-    # Query Solr for lineage entry by date
+    # Query Solr for descendants entry by date
     query_fq = [f'dataset_s:{dataset_name}',
-                'type_s:lineage', f'date_s:{date[:10]}*']
+                'type_s:descendants', f'date_s:{date[:10]}*']
     if hemi:
         query_fq.append(f'hemisphere_s:{hemi[1:]}')
 
     docs = solr_query(config, solr_host, query_fq)
     doc_id = solr_query(config, solr_host, query_fq)[0]['id']
 
-    # Update lineage entry in Solr
+    # Update descendants entry in Solr
     update_body = [
         {
             "id": doc_id,
@@ -732,7 +733,7 @@ def run_using_aws(s3, filename):
         }
     ]
 
-    # Add transformaiton file path fields to lineage entry
+    # Add transformaiton file path fields to descendants entry
     for key, path in transformation_file_paths.items():
         update_body[0][key] = {"set": path}
 
@@ -740,17 +741,18 @@ def run_using_aws(s3, filename):
 
     if r.status_code != 200:
         print(
-            f'Failed to update Solr with lineage information for {dataset_name} on {date}')
+            f'Failed to update Solr with descendants information for {dataset_name} on {date}')
 
 
 def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors, ds, record_date, dataset_metadata, config):
     # =====================================================
     # Code to import ecco utils locally...
     # =====================================================
-    generalized_functions_path = Path(f'{Path(__file__).resolve().parents[5]}/ECCO-ACCESS/ecco-cloud-utils/')
+    generalized_functions_path = Path(
+        f'{Path(__file__).resolve().parents[5]}/ECCO-ACCESS/ecco-cloud-utils/')
     sys.path.append(str(generalized_functions_path))
     import ecco_cloud_utils as ea  # pylint: disable=import-error
-    
+
     # Check if ends in z and drop it if it does
     if record_date[-1] == 'Z':
         record_date = record_date[:-1]

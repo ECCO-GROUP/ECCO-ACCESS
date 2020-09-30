@@ -25,7 +25,7 @@ def md5(fname):
 # Creates metadata entry for a harvested granule and uploads to AWS if needed
 
 
-def metadata_maker(config, date, link, mod_time, on_aws, target_bucket, local_fp, file_name, chk_time, lineage_docs, item_id):
+def metadata_maker(config, date, link, mod_time, on_aws, target_bucket, local_fp, file_name, chk_time, descendants_docs, item_id):
     dataset_name = config['ds_name']
     harvest_success = False
 
@@ -39,16 +39,16 @@ def metadata_maker(config, date, link, mod_time, on_aws, target_bucket, local_fp
     item['modified_time_s'] = {"set": mod_time}
     item['download_time_dt'] = {"set": chk_time}
 
-    # Create or modify lineage entry in Solr
-    lineage_item = {}
-    lineage_item['type_s'] = {"set": 'lineage'}
-    lineage_item['dataset_s'] = {"set": dataset_name}
-    lineage_item['date_s'] = {"set": date}
-    lineage_item['source_s'] = {"set": link}
+    # Create or modify descendants entry in Solr
+    descendants_item = {}
+    descendants_item['type_s'] = {"set": 'descendants'}
+    descendants_item['dataset_s'] = {"set": dataset_name}
+    descendants_item['date_s'] = {"set": date}
+    descendants_item['source_s'] = {"set": link}
 
     # Update Solr entry using id if it exists
-    if date in lineage_docs.keys():
-        lineage_item['id'] = lineage_docs[date]['id']
+    if date in descendants_docs.keys():
+        descendants_item['id'] = descendants_docs[date]['id']
 
     # Create checksum for file
     harvest_success = True
@@ -84,11 +84,11 @@ def metadata_maker(config, date, link, mod_time, on_aws, target_bucket, local_fp
         item['filename_s'] = {"set": ''}
         item['file_size_l'] = {"set": 0}
 
-    lineage_item['harvest_success_b'] = {"set": harvest_success}
+    descendants_item['harvest_success_b'] = {"set": harvest_success}
     pre_transformation_file_path_s = item['pre_transformation_file_path_s']["set"]
-    lineage_item['pre_transformation_file_path_s'] = {
+    descendants_item['pre_transformation_file_path_s'] = {
         "set": pre_transformation_file_path_s}
-    return (item, lineage_item)
+    return (item, descendants_item)
 
 
 # Queries Solr based on config information and filter query
@@ -120,7 +120,7 @@ def solr_update(config, solr_host, update_body, r=False):
 
 # Pulls data files for given PODAAC id and date range
 # If not on_aws, saves locally, else saves to s3 bucket
-# Creates Solr entries for dataset, harvested granule, fields, and lineage
+# Creates Solr entries for dataset, harvested granule, fields, and descendants
 def podaac_harvester(path='', s3=None, on_aws=False):
     # =====================================================
     # Read configurations from YAML file
@@ -184,7 +184,7 @@ def podaac_harvester(path='', s3=None, on_aws=False):
         os.makedirs(target_dir)
 
     docs = {}
-    lineage_docs = {}
+    descendants_docs = {}
 
     # Query for existing harvested docs
     fq = ['type_s:harvested', f'dataset_s:{dataset_name}']
@@ -194,13 +194,13 @@ def podaac_harvester(path='', s3=None, on_aws=False):
         for doc in harvested_docs:
             docs[doc['filename_s']] = doc
 
-    # Query for existing lineage docs
-    fq = ['type_s:lineage', f'dataset_s:{dataset_name}']
-    existing_lineage_docs = solr_query(config, solr_host, fq)
+    # Query for existing descendants docs
+    fq = ['type_s:descendants', f'dataset_s:{dataset_name}']
+    existing_descendants_docs = solr_query(config, solr_host, fq)
 
-    if len(existing_lineage_docs) > 0:
-        for doc in existing_lineage_docs:
-            lineage_docs[doc['date_s']] = doc
+    if len(existing_descendants_docs) > 0:
+        for doc in existing_descendants_docs:
+            descendants_docs[doc['date_s']] = doc
 
     # setup metadata
     meta = []
@@ -314,11 +314,11 @@ def podaac_harvester(path='', s3=None, on_aws=False):
                             else:
                                 item_id = None
 
-                            item, lineage_item = metadata_maker(config, time_s, link, time_s, on_aws, target_bucket,
-                                                                local_fp, file_name, mod_time, lineage_docs, item_id)
+                            item, descendants_item = metadata_maker(config, time_s, link, time_s, on_aws, target_bucket,
+                                                                    local_fp, file_name, mod_time, descendants_docs, item_id)
 
                             meta.append(item)
-                            meta.append(lineage_item)
+                            meta.append(descendants_item)
 
                             if item['harvest_success_b']:
                                 last_success_item = item
@@ -331,9 +331,9 @@ def podaac_harvester(path='', s3=None, on_aws=False):
                         local_fp = f'{target_dir}{newfile}'
 
                     else:
-                        item, lineage_item = metadata_maker(config, date_start_str, link, mod_time, on_aws,
-                                                            target_bucket, local_fp, newfile, chk_time, lineage_docs, item_id)
-                        meta.append(lineage_item)
+                        item, descendants_item = metadata_maker(config, date_start_str, link, mod_time, on_aws,
+                                                                target_bucket, local_fp, newfile, chk_time, descendants_docs, item_id)
+                        meta.append(descendants_item)
                         meta.append(item)
 
                         if item['harvest_success_b']:

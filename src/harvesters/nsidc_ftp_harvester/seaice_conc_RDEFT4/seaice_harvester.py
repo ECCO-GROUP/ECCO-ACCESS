@@ -330,7 +330,7 @@ def seaice_harvester(path='', s3=None, on_aws=False):
 
     # get old data if exists
     docs = {}
-    lineage_docs = {}
+    descendants_docs = {}
 
     fq = ['type_s:harvested', f'dataset_s:{config["ds_name"]}']
     query_docs = solr_query(config, solr_host, fq)
@@ -342,17 +342,17 @@ def seaice_harvester(path='', s3=None, on_aws=False):
     fq = ['type_s:dataset', f'dataset_s:{config["ds_name"]}']
     query_docs = solr_query(config, solr_host, fq)
 
-    # Query for existing lineage docs
-    fq = ['type_s:lineage', f'dataset_s:{dataset_name}']
-    existing_lineage_docs = solr_query(config, solr_host, fq)
+    # Query for existing descendants docs
+    fq = ['type_s:descendants', f'dataset_s:{dataset_name}']
+    existing_descendants_docs = solr_query(config, solr_host, fq)
 
-    if len(existing_lineage_docs) > 0:
-        for doc in existing_lineage_docs:
+    if len(existing_descendants_docs) > 0:
+        for doc in existing_descendants_docs:
             if doc['hemisphere_s']:
                 key = (doc['date_s'], doc['hemisphere_s'])
             else:
                 key = doc['date_s']
-            lineage_docs[key] = doc
+            descendants_docs[key] = doc
 
     # setup metadata
     meta = []
@@ -423,14 +423,14 @@ def seaice_harvester(path='', s3=None, on_aws=False):
                 item['dataset_s'] = config['ds_name']
                 item['source_s'] = url
 
-                # lineage metadta setup to be populated for each granule
-                lineage_item = {}
-                lineage_item['type_s'] = 'lineage'
+                # descendants metadta setup to be populated for each granule
+                descendants_item = {}
+                descendants_item['type_s'] = 'descendants'
 
-                # Create or modify lineage entry in Solr
-                lineage_item['dataset_s'] = item['dataset_s']
-                lineage_item['date_s'] = item["date_s"]
-                lineage_item['source_s'] = item['source_s']
+                # Create or modify descendants entry in Solr
+                descendants_item['dataset_s'] = item['dataset_s']
+                descendants_item['date_s'] = item["date_s"]
+                descendants_item['source_s'] = item['source_s']
 
                 updating = False
                 aws_upload = False
@@ -524,14 +524,14 @@ def seaice_harvester(path='', s3=None, on_aws=False):
 
                     # Update Solr entry using id if it exists
 
-                    key = lineage_item['date_s']
+                    key = descendants_item['date_s']
 
-                    if key in lineage_docs.keys():
-                        lineage_item['id'] = lineage_docs[key]['id']
+                    if key in descendants_docs.keys():
+                        descendants_item['id'] = descendants_docs[key]['id']
 
-                    lineage_item['harvest_success_b'] = item['harvest_success_b']
-                    lineage_item['pre_transformation_file_path_s'] = item['pre_transformation_file_path_s']
-                    meta.append(lineage_item)
+                    descendants_item['harvest_success_b'] = item['harvest_success_b']
+                    descendants_item['pre_transformation_file_path_s'] = item['pre_transformation_file_path_s']
+                    meta.append(descendants_item)
 
                     # add item to metadata json
                     meta.append(item)

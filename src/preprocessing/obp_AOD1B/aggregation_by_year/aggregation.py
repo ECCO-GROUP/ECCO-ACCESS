@@ -445,14 +445,14 @@ def run_aggregation(output_dir, s3=None, path=''):
                     print(
                         f'Failed to update Solr aggregation entry for {field_name} in {dataset_name} for {year} and grid {grid_name}')
 
-                # Query for lineage entries from this year
-                fq = ['type_s:lineage',
+                # Query for descendants entries from this year
+                fq = ['type_s:descendants',
                       f'dataset_s:{dataset_name}', f'date_s:{year}*']
-                existing_lineage_docs = solr_query(config, solr_host, fq)
+                existing_descendants_docs = solr_query(config, solr_host, fq)
 
-                # if lineage entries already exist, update them
-                if len(existing_lineage_docs) > 0:
-                    for doc in existing_lineage_docs:
+                # if descendants entries already exist, update them
+                if len(existing_descendants_docs) > 0:
+                    for doc in existing_descendants_docs:
                         doc_id = doc['id']
 
                         update_body = [
@@ -462,7 +462,7 @@ def run_aggregation(output_dir, s3=None, path=''):
                             }
                         ]
 
-                        # Add aggregation file path fields to lineage entry
+                        # Add aggregation file path fields to descendants entry
                         for key, value in output_filepaths.items():
                             update_body[0][f'{grid_name}_{field_name}_aggregated_{key}_path_s'] = {
                                 "set": value}
@@ -473,14 +473,14 @@ def run_aggregation(output_dir, s3=None, path=''):
                             print(
                                 f'Failed to update Solr aggregation entry for {field_name} in {dataset_name} for {year} and grid {grid_name}')
 
-                # Export annual lineage JSON file for each aggregation created
-                print("=========exporting data lineage=========")
+                # Export annual descendants JSON file for each aggregation created
+                print("=========exporting data descendants=========")
                 json_output['transformations'] = transformations
-                json_output_path = f'{output_dir}{dataset_name}/{grid_name}/aggregated/{field_name}/netCDF/{dataset_name}_{year}_lineage'
+                json_output_path = f'{output_dir}{dataset_name}/{grid_name}/aggregated/{field_name}/netCDF/{dataset_name}_{year}_descendants'
                 with open(json_output_path, 'w') as f:
                     resp_out = json.dumps(json_output, indent=4)
                     f.write(resp_out)
-                print("=========exporting data lineage DONE=========")
+                print("=========exporting data descendants DONE=========")
 
     # Update Solr dataset entry status and years_updated to empty
     update_body = [
