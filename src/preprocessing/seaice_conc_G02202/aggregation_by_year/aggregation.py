@@ -38,26 +38,6 @@ def split_s3_bucket_key(s3_path):
     return find_bucket_key(s3_path)
 
 
-# Separately saves to disk all lineage entries for each year
-def export_lineage(output_dir, years, solr_host, config):
-    dataset_name = config['ds_name']
-
-    lineages_dir = f'{output_dir}/{dataset_name}/annual_lineages/'
-
-    if not os.path.exists(lineages_dir):
-        os.makedirs(lineages_dir)
-
-    for year in years:
-        outfile = f'{lineages_dir}/{dataset_name}_{year}_lineage'
-
-        fq = ['type_s:lineage', f'dataset_s:{dataset_name}', f'date_s:{year}*']
-        lineage_docs = solr_query(config, solr_host, fq)
-
-        with open(outfile, 'w') as f:
-            resp_out = json.dumps(lineage_docs)
-            f.write(resp_out)
-
-
 # Creates checksum from filename
 def md5(fname):
     hash_md5 = hashlib.md5()
@@ -110,7 +90,8 @@ def run_aggregation(output_dir, s3=None, path=''):
     # =====================================================
     # Code to import ecco utils locally...
     # =====================================================
-    generalized_functions_path = Path(f'{Path(__file__).resolve().parents[5]}/ECCO-ACCESS/ecco-cloud-utils/')
+    generalized_functions_path = Path(
+        f'{Path(__file__).resolve().parents[5]}/ECCO-ACCESS/ecco-cloud-utils/')
     sys.path.append(str(generalized_functions_path))
     import ecco_cloud_utils as ea  # pylint: disable=import-error
 
@@ -204,6 +185,10 @@ def run_aggregation(output_dir, s3=None, path=''):
 
             # Iterate through dataset fields
             for field in fields:
+                json_output = {}
+                transformations = []
+                json_output['dataset'] = dataset_metadata
+
                 field_name = field['name_s']
 
                 print(
@@ -262,6 +247,15 @@ def run_aggregation(output_dir, s3=None, path=''):
                                 doc['transformation_file_path_s'], decode_times=True)
 
                         opened_datasets.append(data_DA)
+
+                        # Update JSON transformations list
+                        fq = [f'dataset_s:{dataset_name}', 'type_s:harvested',
+                              f'pre_transformation_file_path_s:"{doc["pre_transformation_file_path_s"]}"']
+                        harvested_metadata = solr_query(config, solr_host, fq)
+
+                        transformation_metadata = doc
+                        transformation_metadata['harvested'] = harvested_metadata
+                        transformations.append(transformation_metadata)
 
                     # If there are more than one files for this grid/field/date combination (implies hemisphered data),
                     # combine hemispheres on nonempty datafile, if present.
@@ -479,6 +473,15 @@ def run_aggregation(output_dir, s3=None, path=''):
                             print(
                                 f'Failed to update Solr aggregation entry for {field_name} in {dataset_name} for {year} and grid {grid_name}')
 
+                # Export annual lineage JSON file for each aggregation created
+                print("=========exporting data lineage=========")
+                json_output['transformations'] = transformations
+                json_output_path = f'{output_dir}{dataset_name}/{grid_name}/aggregated/{field_name}/netCDF/{dataset_name}_{year}_lineage'
+                with open(json_output_path, 'w') as f:
+                    resp_out = json.dumps(json_output, indent=4)
+                    f.write(resp_out)
+                print("=========exporting data lineage DONE=========")
+
     # Update Solr dataset entry status and years_updated to empty
     update_body = [
         {
@@ -492,8 +495,3 @@ def run_aggregation(output_dir, s3=None, path=''):
     if r.status_code != 200:
         print(
             f'Failed to update Solr dataset entry with aggregation information for {dataset_name}')
-
-    # Export annual lineage JSON file for each year updated
-    print("=========exporting data lineage=========")
-    export_lineage(output_dir, years, solr_host, config)
-    print("=========exporting data lineage DONE=========")
