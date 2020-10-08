@@ -7,7 +7,6 @@ import sys
 import json
 import numpy as np
 import importlib
-#sys.path.append('/home/ifenty/ECCOv4-py')
 sys.path.append('/Users/ifenty/ECCOv4-py')
 import ecco_v4_py as ecco
 from pathlib import Path
@@ -17,12 +16,7 @@ import xarray as xr
 import datetime
 from pprint import pprint
 from collections import OrderedDict
-sys.path.append('/Users/ifenty/ecco-data-pub')
-sys.path.append('/Users/ifenty/ecco-data-pub/_ecco_podaac_nc_write_tail')
-sys.path.append('/Users/ifenty/ecco-data-pub/doc')
-sys.path.append('/Users/ifenty/modules/ecco-data-pub/_ecco_podaac_nc_write_tail/')
-from ecco_podaac import apply_some_metadata_modifiers
-from os.path import basename
+
 
 def get_coordinate_attribute_to_data_vars(G):
     coord_attr = dict()
@@ -36,9 +30,9 @@ def get_coordinate_attribute_to_data_vars(G):
     return coord_attr, coord_G
 
         
-def find_metadata_in_var_defs(var, metadata):
+def find_metadata_in_json_dictionary(var, key, metadata):
     for m in metadata:        
-        if m['name'] == var:
+        if m[key] == var:
             print(m)
             return m
     return []
@@ -100,10 +94,10 @@ start_time = np.datetime64('1992-01-01T12:00:00')
 
 
 ## GRID DIR -- MAKE SURE USE GRID FIELDS WITHOUT BLANK TILES!!
-mds_grid_dir = Path('/Users/ifenty/data/grids/grid_llc90/no_blank_all')
+mds_grid_dir = Path('/Users/ifenty/tmp/no_blank_all')
 
 ## METADATA
-metadata_json_dir = Path('/Users/ifenty/ECCO-GROUP/ECCO-ACCESS/metadata/ECCOv4r4_metadata_json')
+metadata_json_dir = Path('/Users/ifenty/git_repos/ECCO-GROUP/ECCO-ACCESS/metadata/ECCOv4r4_metadata_json')
 
 metadata_fields = ['ECCOv4r4_common_metadata', 
                    'ECCOv4r4_common_metadata_for_latlon_datasets',
@@ -111,7 +105,10 @@ metadata_fields = ['ECCOv4r4_common_metadata',
                    'ECCOv4r4_coordinate_variable_metadata_for_latlon_datasets',
                    'ECCOv4r4_dataset_groupings_for_latlon_product',
                    'ECCOv4r4_variables_on_latlon_grid_metadata',
-                   'ECCOv4r4_variables_on_native_grid_metadata']
+                   'ECCOv4r4_variables_on_native_grid_metadata',
+                   'ECCOv4r4_common_GCMD_keywords',
+                   'ECCOv4r4_variable_GCMD_keywords',
+                   'ECCOv4r4_podaac_datasets']
 
 #%%
 # load METADATA
@@ -123,18 +120,31 @@ for mf in metadata_fields:
     with open(str(metadata_json_dir / mf_e), 'r') as fp:
         metadata[mf] = json.load(fp)
         
+
+variable_gcmd_keywords = dict()
+
+for i in range(len(metadata['ECCOv4r4_variable_GCMD_keywords'])):
+    tmp = metadata['ECCOv4r4_variable_GCMD_keywords'][i]
+    print(tmp)
+    if tmp['GCMD_keywords'] != 'N/A':
+        variable_gcmd_keywords[tmp['name']] = tmp['GCMD_keywords']
+    
+    #%%
+        
+        
         
 groupings = metadata['ECCOv4r4_dataset_groupings_for_latlon_product']
 
-
 # grid dir
-ecco_grid_dir = '/Users/ifenty/inSync Share/Projects/ECCOv4/Release4/nctiles_grid/'
+ecco_grid_dir = '/Users/ifenty/data/grids/demos/'
 
-ecco_grid = ecco.load_ecco_grid_nc(ecco_grid_dir, 'ECCO-GRID.nc')
+#ecco_grid_dir = '/Users/ifenty/inSync Share/Projects/ECCOv4/Release4/nctiles_grid/'
+
+ecco_grid = ecco.load_ecco_grid_nc(ecco_grid_dir, 'ECCO_llc90_demo.nc')
 
 
 ## OUTPUT DIRECTORY
-output_dir = Path('/Users/ifenty/tmp/v4r4_nc_output_20200729_2311')
+output_dir = Path('/Users/ifenty/tmp/v4r4_nc_output_20200820')
 
 if not output_dir.exists():
     try:
@@ -144,7 +154,7 @@ if not output_dir.exists():
 
 
 
-
+#%%
 land_mask = np.where(ecco_grid.maskC.values == True, 1, np.nan)
 
 
@@ -223,17 +233,16 @@ for avg in avgs:
     if avg == 'AVG_DAY':
         ## AVERAGING TIME PERIOD
         output_freq_code = 'AVG_DAY' ## 'AVG_DAY' or 'SNAPSHOT'
-        mds_diags_root_dir = Path('/Users/ifenty/ECCOv4/Release4/forward_output/v4r4_nc_output_20200729_2311/diags_daily')
-
+       # mds_diags_root_dir = Path('/Users/ifenty/ECCOv4/Release4/forward_output/v4r4_nc_output_20200729_2311/diags_daily')
+        mds_diags_root_dir = Path('/Users/ifenty/tmp/eccov4r4_files/diags_daily')
     elif avg == 'AVG_MON':
         output_freq_code = 'AVG_MON' ## 'AVG_DAY' or 'SNAPSHOT'
-        mds_diags_root_dir = Path('/Users/ifenty/ECCOv4/Release4/forward_output/v4r4_nc_output_20200729_2311/diags_monthly')
-        
-    
+        #mds_diags_root_dir = Path('/Users/ifenty/ECCOv4/Release4/forward_output/v4r4_nc_output_20200729_2311/diags_monthly')
+        mds_diags_root_dir = Path('/Users/ifenty/tmp/eccov4r4_files/diags_monthly')
+
     
     ## TIME STEPS TO LOAD
-    
-    all_avail_time_steps = ecco.get_time_steps_from_mds_files(mds_diags_root_dir,'ETAN*/')
+    all_avail_time_steps = ecco.get_time_steps_from_mds_files(mds_diags_root_dir)
     pprint(all_avail_time_steps)
     
     time_steps_to_load = all_avail_time_steps[:2]
@@ -266,7 +275,7 @@ for avg in avgs:
     print (all_field_names)
     
     
-    for grouping in groupings:
+    for grouping in groupings[0:2]:
     
         grouping_dim = grouping['dimension']
         
@@ -426,11 +435,8 @@ for avg in avgs:
 
             for var in data_vars:
             
-                mv = find_metadata_in_var_defs(var, metadata_variable_latlon)
-                
-                if len(mv) == 0:
-                    mv = find_metadata_in_var_defs(var, metadata_variable_native)
-               
+                mv = find_metadata_in_json_dictionary(var, 'name', metadata_variable_latlon)
+              
                 if len(mv) == 0:
                     print('NO METADATA FOUND')
                     break
@@ -452,7 +458,7 @@ for avg in avgs:
             
             for coord in G.coords:
                 
-                mv = find_metadata_in_var_defs(coord, metadata_coord_latlon)
+                mv = find_metadata_in_json_dictionary(coord, 'name', metadata_coord_latlon)
                 
                 if len(mv) == 0:
                     print(coord, 'NO METADATA FOUND')
@@ -530,6 +536,8 @@ for avg in avgs:
                     print(mc)
                                  
             
+            # Add common metadata keywords
+            G.attrs['keywords'] = metadata['ECCOv4r4_common_GCMD_keywords'][0]['GCMDkeywords']
    
             # ADD METADATA ASSOCIATED WITH THE DATASET GROUPING TO THE DATASET ATTRS)
             G.attrs['title'] = grouping['name']
@@ -549,12 +557,7 @@ for avg in avgs:
                
             # add coordinate attribute to the variables
             coord_attrs, coord_G= get_coordinate_attribute_to_data_vars(G)
-            for keytmp in coord_attrs.keys():
-                coord_attrs[keytmp]=coord_attrs[keytmp].replace('time_step','')
-                coord_attrs[keytmp]=" ".join(coord_attrs[keytmp].split())
-            coord_G=coord_G.replace('time_step','')
-            coord_G=" ".join(coord_G.split())
-
+    
             G.attrs['coordinates'] = coord_G
 
             # PROVIDE SPECIFIC ENCODING DIRECTIVES FOR EACH DATA VAR
@@ -631,13 +634,6 @@ for avg in avgs:
             print(filename)
                     
             netcdf_output_filename = output_dir / filename
-
-            # ADD THE NEW LOGIC TO MODIFY THE OUTPUT DATASET HERE >>>
-            # Get a function to apply to the xr Dataset just before write to netCDF.
-            func = apply_some_metadata_modifiers(netcdf_output_filename.name)
-            # Apply decorated function to modify the dataset in place.
-            G = func(G)
-            # <<< ENCLOSED SNIPPET CONTAINS ALL CHANGES YOUD NEED TO MAKE TO THE WRITE SCRIPT
             
             sort_all_attrs(G)
             G.to_netcdf(netcdf_output_filename, encoding=encoding)
