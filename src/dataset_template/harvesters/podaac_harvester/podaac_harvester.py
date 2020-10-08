@@ -125,12 +125,11 @@ def podaac_harvester(path='', s3=None, on_aws=False):
     # =====================================================
     # Read configurations from YAML file
     # =====================================================
-    if path:
-        path_to_yaml = f'{path}/podaac_harvester_config.yaml'
-    else:
-        path_to_yaml = f'{os.path.dirname(sys.argv[0])}/podaac_harvester_config.yaml'
+    if not path:
+        print('No path for configuration file. Can not run harvester.')
+        return
 
-    with open(path_to_yaml, "r") as stream:
+    with open(path, "r") as stream:
         config = yaml.load(stream, yaml.Loader)
 
     # =====================================================
@@ -148,10 +147,10 @@ def podaac_harvester(path='', s3=None, on_aws=False):
     # Initializing required values
     # =====================================================
     dataset_name = config['ds_name']
-    parent_path = f'{Path(__file__).resolve().parents[1]}'
+    parent_path = f'{Path(__file__).resolve().parents[3]}'
     if '\\' in parent_path:
         parent_path = parent_path.replace('\\', '/')
-    target_dir = f'{parent_path}/harvested_granule/{dataset_name}/'
+    target_dir = f'{parent_path}/datasets/{dataset_name}/harvested_granules/'
     date_regex = config['date_regex']
     aggregated = config['aggregated']
     start_time = config['start']

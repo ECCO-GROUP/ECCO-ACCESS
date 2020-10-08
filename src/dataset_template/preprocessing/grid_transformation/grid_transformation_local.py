@@ -88,11 +88,11 @@ def main(path=''):
     grid_transformation = importlib.reload(grid_transformation)
 
     # Pull config information
-    if path:
-        path_to_yaml = f'{path}/grid_transformation_config.yaml'
-    else:
-        path_to_yaml = f'{os.path.dirname(sys.argv[0])}/grid_transformation_config.yaml'
-    with open(path_to_yaml, "r") as stream:
+    if not path:
+        print('No path for configuration file. Can not run transformation.')
+        return
+
+    with open(path, "r") as stream:
         config = yaml.load(stream, yaml.Loader)
 
     dataset_name = config['ds_name']
