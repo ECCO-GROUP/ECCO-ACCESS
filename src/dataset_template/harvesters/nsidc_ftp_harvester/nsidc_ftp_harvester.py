@@ -67,11 +67,11 @@ def nsidc_ftp_harvester(path='', s3=None, on_aws=False):
     # =====================================================
     # Read configurations from YAML file
     # =====================================================
-    if path:
-        path_to_yaml = f'{path}/nsidc_ftp_harvester_config.yaml'
-    else:
-        path_to_yaml = f'{os.path.dirname(sys.argv[0])}/nsidc_ftp_harvester_config.yaml'
-    with open(path_to_yaml, "r") as stream:
+    if not path:
+        print('No path for configuration file. Can not run harvester.')
+        return
+
+    with open(path, "r") as stream:
         config = yaml.load(stream, yaml.Loader)
 
     # =====================================================
@@ -88,10 +88,10 @@ def nsidc_ftp_harvester(path='', s3=None, on_aws=False):
     # Initializing required values
     # =====================================================
     dataset_name = config['ds_name']
-    parent_path = f'{Path(__file__).resolve().parents[1]}'
+    parent_path = f'{Path(__file__).resolve().parents[3]}'
     if '\\' in parent_path:
         parent_path = parent_path.replace('\\', '/')
-    target_dir = f'{parent_path}/harvested_granule/{dataset_name}/'
+    target_dir = f'{parent_path}/datasets/{dataset_name}/harvested_granules/'
     folder = f'/tmp/{dataset_name}/'
     data_time_scale = config['data_time_scale']
 
@@ -367,7 +367,7 @@ def nsidc_ftp_harvester(path='', s3=None, on_aws=False):
         ds_meta = {}
         ds_meta['type_s'] = 'dataset'
         ds_meta['dataset_s'] = dataset_name
-        ds_meta['short_name_s'] = config['short_name']
+        ds_meta['short_name_s'] = config['original_dataset_short_name']
         ds_meta['source_s'] = f'ftp://{config["host"]}/{config["ddir"]}'
         ds_meta['data_time_scale_s'] = config['data_time_scale']
         ds_meta['date_format_s'] = config['date_format']

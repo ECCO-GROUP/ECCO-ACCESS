@@ -47,13 +47,13 @@ def run_harvester(datasets, path_to_harvesters, log):
 
                 if 'RDEFT4' in ds:
                     path_to_code = Path(
-                        f'{path_to_harvesters}/{harvester_type}_harvester/seaice_conc_RDEFT4/')
+                        f'{path_to_harvesters}/{harvester_type}_harvester/RDEFT4_ftp_harvester/')
                     harvester = 'seaice_harvester_local'
                 elif harvester_type == 'podaac':
                     harvester = 'podaac_harvester_local'
-                elif harvester_type == 'osisaf':
+                elif harvester_type == 'osisaf_ftp':
                     harvester = 'osisaf_ftp_harvester_local'
-                elif harvester_type == 'nsidc':
+                elif harvester_type == 'nsidc_ftp':
                     harvester = 'nsidc_ftp_harvester_local'
 
                 sys.path.insert(1, str(path_to_code))
@@ -127,22 +127,28 @@ def run_aggregation(datasets, path_to_preprocessing, log):
         try:
             print(f'\033[93mRunning aggregation for {ds}\033[0m')
             print('=========================================================')
-            dataset_path = Path(
-                f'{path_to_preprocessing}/{ds}/aggregation_by_year/')
-            if os.path.exists(dataset_path):
-                sys.path.insert(1, str(dataset_path))
-                aggregator = 'aggregation_local'
-                try:
-                    ret_import = importlib.reload(ret_import)
-                except:
-                    ret_import = importlib.import_module(aggregator)
-                ret_import.main(path=dataset_path)
-                sys.path.remove(str(dataset_path))
+            config_path = Path(
+                f'{Path(__file__).resolve().parents[1]}/datasets/{ds}/aggregation_config.yaml')
+
+            path_to_code = Path(
+                f'{path_to_preprocessing}/aggregation_by_year/')
+
+            aggregation = 'aggregation_local'
+
+            sys.path.insert(1, str(path_to_code))
+
+            try:
+                ret_import = importlib.reload(ret_import)
+            except:
+                ret_import = importlib.import_module(aggregation)
+
+            ret_import.main(path=config_path)
+            sys.path.remove(str(path_to_code))
             log.setdefault(ds, []).append(
                 f'\tAggregation \033[92msuccessful\033[0m')
             print('\033[92mAggregation successful\033[0m')
         except Exception as e:
-            sys.path.remove(str(dataset_path))
+            sys.path.remove(str(path_to_code))
             print('\033[91mAggregation failed\033[0m')
             log.setdefault(ds, []).append(
                 f'\tAggregation \033[91mfailed\033[0m: {e}')

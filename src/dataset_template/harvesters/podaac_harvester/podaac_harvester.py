@@ -302,7 +302,7 @@ def podaac_harvester(path='', s3=None, on_aws=False):
 
                         for time in ds_times:
                             new_ds = ds.sel(time=time)
-                            file_name = f'{config["short_name"]}_{time.replace("-","")[:8]}.nc'
+                            file_name = f'{dataset_name}_{time.replace("-","")[:8]}.nc'
                             local_fp = f'{target_dir}{file_name}'
 
                             new_ds.to_netcdf(path=local_fp)
@@ -404,7 +404,7 @@ def podaac_harvester(path='', s3=None, on_aws=False):
         ds_meta = {}
         ds_meta['type_s'] = 'dataset'
         ds_meta['dataset_s'] = dataset_name
-        ds_meta['short_name_s'] = config['short_name']
+        ds_meta['short_name_s'] = config['original_dataset_short_name']
         ds_meta['source_s'] = f'{config["host"]}&datasetId={config["podaac_id"]}'
         ds_meta['data_time_scale_s'] = config['data_time_scale']
         ds_meta['date_format_s'] = config['date_format']

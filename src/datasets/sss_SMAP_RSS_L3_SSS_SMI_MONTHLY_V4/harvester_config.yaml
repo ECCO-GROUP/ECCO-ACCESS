@@ -2,8 +2,8 @@
 # PODAAC
 # =====================================================
 # PODAAC explicitly expects this date format
-start: "20021228T00:00:01Z" # yyyymmddThh:mm:ssZ
-end: "20030105T23:59:59Z" # yyyymmddThh:mm:ssZ
+start: "20160101T00:00:01Z" # yyyymmddThh:mm:ssZ
+end: "20161231T23:59:59Z" # yyyymmddThh:mm:ssZ
 user: anonymous # does not change
 host: https://podaac.jpl.nasa.gov/ws/search/granule/?format=atom&pretty=false&itemsPerPage=300000 # does not change
 date_regex: "%Y-%m-%dT%H:%M:%SZ" # does not change
@@ -11,34 +11,34 @@ date_regex: "%Y-%m-%dT%H:%M:%SZ" # does not change
 # =====================================================
 # Dataset
 # =====================================================
-ds_name: "sst_MODIS_AQUA_L3_9KM" # Name for dataset
+ds_name: "sss_SMAP_RSS_L3_SSS_SMI_MONTHLY_V4" # Name for dataset
 harvester_type: "podaac"
-podaac_id: "PODAAC-MODSA-1D9D9"
+podaac_id: "PODAAC-SMP40-3SMCS"
 aggregated: false # if data is available aggregated
-data_time_scale: "daily" # daily or monthly
-date_format: "yyyymmdd" # format of date in file name ex: yyyymmdd
+data_time_scale: "monthly" # daily or monthly
+date_format: "yyyy_mm" # format of date in file name ex: yyyymmdd
 fields:
   [
     {
-      name: sst,
-      long_name: Sea Surface Temperature,
-      standard_name: sea_surface_temperature,
-      units: degree_C,
+      name: sss_smap_40km,
+      long_name: SMAP sea surface salinity,
+      standard_name: sea_surface_salinity,
+      units: 1e-3,
     },
     {
-      name: qual_sst,
-      long_name: "Quality Levels, Sea Surface Temperature",
+      name: sss_smap_uncertainty,
+      long_name: estimated empirical uncertainty of SMAP sea surface salinity smoothed to approx 70km resolution,
       standard_name: " ",
-      units: " ",
+      units: 1e-3,
     },
   ]
 
 # new_data_attrs:
-original_dataset_title: MODIS Aqua Level 3 SST Thermal IR Daily 9km Daytime V2019.0
-original_dataset_short_name: MODIS_AQUA_L3_SST_THERMAL_DAILY_9KM_DAYTIME_V2019.0
-original_dataset_url: https://podaac.jpl.nasa.gov/dataset/MODIS_AQUA_L3_SST_THERMAL_DAILY_9KM_DAYTIME_V2019.0
-original_dataset_reference: http://oceancolor.gsfc.nasa.gov
-original_dataset_doi: 10.5067/MODSA-1D9D9
+original_dataset_title: RSS SMAP Level 3 Sea Surface Salinity Standard Mapped Image Monthly V4.0 Validated Dataset
+original_dataset_short_name: SMAP_RSS_L3_SSS_SMI_MONTHLY_V4
+original_dataset_url: https://podaac.jpl.nasa.gov/dataset/SMAP_RSS_L3_SSS_SMI_MONTHLY_V4
+original_dataset_reference: http://smap.jpl.nasa.gov/
+original_dataset_doi: 10.5067/SMP40-3SMCS
 
 # =====================================================
 # Solr

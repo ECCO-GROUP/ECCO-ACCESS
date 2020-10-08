@@ -80,11 +80,11 @@ def run_aggregation(output_dir, s3=None, path=''):
     # =====================================================
     # Read configurations from YAML file
     # =====================================================
-    if path:
-        path_to_yaml = f'{path}/aggregation_config.yaml'
-    else:
-        path_to_yaml = f'{os.path.dirname(sys.argv[0])}/aggregation_config.yaml'
-    with open(path_to_yaml, "r") as stream:
+    if not path:
+        print('No path for configuration file. Can not run aggregation.')
+        return
+
+    with open(path, "r") as stream:
         config = yaml.load(stream, yaml.Loader)
 
     # =====================================================
@@ -291,8 +291,8 @@ def run_aggregation(output_dir, s3=None, path=''):
 
                 # Create filenames based on date time scale
                 # If data time scale is monthly, shortest_filename is monthly
-                shortest_filename = f'{short_name}_{grid_name}_{data_time_scale.upper()}_{year}_{field_name}'
-                monthly_filename = f'{short_name}_{grid_name}_MONTHLY_{year}_{field_name}'
+                shortest_filename = f'{dataset_name}_{grid_name}_{data_time_scale.upper()}_{field_name}_{year}'
+                monthly_filename = f'{dataset_name}_{grid_name}_MONTHLY_{field_name}_{year}'
 
                 output_filenames = {'shortest': shortest_filename,
                                     'monthly': monthly_filename}

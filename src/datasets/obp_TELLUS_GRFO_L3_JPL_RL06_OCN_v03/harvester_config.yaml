@@ -2,8 +2,8 @@
 # PODAAC
 # =====================================================
 # PODAAC explicitly expects this date format
-start: "20021228T00:00:01Z" # yyyymmddThh:mm:ssZ
-end: "20030105T23:59:59Z" # yyyymmddThh:mm:ssZ
+start: "20190101T00:00:01Z" # yyyymmddThh:mm:ssZ
+end: "20190501T23:59:59Z" # yyyymmddThh:mm:ssZ
 user: anonymous # does not change
 host: https://podaac.jpl.nasa.gov/ws/search/granule/?format=atom&pretty=false&itemsPerPage=300000 # does not change
 date_regex: "%Y-%m-%dT%H:%M:%SZ" # does not change
@@ -11,34 +11,28 @@ date_regex: "%Y-%m-%dT%H:%M:%SZ" # does not change
 # =====================================================
 # Dataset
 # =====================================================
-ds_name: "sst_MODIS_AQUA_L3_9KM" # Name for dataset
+ds_name: "obp_TELLUS_GRFO_L3_JPL_RL06_OCN_v03" # Name for dataset
 harvester_type: "podaac"
-podaac_id: "PODAAC-MODSA-1D9D9"
+podaac_id: "PODAAC-GFOCN-3AJ63"
 aggregated: false # if data is available aggregated
-data_time_scale: "daily" # daily or monthly
-date_format: "yyyymmdd" # format of date in file name ex: yyyymmdd
+data_time_scale: "monthly" # daily or monthly
+date_format: "yyyyddd" # format of date in file name ex: yyyymmdd
 fields:
   [
     {
-      name: sst,
-      long_name: Sea Surface Temperature,
-      standard_name: sea_surface_temperature,
-      units: degree_C,
-    },
-    {
-      name: qual_sst,
-      long_name: "Quality Levels, Sea Surface Temperature",
-      standard_name: " ",
-      units: " ",
+      name: "lwe_thickness",
+      long_name: "Liquid_Water_Equivalent_Thickness",
+      standard_name: "Liquid_Water_Equivalent_Thickness",
+      units: "m",
     },
   ]
 
 # new_data_attrs:
-original_dataset_title: MODIS Aqua Level 3 SST Thermal IR Daily 9km Daytime V2019.0
-original_dataset_short_name: MODIS_AQUA_L3_SST_THERMAL_DAILY_9KM_DAYTIME_V2019.0
-original_dataset_url: https://podaac.jpl.nasa.gov/dataset/MODIS_AQUA_L3_SST_THERMAL_DAILY_9KM_DAYTIME_V2019.0
-original_dataset_reference: http://oceancolor.gsfc.nasa.gov
-original_dataset_doi: 10.5067/MODSA-1D9D9
+original_dataset_title: "JPL TELLUS GRACE-FO Level-3 Monthly Ocean Bottom Pressure Anomaly Release 6.0 version 03 in netCDF/ASCII/GeoTIFF Formats"
+original_dataset_short_name: "TELLUS_GRFO_L3_JPL_RL06_OCN_v03"
+original_dataset_url: "https://podaac.jpl.nasa.gov/dataset/TELLUS_GRFO_L3_JPL_RL06_OCN_v03?ids=Measurement:Collections&values=OCEAN%20PRESSURE:GRACE-FO"
+original_dataset_reference: "https://gracefo.jpl.nasa.gov/"
+original_dataset_doi: "10.5067/GFOCN-3AJ63"
 
 # =====================================================
 # Solr
