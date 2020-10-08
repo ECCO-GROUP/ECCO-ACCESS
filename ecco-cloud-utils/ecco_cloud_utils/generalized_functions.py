@@ -241,6 +241,13 @@ def generalized_transform_to_model_grid_solr(data_field_info, record_date, model
         elif 'time_bnds' in ds.variables:
             data_DA.time_start.values[0] = ds.time_bnds[0][0].values
             data_DA.time_end.values[0] = ds.time_bnds[0][1].values
+        elif 'time_bounds' in ds.variables:
+            try:
+                data_DA.time_start.values[0] = ds.time_bounds[0][0].values
+                data_DA.time_end.values[0] = ds.time_bounds[0][1].values
+            except:
+                data_DA.time_start.values[0] = ds.time_bounds[0].values
+                data_DA.time_end.values[0] = ds.time_bounds[1].values
     elif 'no_time' in extra_information:
         data_DA.time_start.values[0] = record_date
         data_DA.time_end.values[0] = record_date
@@ -260,7 +267,10 @@ def generalized_transform_to_model_grid_solr(data_field_info, record_date, model
         if 'Time' in ds.variables:
             data_DA.time.values[0] = ds.Time[0].values
         elif 'time' in ds.variables:
-            data_DA.time.values[0] = ds.time[0].values
+            try:
+                data_DA.time.values[0] = ds.time[0].values
+            except:
+                data_DA.time.values[0] = ds.time.values
     else:
         data_DA.time.values[0] = record_date
 
