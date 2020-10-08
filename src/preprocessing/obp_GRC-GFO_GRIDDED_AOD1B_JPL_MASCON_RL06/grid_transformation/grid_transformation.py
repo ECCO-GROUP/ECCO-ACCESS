@@ -146,6 +146,9 @@ def run_locally(source_file_path, remaining_transformations, output_dir, path=''
 
         if grid_factors_version in dataset_metadata.keys() and transformation_version == dataset_metadata[grid_factors_version]:
             factors_path = dataset_metadata[grid_factors]
+            # print(factors_path)
+            # while True:
+            #     i = 4
 
             print(f'===Loading {grid_name} factors===')
             with open(factors_path, "rb") as f:
@@ -799,7 +802,8 @@ def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors
                                                         record_date, model_grid, model_grid_type, array_precision)
                         success = False
                         break
-        except:
+        except Exception as e:
+            print(e)
             field_DA = ea.make_empty_record(data_field_info['standard_name_s'], data_field_info['long_name_s'], data_field_info['units_s'],
                                             record_date, model_grid, model_grid_type, array_precision)
             success = False

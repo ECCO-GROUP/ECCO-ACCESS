@@ -799,7 +799,8 @@ def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors
                                                         record_date, model_grid, model_grid_type, array_precision)
                         success = False
                         break
-        except:
+        except Exception as e:
+            print(e)
             field_DA = ea.make_empty_record(data_field_info['standard_name_s'], data_field_info['long_name_s'], data_field_info['units_s'],
                                             record_date, model_grid, model_grid_type, array_precision)
             success = False

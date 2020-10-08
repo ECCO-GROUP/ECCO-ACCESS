@@ -65,7 +65,7 @@ def get_remaining_transformations(config, source_file_path, grid_transformation)
 
                 # Compare transformation version number and config version number
                 # Compare origin checksum for transformed file
-                if transformation['transformation_version_f'] == config['version'] and origin_checksum == harvested_checksum:
+                if 'transformation_version_f' in transformation.keys() and transformation['transformation_version_f'] == config['version'] and origin_checksum == harvested_checksum:
 
                     # Add grid/field combination to drop_list
                     drop_list.append((grid, field))

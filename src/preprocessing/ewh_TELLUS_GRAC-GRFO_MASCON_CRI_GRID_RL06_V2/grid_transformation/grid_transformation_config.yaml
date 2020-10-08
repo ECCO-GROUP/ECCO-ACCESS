@@ -2,15 +2,15 @@
 # Dataset
 # =====================================================
 ds_name: "ewh_TELLUS_GRAC-GRFO_MASCON_CRI_GRID_RL06_V2" # Name for dataset
-version: 1.0 # Update this value if any changes are made to this file
+version: 1.3 # Update this value if any changes are made to this file
 array_precision: float32
 time_zone_included_with_time: True # Data time values have time zone
-extra_information: ['time_var', 'time_bounds_var'] # Unique things to do for dataset
+extra_information: ["time_var", "time_bounds_var"] # Unique things to do for dataset
 data_res: 3 # Resolution of dataset
 
 # Values for non split datasets
-data_max_lat: 89.75 # Maximum latitude in dataset
-area_extent: [0.25, -89.75, 359.75, 89.75] # [lon_min, lat_min, lon_max, lat_max]
+data_max_lat: 90 # Maximum latitude in dataset
+area_extent: [0, 90, 360, -90] # [lon_min, lat_min, lon_max, lat_max]
 dims: [720, 360] # [lon, lat]
 proj_info:
   {
@@ -62,4 +62,3 @@ solr_collection_name: ecco_datasets # doesn't change
 source_bucket: ecco-preprocess
 target_bucket: ecco-ames
 aws_output_suffix: .nc
-

@@ -348,7 +348,7 @@ def seaice_harvester(path='', s3=None, on_aws=False):
 
     if len(existing_descendants_docs) > 0:
         for doc in existing_descendants_docs:
-            if doc['hemisphere_s']:
+            if 'hemisphere_s' in doc.keys() and doc['hemisphere_s']:
                 key = (doc['date_s'], doc['hemisphere_s'])
             else:
                 key = doc['date_s']
