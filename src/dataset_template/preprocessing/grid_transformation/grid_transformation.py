@@ -141,10 +141,10 @@ def run_locally(source_file_path, remaining_transformations, output_dir, path=''
         # =====================================================
         # Make model grid factors if not present locally
         # =====================================================
-        grid_factors = f'{grid_name}{hemi}_factors_path_s'
-        grid_factors_version = f'{grid_name}{hemi}_factors_version_f'
+        grid_factors = f'{grid_name}{hemi}_{date[:4]}_factors_path_s'
+        grid_factors_version = f'{grid_name}{hemi}_{date[:4]}_factors_version_f'
 
-        if grid_factors_version in dataset_metadata.keys() and transformation_version == dataset_metadata[grid_factors_version]:
+        if grid_factors_version in dataset_metadata.keys() and transformation_version == dataset_metadata[grid_factors_version] and date[:4] in grid_factors:
             factors_path = dataset_metadata[grid_factors]
 
             print(f'===Loading {grid_name} factors===')
@@ -239,9 +239,9 @@ def run_locally(source_file_path, remaining_transformations, output_dir, path=''
             update_body = [
                 {
                     "id": doc_id,
-                    f'{grid_name}{hemi}_factors_path_s': {"set": factors_path},
-                    f'{grid_name}{hemi}_factors_stored_dt': {"set": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")},
-                    f'{grid_name}{hemi}_factors_version_f': {"set": transformation_version}
+                    f'{grid_factors}': {"set": factors_path},
+                    f'{grid_name}{hemi}_{date[:4]}_factors_stored_dt': {"set": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")},
+                    f'{grid_factors_version}': {"set": transformation_version}
                 }
             ]
 
@@ -329,6 +329,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, path=''
                 os.makedirs(output_path)
 
             field_DS = field_DA.to_dataset()
+
             field_DS.to_netcdf(output_path + output_filename)
             field_DS.close()
 
@@ -782,6 +783,7 @@ def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors
 
     # fields is a list of dictionaries
     for data_field_info in fields:
+
         try:
             field_DA = ea.generalized_transform_to_model_grid_solr(data_field_info, record_date, model_grid, model_grid_type,
                                                                    array_precision, record_file_name, original_dataset_metadata,
@@ -799,6 +801,10 @@ def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors
                                                         record_date, model_grid, model_grid_type, array_precision)
                         success = False
                         break
+
+            field_DA.attrs['valid_min'] = np.nanmin(field_DA.values)
+            field_DA.attrs['valid_max'] = np.nanmax(field_DA.values)
+
         except:
             field_DA = ea.make_empty_record(data_field_info['standard_name_s'], data_field_info['long_name_s'], data_field_info['units_s'],
                                             record_date, model_grid, model_grid_type, array_precision)

@@ -473,10 +473,15 @@ def run_aggregation(output_dir, s3=None, path=''):
                             print(
                                 f'Failed to update Solr aggregation entry for {field_name} in {dataset_name} for {year} and grid {grid_name}')
 
+                fq = [f'dataset_s:{dataset_name}', 'type_s:aggregation',
+                      f'grid_name_s:{grid_name}', f'field_s:{field_name}', f'year_s:{year}']
+                docs = solr_query(config, solr_host, fq)
+
                 # Export annual descendants JSON file for each aggregation created
                 print("=========exporting data descendants=========")
+                json_output['aggregation'] = docs
                 json_output['transformations'] = transformations
-                json_output_path = f'{output_dir}{dataset_name}/{grid_name}/aggregated/{field_name}/netCDF/{dataset_name}_{year}_descendants'
+                json_output_path = f'{output_dir}{dataset_name}/{grid_name}/aggregated/{field_name}/{dataset_name}_{field_name}_{year}_descendants'
                 with open(json_output_path, 'w') as f:
                     resp_out = json.dumps(json_output, indent=4)
                     f.write(resp_out)

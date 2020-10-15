@@ -269,7 +269,10 @@ def podaac_harvester(path='', s3=None, on_aws=False):
 
                 # If updating, download file
                 if updating:
-                    local_fp = f'{target_dir}{newfile}'
+                    local_fp = f'{target_dir}{date_start_str[:4]}/{newfile}'
+
+                    if not os.path.exists(f'{target_dir}{date_start_str[:4]}'):
+                        os.makedirs(f'{target_dir}{date_start_str[:4]}')
 
                     if newfile in docs.keys():
                         item_id = docs[newfile]['id']
@@ -303,7 +306,11 @@ def podaac_harvester(path='', s3=None, on_aws=False):
                         for time in ds_times:
                             new_ds = ds.sel(time=time)
                             file_name = f'{dataset_name}_{time.replace("-","")[:8]}.nc'
-                            local_fp = f'{target_dir}{file_name}'
+                            local_fp = f'{target_dir}{date_start_str[:4]}/{newfile}'
+
+                            if not os.path.exists(f'{target_dir}{date_start_str[:4]}'):
+                                os.makedirs(
+                                    f'{target_dir}{date_start_str[:4]}')
 
                             new_ds.to_netcdf(path=local_fp)
                             time_s = f'{time[:-10]}Z'
@@ -327,7 +334,7 @@ def podaac_harvester(path='', s3=None, on_aws=False):
                             end.append(datetime.strptime(
                                 time[:-3], '%Y-%m-%dT%H:%M:%S.%f'))
 
-                        local_fp = f'{target_dir}{newfile}'
+                        local_fp = f'{target_dir}{date_start_str[:4]}/{newfile}'
 
                     else:
                         item, descendants_item = metadata_maker(config, date_start_str, link, mod_time, on_aws,
