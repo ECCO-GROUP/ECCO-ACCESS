@@ -125,12 +125,11 @@ def podaac_harvester(path='', s3=None, on_aws=False):
     # =====================================================
     # Read configurations from YAML file
     # =====================================================
-    if path:
-        path_to_yaml = f'{path}/podaac_harvester_config.yaml'
-    else:
-        path_to_yaml = f'{os.path.dirname(sys.argv[0])}/podaac_harvester_config.yaml'
+    if not path:
+        print('No path for configuration file. Can not run harvester.')
+        return
 
-    with open(path_to_yaml, "r") as stream:
+    with open(path, "r") as stream:
         config = yaml.load(stream, yaml.Loader)
 
     # =====================================================
@@ -148,10 +147,10 @@ def podaac_harvester(path='', s3=None, on_aws=False):
     # Initializing required values
     # =====================================================
     dataset_name = config['ds_name']
-    parent_path = f'{Path(__file__).resolve().parents[1]}'
+    parent_path = f'{Path(__file__).resolve().parents[3]}'
     if '\\' in parent_path:
         parent_path = parent_path.replace('\\', '/')
-    target_dir = f'{parent_path}/harvested_granule/{dataset_name}/'
+    target_dir = f'{parent_path}/datasets/{dataset_name}/harvested_granules/'
     date_regex = config['date_regex']
     aggregated = config['aggregated']
     start_time = config['start']
@@ -270,7 +269,10 @@ def podaac_harvester(path='', s3=None, on_aws=False):
 
                 # If updating, download file
                 if updating:
-                    local_fp = f'{target_dir}{newfile}'
+                    local_fp = f'{target_dir}{date_start_str[:4]}/{newfile}'
+
+                    if not os.path.exists(f'{target_dir}{date_start_str[:4]}'):
+                        os.makedirs(f'{target_dir}{date_start_str[:4]}')
 
                     if newfile in docs.keys():
                         item_id = docs[newfile]['id']
@@ -303,8 +305,12 @@ def podaac_harvester(path='', s3=None, on_aws=False):
 
                         for time in ds_times:
                             new_ds = ds.sel(time=time)
-                            file_name = f'{config["short_name"]}_{time.replace("-","")[:8]}.nc'
-                            local_fp = f'{target_dir}{file_name}'
+                            file_name = f'{dataset_name}_{time.replace("-","")[:8]}.nc'
+                            local_fp = f'{target_dir}{date_start_str[:4]}/{newfile}'
+
+                            if not os.path.exists(f'{target_dir}{date_start_str[:4]}'):
+                                os.makedirs(
+                                    f'{target_dir}{date_start_str[:4]}')
 
                             new_ds.to_netcdf(path=local_fp)
                             time_s = f'{time[:-10]}Z'
@@ -328,7 +334,7 @@ def podaac_harvester(path='', s3=None, on_aws=False):
                             end.append(datetime.strptime(
                                 time[:-3], '%Y-%m-%dT%H:%M:%S.%f'))
 
-                        local_fp = f'{target_dir}{newfile}'
+                        local_fp = f'{target_dir}{date_start_str[:4]}/{newfile}'
 
                     else:
                         item, descendants_item = metadata_maker(config, date_start_str, link, mod_time, on_aws,
@@ -405,7 +411,7 @@ def podaac_harvester(path='', s3=None, on_aws=False):
         ds_meta = {}
         ds_meta['type_s'] = 'dataset'
         ds_meta['dataset_s'] = dataset_name
-        ds_meta['short_name_s'] = config['short_name']
+        ds_meta['short_name_s'] = config['original_dataset_short_name']
         ds_meta['source_s'] = f'{config["host"]}&datasetId={config["podaac_id"]}'
         ds_meta['data_time_scale_s'] = config['data_time_scale']
         ds_meta['date_format_s'] = config['date_format']

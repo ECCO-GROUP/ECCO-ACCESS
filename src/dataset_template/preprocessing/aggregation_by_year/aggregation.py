@@ -80,11 +80,11 @@ def run_aggregation(output_dir, s3=None, path=''):
     # =====================================================
     # Read configurations from YAML file
     # =====================================================
-    if path:
-        path_to_yaml = f'{path}/aggregation_config.yaml'
-    else:
-        path_to_yaml = f'{os.path.dirname(sys.argv[0])}/aggregation_config.yaml'
-    with open(path_to_yaml, "r") as stream:
+    if not path:
+        print('No path for configuration file. Can not run aggregation.')
+        return
+
+    with open(path, "r") as stream:
         config = yaml.load(stream, yaml.Loader)
 
     # =====================================================
@@ -113,29 +113,7 @@ def run_aggregation(output_dir, s3=None, path=''):
     fq = ['type_s:dataset', f'dataset_s:{dataset_name}']
     dataset_metadata = solr_query(config, solr_host, fq)[0]
 
-    short_name = dataset_metadata['short_name_s']
     data_time_scale = dataset_metadata['data_time_scale_s']
-
-    # Only aggregate years with updated transformations
-    # Based on years_updated_ss field in dataset Solr entry
-    if 'years_updated_ss' in dataset_metadata.keys():
-        years = dataset_metadata['years_updated_ss']
-    else:
-        # If no years to aggregate, update dataset Solr entry status
-        print('No updated years to aggregate')
-        update_body = [
-            {
-                "id": dataset_metadata['id'],
-                "status_s": {"set": 'aggregated'},
-            }
-        ]
-
-        r = solr_update(config, solr_host, update_body, r=True)
-
-        if r.status_code != 200:
-            print(
-                f'Failed to update Solr dataset status entry for {dataset_name}')
-        return
 
     # Define precision of output files, float32 is standard
     array_precision = getattr(np, config['array_precision'])
@@ -161,6 +139,16 @@ def run_aggregation(output_dir, s3=None, path=''):
         grid_path = grid['grid_path_s']
         grid_name = grid['grid_name_s']
         grid_type = grid['grid_type_s']
+
+        # Only aggregate years with updated transformations
+        # Based on years_updated_ss field in dataset Solr entry
+        solr_years_updated = f'{grid_name}_years_updated_ss'
+        if solr_years_updated in dataset_metadata.keys():
+            years = dataset_metadata[solr_years_updated]
+        else:
+            # If no years to aggregate for this grid, continue to next grid
+            print(f'No updated years to aggregate for {grid_name}')
+            continue
 
         if grid_path[:5] == 's3://':
             source_bucket_name, key_name = split_s3_bucket_key(grid_path)
@@ -291,8 +279,8 @@ def run_aggregation(output_dir, s3=None, path=''):
 
                 # Create filenames based on date time scale
                 # If data time scale is monthly, shortest_filename is monthly
-                shortest_filename = f'{short_name}_{grid_name}_{data_time_scale.upper()}_{year}_{field_name}'
-                monthly_filename = f'{short_name}_{grid_name}_MONTHLY_{year}_{field_name}'
+                shortest_filename = f'{dataset_name}_{grid_name}_{data_time_scale.upper()}_{field_name}_{year}'
+                monthly_filename = f'{dataset_name}_{grid_name}_MONTHLY_{field_name}_{year}'
 
                 output_filenames = {'shortest': shortest_filename,
                                     'monthly': monthly_filename}
@@ -318,24 +306,24 @@ def run_aggregation(output_dir, s3=None, path=''):
                                     'monthly_bin': f'{output_path}bin/{monthly_filename}',
                                     'monthly_netCDF': f'{output_path}netCDF/{monthly_filename}.nc'}
 
-                print(daily_DA_year_merged)
+                # print(daily_DA_year_merged)
 
                 try:
                     # Performs the aggreagtion of the yearly data, and saves it
-                    ea.generalized_aggregate_and_save(daily_DA_year_merged,
-                                                      new_data_attr,
-                                                      config['do_monthly_aggregation'],
-                                                      int(year),
-                                                      config['skipna_in_mean'],
-                                                      output_filenames,
-                                                      fill_values,
-                                                      output_dirs,
-                                                      binary_dtype,
-                                                      grid_type,
-                                                      on_aws=s3,
-                                                      save_binary=config['save_binary'],
-                                                      save_netcdf=config['save_netcdf'],
-                                                      remove_nan_days_from_data=config['remove_nan_days_from_data'])
+                    empty_year = ea.generalized_aggregate_and_save(daily_DA_year_merged,
+                                                                   new_data_attr,
+                                                                   config['do_monthly_aggregation'],
+                                                                   int(year),
+                                                                   config['skipna_in_mean'],
+                                                                   output_filenames,
+                                                                   fill_values,
+                                                                   output_dirs,
+                                                                   binary_dtype,
+                                                                   grid_type,
+                                                                   on_aws=s3,
+                                                                   save_binary=config['save_binary'],
+                                                                   save_netcdf=config['save_netcdf'],
+                                                                   remove_nan_days_from_data=config['remove_nan_days_from_data'])
 
                     # Upload files to s3
                     if s3:
@@ -360,6 +348,7 @@ def run_aggregation(output_dir, s3=None, path=''):
 
                 except Exception as e:
                     print(e)
+                    empty_year = True
                     success = False
                     output_filepaths = {'daily_bin': '',
                                         'daily_netCDF': '',
@@ -367,6 +356,13 @@ def run_aggregation(output_dir, s3=None, path=''):
                                         'monthly_netCDF': ''}
 
                 aggregation_successes = aggregation_successes and success
+                empty_year = empty_year and success
+
+                if empty_year:
+                    output_filepaths = {'daily_bin': '',
+                                        'daily_netCDF': '',
+                                        'monthly_bin': '',
+                                        'monthly_netCDF': ''}
 
                 # Query Solr for existing aggregation
                 fq = [f'dataset_s:{dataset_name}', 'type_s:aggregation',
@@ -408,6 +404,12 @@ def run_aggregation(output_dir, s3=None, path=''):
                     if s3:
                         update_body[0]['s3_path_s'] = {"set": s3_path}
 
+                    if empty_year:
+                        update_body[0]["notes_s"] = {
+                            "set": 'Empty year (no data present in grid), not saving to disk.'}
+                    else:
+                        update_body[0]["notes_s"] = {"set": ''}
+
                 else:
                     # Create new aggregation entry if it doesn't exist
                     update_body = [
@@ -425,19 +427,33 @@ def run_aggregation(output_dir, s3=None, path=''):
 
                     # Update file paths according to the data time scale and do monthly aggregation config field
                     if (data_time_scale == 'daily') and (config['do_monthly_aggregation']):
-                        update_body[0]["aggregated_daily_bin_path_s"] = output_filepaths['daily_bin']
-                        update_body[0]["aggregated_daily_netCDF_path_s"] = output_filepaths['daily_netCDF']
-                        update_body[0]["aggregated_monthly_bin_path_s"] = output_filepaths['monthly_bin']
-                        update_body[0]["aggregated_monthly_netCDF_path_s"] = output_filepaths['monthly_netCDF']
+                        update_body[0]["aggregated_daily_bin_path_s"] = {
+                            "set": output_filepaths['daily_bin']}
+                        update_body[0]["aggregated_daily_netCDF_path_s"] = {
+                            "set": output_filepaths['daily_netCDF']}
+                        update_body[0]["aggregated_monthly_bin_path_s"] = {
+                            "set": output_filepaths['monthly_bin']}
+                        update_body[0]["aggregated_monthly_netCDF_path_s"] = {
+                            "set": output_filepaths['monthly_netCDF']}
                     elif (data_time_scale == 'daily') and (not config['do_monthly_aggregation']):
-                        update_body[0]["aggregated_daily_bin_path_s"] = output_filepaths['daily_bin']
-                        update_body[0]["aggregated_daily_netCDF_path_s"] = output_filepaths['daily_netCDF']
+                        update_body[0]["aggregated_daily_bin_path_s"] = {
+                            "set": output_filepaths['daily_bin']}
+                        update_body[0]["aggregated_daily_netCDF_path_s"] = {
+                            "set": output_filepaths['daily_netCDF']}
                     elif data_time_scale == 'monthly':
-                        update_body[0]["aggregated_monthly_bin_path_s"] = output_filepaths['monthly_bin']
-                        update_body[0]["aggregated_monthly_netCDF_path_s"] = output_filepaths['monthly_netCDF']
+                        update_body[0]["aggregated_monthly_bin_path_s"] = {
+                            "set": output_filepaths['monthly_bin']}
+                        update_body[0]["aggregated_monthly_netCDF_path_s"] = {
+                            "set": output_filepaths['monthly_netCDF']}
 
                     if s3:
                         update_body[0]['s3_path'] = s3_path
+
+                    if empty_year:
+                        update_body[0]["notes_s"] = {
+                            "set": 'Empty year (no data present in grid), not saving to disk.'}
+                    else:
+                        update_body[0]["notes_s"] = {"set": ''}
 
                 r = solr_update(config, solr_host, update_body, r=True)
 
@@ -473,10 +489,15 @@ def run_aggregation(output_dir, s3=None, path=''):
                             print(
                                 f'Failed to update Solr aggregation entry for {field_name} in {dataset_name} for {year} and grid {grid_name}')
 
+                fq = [f'dataset_s:{dataset_name}', 'type_s:aggregation',
+                      f'grid_name_s:{grid_name}', f'field_s:{field_name}', f'year_s:{year}']
+                docs = solr_query(config, solr_host, fq)
+
                 # Export annual descendants JSON file for each aggregation created
                 print("=========exporting data descendants=========")
+                json_output['aggregation'] = docs
                 json_output['transformations'] = transformations
-                json_output_path = f'{output_dir}{dataset_name}/{grid_name}/aggregated/{field_name}/netCDF/{dataset_name}_{year}_descendants'
+                json_output_path = f'{output_dir}{dataset_name}/{grid_name}/aggregated/{field_name}/{dataset_name}_{field_name}_{year}_descendants'
                 with open(json_output_path, 'w') as f:
                     resp_out = json.dumps(json_output, indent=4)
                     f.write(resp_out)
@@ -486,9 +507,13 @@ def run_aggregation(output_dir, s3=None, path=''):
     update_body = [
         {
             "id": dataset_metadata['id'],
-            "status_s": {"set": 'aggregated'},
-            "years_updated_ss": {"set": []}}
+            "status_s": {"set": 'aggregated'}
+        }
     ]
+
+    for grid in grids:
+        solr_years_updated = f'{grid_name}_years_updated_ss'
+        update_body[0][solr_years_updated] = {"set": []}
 
     r = solr_update(config, solr_host, update_body, r=True)
 

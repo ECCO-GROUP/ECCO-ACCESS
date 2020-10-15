@@ -2,9 +2,47 @@ import os
 import sys
 import json
 import yaml
+import hashlib
 import requests
 import xarray as xr
 from datetime import datetime
+
+# Creates checksum from filename
+
+
+def md5(fname):
+    hash_md5 = hashlib.md5()
+    with open(fname, 'rb') as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+    return hash_md5.hexdigest()
+
+
+# Queries Solr based on config information and filter query
+# Returns list of Solr entries (docs)
+def solr_query(config, solr_host, fq):
+    solr_collection_name = config['solr_collection_name']
+
+    getVars = {'q': '*:*',
+               'fq': fq,
+               'rows': 300000}
+
+    url = solr_host + solr_collection_name + '/select?'
+    response = requests.get(url, params=getVars)
+    return response.json()['response']['docs']
+
+
+# Posts update to Solr with provided update body
+# Optional return of posting status code
+def solr_update(config, solr_host, update_body, r=False):
+    solr_collection_name = config['solr_collection_name']
+
+    url = solr_host + solr_collection_name + '/update?commit=true'
+
+    if r:
+        return requests.post(url, json=update_body)
+    else:
+        requests.post(url, json=update_body)
 
 
 def main(path=''):
@@ -53,17 +91,10 @@ def main(path=''):
     # =====================================================
     # Query for Solr Grid-type Documents
     # =====================================================
-
-    getVars = {'q': '*:*',
-               'fq': ['type_s:grid'],
-               'rows': 300000}
-
-    url = solr_host + solr_collection_name + '/select?'
-    response = requests.get(url, params=getVars)
-    docs = response.json()['response']['docs']
+    fq = ['type_s:grid']
+    docs = solr_query(config, solr_host, fq)
 
     grids_in_solr = []
-    grid_metas = []
 
     if len(docs) > 0:
         for doc in docs:
@@ -73,29 +104,85 @@ def main(path=''):
     # Create Solr grid-type document for each missing grid type
     # =====================================================
     for grid_name, grid_type, grid_file in grids:
+
+        grid_path = path_to_file_dir + grid_file
+        update_body = []
+
         if grid_name not in grids_in_solr:
             grid_meta = {}
             grid_meta['type_s'] = 'grid'
             grid_meta['grid_type_s'] = grid_type
             grid_meta['grid_name_s'] = grid_name
 
-            grid_path = path_to_file_dir + grid_file
             if '\\' in grid_path:
                 grid_path = grid_path.replace('\\', '/')
             grid_meta['grid_path_s'] = grid_path
-            
+
             grid_meta['date_added_dt'] = datetime.utcnow().strftime(
                 "%Y-%m-%dT%H:%M:%SZ")
-            grid_metas.append(grid_meta)
 
-    url = solr_host + solr_collection_name + '/update?commit=true'
+            grid_meta['grid_checksum_s'] = md5(grid_path)
+            update_body.append(grid_meta)
+        else:
+            current_checksum = md5(grid_path)
 
-    r = requests.post(url, json=grid_metas)
+            for doc in docs:
+                if doc['grid_name_s'] == grid_name:
+                    solr_checksum = doc['grid_checksum_s']
 
-    if r.status_code == 200:
-        print('Successfully updated Solr grid document')
-    else:
-        print('Failed to update Solr grid document')
+            if current_checksum != solr_checksum:
+                # Delete previous grid's transformations from Solr
+                update_body = {
+                    "delete": {
+                        "query": f'type_s:transformation AND grid_name_s:{grid_name}'
+                    }
+                }
+
+                r = solr_update(config, solr_host, update_body, r=True)
+
+                if r.status_code == 200:
+                    print(
+                        f'Successfully deleted Solr transformation documents for {grid_name}')
+                else:
+                    print(
+                        f'Failed to delete Solr transformation documents for {grid_name}')
+
+                # Delete previous grid's aggregations from Solr
+                update_body = {
+                    "delete": {
+                        "query": f'type_s:aggregation AND grid_name_s:{grid_name}'
+                    }
+                }
+
+                r = solr_update(config, solr_host, update_body, r=True)
+
+                if r.status_code == 200:
+                    print(
+                        f'Successfully deleted Solr aggregation documents for {grid_name}')
+                else:
+                    print(
+                        f'Failed to delete Solr aggregation documents for {grid_name}')
+
+                # Update grid on Solr
+                fq = [f'grid_name_s:{grid_name}', 'type_s:grid']
+                grid_metadata = solr_query(config, solr_host, fq)[0]
+
+                update_body = [
+                    {
+                        "id": grid_metadata['id'],
+                        "grid_type_s": {"set": grid_type},
+                        "grid_name_s": {"set": grid_name},
+                        "grid_checksum_s": {"set": current_checksum},
+                        "date_added_dt": {"set": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}
+                    }
+                ]
+
+        r = solr_update(config, solr_host, update_body, r=True)
+
+        if r.status_code == 200:
+            print('Successfully updated Solr grid document')
+        else:
+            print('Failed to update Solr grid document')
 
 
 if __name__ == '__main__':

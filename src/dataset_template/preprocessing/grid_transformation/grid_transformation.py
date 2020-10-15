@@ -53,8 +53,8 @@ def solr_update(config, solr_host, update_body, r=False):
 # Calls run_locally and catches any errors
 def run_locally_wrapper(source_file_path, remaining_transformations, output_dir, path=''):
     # try:
-    run_locally(source_file_path,
-                remaining_transformations, output_dir, path=path)
+    return run_locally(source_file_path,
+                       remaining_transformations, output_dir, path=path)
     # except Exception as e:
     #     print(e)
     #     print('Unable to run local transformation')
@@ -66,11 +66,11 @@ def run_locally(source_file_path, remaining_transformations, output_dir, path=''
     # =====================================================
     # Read configurations from YAML file
     # =====================================================
-    if path:
-        path_to_yaml = f'{path}/grid_transformation_config.yaml'
-    else:
-        path_to_yaml = f'{os.path.dirname(sys.argv[0])}/grid_transformation_config.yaml'
-    with open(path_to_yaml, "r") as stream:
+    if not path:
+        print('No path for configuration file. Can not run transformation.')
+        return
+
+    with open(path, "r") as stream:
         config = yaml.load(stream, yaml.Loader)
 
     # =====================================================
@@ -113,6 +113,8 @@ def run_locally(source_file_path, remaining_transformations, output_dir, path=''
     transformation_successes = True
     transformation_file_paths = {}
 
+    grids_updated = []
+
     # =====================================================
     # Load file to transform
     # =====================================================
@@ -141,10 +143,10 @@ def run_locally(source_file_path, remaining_transformations, output_dir, path=''
         # =====================================================
         # Make model grid factors if not present locally
         # =====================================================
-        grid_factors = f'{grid_name}{hemi}_factors_path_s'
-        grid_factors_version = f'{grid_name}{hemi}_factors_version_f'
+        grid_factors = f'{grid_name}{hemi}_{date[:4]}_factors_path_s'
+        grid_factors_version = f'{grid_name}{hemi}_{date[:4]}_factors_version_f'
 
-        if grid_factors_version in dataset_metadata.keys() and transformation_version == dataset_metadata[grid_factors_version]:
+        if grid_factors_version in dataset_metadata.keys() and transformation_version == dataset_metadata[grid_factors_version] and date[:4] in grid_factors:
             factors_path = dataset_metadata[grid_factors]
 
             print(f'===Loading {grid_name} factors===')
@@ -239,9 +241,9 @@ def run_locally(source_file_path, remaining_transformations, output_dir, path=''
             update_body = [
                 {
                     "id": doc_id,
-                    f'{grid_name}{hemi}_factors_path_s': {"set": factors_path},
-                    f'{grid_name}{hemi}_factors_stored_dt': {"set": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")},
-                    f'{grid_name}{hemi}_factors_version_f': {"set": transformation_version}
+                    f'{grid_factors}': {"set": factors_path},
+                    f'{grid_name}{hemi}_{date[:4]}_factors_stored_dt': {"set": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")},
+                    f'{grid_factors_version}': {"set": transformation_version}
                 }
             ]
 
@@ -262,7 +264,6 @@ def run_locally(source_file_path, remaining_transformations, output_dir, path=''
             query_fq = [f'dataset_s:{dataset_name}', 'type_s:transformation', f'grid_name_s:{grid_name}',
                         f'field_s:{field_name}', f'pre_transformation_file_path_s:"{source_file_path}"']
             docs = solr_query(config, solr_host, query_fq)
-
             update_body = []
             transform = {}
 
@@ -271,9 +272,10 @@ def run_locally(source_file_path, remaining_transformations, output_dir, path=''
             if len(docs) > 0:
                 # Reset status fields
                 transform['id'] = docs[0]['id']
-                transform['transformation_in_progress_b']: {"set": True}
-                transform['success_b']: {"set": False}
-                r = solr_update(config, solr_host, transform, r=True)
+                transform['transformation_in_progress_b'] = {"set": True}
+                transform['success_b'] = {"set": False}
+                update_body.append(transform)
+                r = solr_update(config, solr_host, update_body, r=True)
             else:
                 # Initialize new transformation entry
                 transform['type_s'] = 'transformation'
@@ -329,6 +331,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, path=''
                 os.makedirs(output_path)
 
             field_DS = field_DA.to_dataset()
+
             field_DS.to_netcdf(output_path + output_filename)
             field_DS.close()
 
@@ -362,6 +365,9 @@ def run_locally(source_file_path, remaining_transformations, output_dir, path=''
                 print(
                     f'Failed to update Solr transformation entry for {field["name_s"]} in {dataset_name} on {date}')
 
+            if success and grid_name not in grids_updated:
+                grids_updated.append(grid_name)
+
         print(f'======saving {file_name} output DONE=======')
 
     # Query Solr for descendants entry by date
@@ -390,6 +396,8 @@ def run_locally(source_file_path, remaining_transformations, output_dir, path=''
     if r.status_code != 200:
         print(
             f'Failed to update Solr with descendants information for {dataset_name} on {date}')
+
+    return grids_updated, date[:4]
 
 
 def run_using_aws_wrapper(s3, filename):
@@ -782,6 +790,7 @@ def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors
 
     # fields is a list of dictionaries
     for data_field_info in fields:
+
         try:
             field_DA = ea.generalized_transform_to_model_grid_solr(data_field_info, record_date, model_grid, model_grid_type,
                                                                    array_precision, record_file_name, original_dataset_metadata,
@@ -799,6 +808,10 @@ def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors
                                                         record_date, model_grid, model_grid_type, array_precision)
                         success = False
                         break
+
+            field_DA.attrs['valid_min'] = np.nanmin(field_DA.values)
+            field_DA.attrs['valid_max'] = np.nanmax(field_DA.values)
+
         except:
             field_DA = ea.make_empty_record(data_field_info['standard_name_s'], data_field_info['long_name_s'], data_field_info['units_s'],
                                             record_date, model_grid, model_grid_type, array_precision)

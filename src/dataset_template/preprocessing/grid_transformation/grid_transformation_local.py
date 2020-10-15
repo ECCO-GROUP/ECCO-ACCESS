@@ -88,11 +88,11 @@ def main(path=''):
     grid_transformation = importlib.reload(grid_transformation)
 
     # Pull config information
-    if path:
-        path_to_yaml = f'{path}/grid_transformation_config.yaml'
-    else:
-        path_to_yaml = f'{os.path.dirname(sys.argv[0])}/grid_transformation_config.yaml'
-    with open(path_to_yaml, "r") as stream:
+    if not path:
+        print('No path for configuration file. Can not run transformation.')
+        return
+
+    with open(path, "r") as stream:
         config = yaml.load(stream, yaml.Loader)
 
     dataset_name = config['ds_name']
@@ -106,7 +106,7 @@ def main(path=''):
     fq = [f'dataset_s:{dataset_name}', 'type_s:harvested']
     harvested_granules = grid_transformation.solr_query(config, solr_host, fq)
 
-    years_updated = []
+    years_updated = {}
 
     # For each harvested granule get remaining transformations and perform transformation
     for granule in harvested_granules:
@@ -123,15 +123,15 @@ def main(path=''):
 
         # Perform remaining transformations
         if remaining_transformations:
-            grid_transformation.run_locally_wrapper(
+            grids_updated, year = grid_transformation.run_locally_wrapper(
                 f, remaining_transformations, output_dir, path=path)
 
-            # Add granule year to years_updated
-            year = granule['date_s'][:4]
-
-            if year not in years_updated:
-                years_updated.append(year)
-
+            for grid in grids_updated:
+                if grid in years_updated.keys():
+                    if year not in years_updated[grid]:
+                        years_updated[grid].append(year)
+                else:
+                    years_updated[grid] = [year]
         else:
             print(f'No new transformations for {granule["date_s"]}')
 
@@ -139,22 +139,26 @@ def main(path=''):
     fq = [f'dataset_s:{dataset_name}', 'type_s:dataset']
     dataset_metadata = grid_transformation.solr_query(config, solr_host, fq)[0]
 
-    # Combine Solr dataset entry years_updated list with transformation years_updated
-    if 'years_updated_ss' in dataset_metadata.keys():
-        dataset_years_updated = dataset_metadata['years_updated_ss']
-
-        for year in years_updated:
-            if year not in dataset_years_updated:
-                dataset_years_updated.append(year)
-    else:
-        dataset_years_updated = years_updated
-
     # Update Solr dataset entry years_updated list and status to transformed
     update_body = [{
         "id": dataset_metadata['id'],
         "status_s": {"set": 'transformed'},
-        "years_updated_ss": {"set": dataset_years_updated}
     }]
+
+    # Combine Solr dataset entry years_updated list with transformation years_updated
+    for grid in years_updated.keys():
+        solr_grid_years = f'{grid}_years_updated_ss'
+        if solr_grid_years in dataset_metadata.keys():
+            existing_years = dataset_metadata[solr_grid_years]
+
+            for year in years_updated[grid]:
+                if year not in existing_years:
+                    existing_years.append(year)
+
+        else:
+            existing_years = years_updated[grid]
+
+        update_body[0][solr_grid_years] = {"set": existing_years}
 
     r = grid_transformation.solr_update(config, solr_host, update_body, r=True)
 

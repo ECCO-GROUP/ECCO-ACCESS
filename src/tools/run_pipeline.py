@@ -1,5 +1,6 @@
 import os
 import sys
+import yaml
 import importlib
 import numpy as np
 from pathlib import Path
@@ -27,30 +28,49 @@ def run_harvester(datasets, path_to_harvesters, log):
         try:
             print(f'\033[93mRunning harvester for {ds}\033[0m')
             print('=========================================================')
-            for harvester_folder in os.listdir(path_to_harvesters):
-                dataset_path = Path(
-                    f'{path_to_harvesters}/{harvester_folder}/{ds}')
-                if os.path.exists(dataset_path):
-                    sys.path.insert(1, str(dataset_path))
-                    if 'RDEFT4' in ds:
-                        harvester = 'seaice_harvester_local'
-                    elif 'podaac' in harvester_folder:
-                        harvester = 'podaac_harvester_local'
-                    elif 'osisaf' in harvester_folder:
-                        harvester = 'osisaf_ftp_harvester_local'
-                    elif 'nsidc' in harvester_folder:
-                        harvester = 'nsidc_ftp_harvester_local'
-                    try:
-                        ret_import = importlib.reload(ret_import)
-                    except:
-                        ret_import = importlib.import_module(harvester)
-                    ret_import.main(path=dataset_path)
-                    sys.path.remove(str(dataset_path))
+
+            config_path = Path(
+                f'{Path(__file__).resolve().parents[1]}/datasets/{ds}/harvester_config.yaml')
+
+            with open(config_path, "r") as stream:
+                config = yaml.load(stream, yaml.Loader)
+
+            if 'harvester_type' in config.keys():
+                harvester_type = config['harvester_type']
+
+                if harvester_type not in ['podaac', 'osisaf_ftp', 'nsidc_ftp']:
+                    print(f'{harvester_type} is not a supported harvester type.')
+                    break
+
+                path_to_code = Path(
+                    f'{path_to_harvesters}/{harvester_type}_harvester/')
+
+                if 'RDEFT4' in ds:
+                    path_to_code = Path(
+                        f'{path_to_harvesters}/{harvester_type}_harvester/RDEFT4_ftp_harvester/')
+                    harvester = 'seaice_harvester_local'
+                elif harvester_type == 'podaac':
+                    harvester = 'podaac_harvester_local'
+                elif harvester_type == 'osisaf_ftp':
+                    harvester = 'osisaf_ftp_harvester_local'
+                elif harvester_type == 'nsidc_ftp':
+                    harvester = 'nsidc_ftp_harvester_local'
+
+                sys.path.insert(1, str(path_to_code))
+
+                try:
+                    ret_import = importlib.reload(ret_import)
+                except:
+                    ret_import = importlib.import_module(harvester)
+
+                ret_import.main(path=config_path)
+                sys.path.remove(str(path_to_code))
+
             log.setdefault(ds, []).append(
                 f'\tHarvest \033[92msuccessful\033[0m')
             print('\033[92mHarvest successful\033[0m')
         except Exception as e:
-            sys.path.remove(str(dataset_path))
+            sys.path.remove(str(path_to_code))
             print('\033[91mHarvesting failed\033[0m')
             log.setdefault(ds, []).append(
                 f'\tHarvest \033[91mfailed\033[0m: {e}')
@@ -67,22 +87,30 @@ def run_transformation(datasets, path_to_preprocessing, log):
         try:
             print(f'\033[93mRunning transformation for {ds}\033[0m')
             print('=========================================================')
-            dataset_path = Path(
-                f'{path_to_preprocessing}/{ds}/grid_transformation/')
-            if os.path.exists(dataset_path):
-                sys.path.insert(1, str(dataset_path))
-                transformer = 'grid_transformation_local'
-                try:
-                    ret_import = importlib.reload(ret_import)
-                except:
-                    ret_import = importlib.import_module(transformer)
-                ret_import.main(path=dataset_path)
-                sys.path.remove(str(dataset_path))
+
+            config_path = Path(
+                f'{Path(__file__).resolve().parents[1]}/datasets/{ds}/transformation_config.yaml')
+
+            path_to_code = Path(
+                f'{path_to_preprocessing}/grid_transformation/')
+
+            transformer = 'grid_transformation_local'
+
+            sys.path.insert(1, str(path_to_code))
+
+            try:
+                ret_import = importlib.reload(ret_import)
+            except:
+                ret_import = importlib.import_module(transformer)
+
+            ret_import.main(path=config_path)
+            sys.path.remove(str(path_to_code))
+
             log.setdefault(ds, []).append(
                 f'\tTransformation \033[92msuccessful\033[0m')
             print('\033[92mTransformation successful\033[0m')
         except Exception as e:
-            sys.path.remove(str(dataset_path))
+            sys.path.remove(str(path_to_code))
             print('\033[91mTransformation failed\033[0m')
             log.setdefault(ds, []).append(
                 f'\tTransform \033[91mfailed\033[0m: {e}')
@@ -99,22 +127,28 @@ def run_aggregation(datasets, path_to_preprocessing, log):
         try:
             print(f'\033[93mRunning aggregation for {ds}\033[0m')
             print('=========================================================')
-            dataset_path = Path(
-                f'{path_to_preprocessing}/{ds}/aggregation_by_year/')
-            if os.path.exists(dataset_path):
-                sys.path.insert(1, str(dataset_path))
-                aggregator = 'aggregation_local'
-                try:
-                    ret_import = importlib.reload(ret_import)
-                except:
-                    ret_import = importlib.import_module(aggregator)
-                ret_import.main(path=dataset_path)
-                sys.path.remove(str(dataset_path))
+            config_path = Path(
+                f'{Path(__file__).resolve().parents[1]}/datasets/{ds}/aggregation_config.yaml')
+
+            path_to_code = Path(
+                f'{path_to_preprocessing}/aggregation_by_year/')
+
+            aggregation = 'aggregation_local'
+
+            sys.path.insert(1, str(path_to_code))
+
+            try:
+                ret_import = importlib.reload(ret_import)
+            except:
+                ret_import = importlib.import_module(aggregation)
+
+            ret_import.main(path=config_path)
+            sys.path.remove(str(path_to_code))
             log.setdefault(ds, []).append(
                 f'\tAggregation \033[92msuccessful\033[0m')
             print('\033[92mAggregation successful\033[0m')
         except Exception as e:
-            sys.path.remove(str(dataset_path))
+            sys.path.remove(str(path_to_code))
             print('\033[91mAggregation failed\033[0m')
             log.setdefault(ds, []).append(
                 f'\tAggregation \033[91mfailed\033[0m: {e}')
@@ -125,12 +159,14 @@ def run_aggregation(datasets, path_to_preprocessing, log):
 if __name__ == '__main__':
     # path to harvester and preprocessing folders
     path_to_harvesters = Path(
-        f'{Path(__file__).resolve().parents[1]}/harvesters')
+        f'{Path(__file__).resolve().parents[1]}/dataset_template/harvesters')
     path_to_preprocessing = Path(
-        f'{Path(__file__).resolve().parents[1]}/preprocessing')
+        f'{Path(__file__).resolve().parents[1]}/dataset_template/preprocessing')
     path_to_grids = Path(
         f'{Path(__file__).resolve().parents[1]}/grids_to_solr')
-    datasets = os.listdir(path_to_preprocessing)
+    path_to_datasets = Path(f'{Path(__file__).resolve().parents[1]}/datasets')
+
+    datasets = os.listdir(path_to_datasets)
     datasets = [ds for ds in datasets if ds != '.DS_Store']
 
     while True:
@@ -148,7 +184,7 @@ if __name__ == '__main__':
             print(
                 f'Unknown option entered, "{chosen_option}", please enter a valid option\n')
 
-    #log = {'ds':['harvest e','transform e','aggregation e']}
+    # log = {'ds':['harvest e','transform e','aggregation e']}
     log = {}
 
     while True:
