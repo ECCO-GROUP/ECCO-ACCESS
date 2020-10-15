@@ -53,8 +53,8 @@ def solr_update(config, solr_host, update_body, r=False):
 # Calls run_locally and catches any errors
 def run_locally_wrapper(source_file_path, remaining_transformations, output_dir, path=''):
     # try:
-    run_locally(source_file_path,
-                remaining_transformations, output_dir, path=path)
+    return run_locally(source_file_path,
+                       remaining_transformations, output_dir, path=path)
     # except Exception as e:
     #     print(e)
     #     print('Unable to run local transformation')
@@ -112,6 +112,8 @@ def run_locally(source_file_path, remaining_transformations, output_dir, path=''
 
     transformation_successes = True
     transformation_file_paths = {}
+
+    grids_updated = []
 
     # =====================================================
     # Load file to transform
@@ -363,6 +365,9 @@ def run_locally(source_file_path, remaining_transformations, output_dir, path=''
                 print(
                     f'Failed to update Solr transformation entry for {field["name_s"]} in {dataset_name} on {date}')
 
+            if success and grid_name not in grids_updated:
+                grids_updated.append(grid_name)
+
         print(f'======saving {file_name} output DONE=======')
 
     # Query Solr for descendants entry by date
@@ -391,6 +396,8 @@ def run_locally(source_file_path, remaining_transformations, output_dir, path=''
     if r.status_code != 200:
         print(
             f'Failed to update Solr with descendants information for {dataset_name} on {date}')
+
+    return grids_updated, date[:4]
 
 
 def run_using_aws_wrapper(s3, filename):
