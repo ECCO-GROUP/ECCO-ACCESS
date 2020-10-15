@@ -2,7 +2,7 @@
 # Dataset
 # =====================================================
 ds_name: "sst_MODIS_AQUA_L3_9KM" # Name for dataset
-version: 1.0 # Update this value if any changes are made to this file
+version: 1.7 # Update this value if any changes are made to this file
 array_precision: float32
 time_zone_included_with_time: False # Data time values have time zone
 extra_information: [] # Unique things to do for dataset

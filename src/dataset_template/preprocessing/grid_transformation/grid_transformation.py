@@ -264,7 +264,6 @@ def run_locally(source_file_path, remaining_transformations, output_dir, path=''
             query_fq = [f'dataset_s:{dataset_name}', 'type_s:transformation', f'grid_name_s:{grid_name}',
                         f'field_s:{field_name}', f'pre_transformation_file_path_s:"{source_file_path}"']
             docs = solr_query(config, solr_host, query_fq)
-
             update_body = []
             transform = {}
 
@@ -273,9 +272,10 @@ def run_locally(source_file_path, remaining_transformations, output_dir, path=''
             if len(docs) > 0:
                 # Reset status fields
                 transform['id'] = docs[0]['id']
-                transform['transformation_in_progress_b']: {"set": True}
-                transform['success_b']: {"set": False}
-                r = solr_update(config, solr_host, transform, r=True)
+                transform['transformation_in_progress_b'] = {"set": True}
+                transform['success_b'] = {"set": False}
+                update_body.append(transform)
+                r = solr_update(config, solr_host, update_body, r=True)
             else:
                 # Initialize new transformation entry
                 transform['type_s'] = 'transformation'
