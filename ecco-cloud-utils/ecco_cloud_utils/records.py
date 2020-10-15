@@ -6,6 +6,7 @@ Created on Sun Jun 21 17:24:13 2020
 """
 import xarray as xr
 import numpy as np
+from netCDF4 import default_fillvals
 from pathlib import Path
 from .llc_array_conversion import llc_tiles_to_compact
 
@@ -88,6 +89,8 @@ def make_empty_record(standard_name, long_name, units,
     data_DA.attrs['standard_name'] = standard_name
     data_DA.attrs['units'] = units
 
+    data_DA.name = 'Default empty model grid record'
+
     return data_DA
 
 # %%
@@ -120,7 +123,7 @@ def save_to_disk(data_DA,
         fd1 = open(str(binary_output_filename), 'ab')
 
         for i in range(len(data_DA.time)):
-            print('saving binary record: ', str(i))
+            # print('saving binary record: ', str(i))
 
             # if we have an llc grid, then we have to reform to compact
             if model_grid_type == 'llc':
@@ -170,8 +173,26 @@ def save_to_disk(data_DA,
 
         data_DS = data_DA.to_dataset()
 
-        encoding = {var: encoding_each for var in data_DS.data_vars}
+        coord_encoding = {}
+        for coord in data_DS.coords:
+            coord_encoding[coord] = {'_FillValue': None}
 
+            if 'time' in coord:
+                coord_encoding[coord] = {'_FillValue': None,
+                                         'dtype': 'int32'}
+            if 'lat' in coord:
+                coord_encoding[coord] = {'_FillValue': None,
+                                         'dtype': 'float32'}
+            if 'lon' in coord:
+                coord_encoding[coord] = {'_FillValue': None,
+                                         'dtype': 'float32'}
+            if 'Z' in coord:
+                coord_encoding[coord] = {'_FillValue': None,
+                                         'dtype': 'float32'}
+
+        var_encoding = {var: encoding_each for var in data_DS.data_vars}
+
+        encoding = {**coord_encoding, **var_encoding}
         # the actual saving (so easy with xarray!)
         data_DS.to_netcdf(netcdf_output_filename,  encoding=encoding)
         data_DS.close()
