@@ -26,7 +26,7 @@
       "long_name": "depth",
       "units": "m",
       "standard_name": "depth",
-      "comment": "depth at center of model grid cell.  non-uniform vertical spacing",
+      "comment": "depth at center of model grid cell. non-uniform vertical spacing",
       "axis": "Z",
       "bounds": "Z_bnds",
 	    "grid_dimension":"3D",
@@ -34,7 +34,7 @@
    },
    {
      "name": "time_step",
-     "long_name": "model time step [hours since 1992-01-01T12:00:00",
+     "long_name": "model time step [hours since 1992-01-01T12:00:00]",
      "grid_dimension":"1D",
      "units":"hours",
      "coverage_content_type": "coordinate"
@@ -61,7 +61,7 @@
    },
    {
   	"name": "Z_bnds",
-	  "long_name": "depth bounds of grid cells",
+	  "long_name": "depth bounds of grid cells (depths at top and bottom of grid cells)",
     "units": "m",
 	  "comment": "identical to model grid depth bounds",
 	  "grid_dimension":"3D",
@@ -71,7 +71,7 @@
   	"name": "time",
     "axis": "T",
 	  "standard_name": "time",
-	  "long_name": "center time of averaging period or time of snapshot",
+	  "long_name": "center time of averaging period or instantaneous time of snapshot",
 	  "grid_dimension":"1D",
 	  "coverage_content_type": "coordinate"
    }

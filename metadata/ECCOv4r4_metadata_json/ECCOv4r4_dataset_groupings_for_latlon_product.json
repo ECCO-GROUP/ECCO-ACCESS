@@ -1,10 +1,26 @@
 [
    {
+    "name" : "sea surface height",
+    "fields" : "SSH, SSHIBC, SSHNOIBC",
+    "product": "latlon",
+    "dataset_description" : "Sea surface height",
+    "filename" : "SEA_SURFACE_HEIGHT",
+    "dimension" : "2D"
+   },
+   {
+    "name": "ocean bottom pressure",
+    "fields": "OBP, OBPGMAP",
+    "product": "latlon",
+    "dataset_description" : "ocean bottom pressure",
+    "filename" : "OCEAN_BOTTOM_PRESSURE",
+    "dimension" : "2D"
+   },
+   {
     "name": "seawater temperature and salinity",
     "fields": "THETA, SALT",
     "product": "latlon",
     "dataset_description" : "seawater potential temperature and salt",
-    "filename" : "OCEAN_TEMPERATURE_AND_SALT",
+    "filename" : "OCEAN_TEMPERATURE_AND_SALINITY",
     "dimension" : "3D"
    },
    {
@@ -28,7 +44,7 @@
     "fields": "EVELSTAR, NVELSTAR, WVELSTAR",
     "product": "latlon",
     "dataset_description" : "Gent-McWilliams ocean bolus velocity",
-    "filename" : "GM_OCEAN_BOLUS_VELOCITY",
+    "filename" : "GM_BOLUS_VELOCITY",
     "dimension" : "3D"
    },
    {
@@ -36,7 +52,7 @@
     "fields": "EXFpreci, EXFevap, EXFroff, SIsnPrcp ,EXFempmr, oceFWflx, SIatmFW, SFLUX, SIacSubl, SIrsSubl, SIfwThru",
     "product": "latlon",
     "dataset_description" : "ocean and sea-ice surface freshwater fluxes",
-    "filename" : "OCEAN_SURFACE_FRESHWATER_FLUXES",
+    "filename" : "OCEAN_AND_ICE_SURFACE_FRESHWATER_FLUXES",
     "dimension" : "2D"
    },
    {
@@ -44,7 +60,7 @@
     "fields":"EXFhl, EXFhs, EXFlwdn, EXFswdn, EXFqnet, oceQnet, SIatmQnt, TFLUX, EXFswnet, EXFlwnet, oceQsw, SIaaflux",
     "product": "latlon",
     "dataset_description" : "ocean and sea-ice surface heat fluxes",
-    "filename" : "SURFACE_HEAT_FLUXES",
+    "filename" : "OCEAN_AND_ICE_SURFACE_HEAT_FLUXES",
     "dimension" : "2D"
    },
    {
@@ -60,7 +76,7 @@
     "fields" : "MXLDEPTH",
     "product": "latlon",
     "dataset_description" : "mixed layer depth",
-    "filename" : "MIXED_LAYER_DEPTH",
+    "filename" : "OCEAN_MIXED_LAYER_DEPTH",
     "dimension" : "2D"
    },
    {

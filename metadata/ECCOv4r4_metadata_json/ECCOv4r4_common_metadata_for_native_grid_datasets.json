@@ -1,5 +1,3 @@
-
-
 [
    {
       "name": "geospatial_lat_resolution",
@@ -12,36 +10,5 @@
       "type": "s",
       "value": "variable",
       "grid_dimension":"2D"
-   },
-   {
-      "name": "grid_mapping_name",
-      "type": "s",
-      "value": "lat-lon-cap 90",
-      "grid_dimension":"2D"
-   },
-   {
-      "name": "ntile",
-      "type": "i",
-      "value": 13,
-      "grid_dimension":"2D"
-   },
-   {
-      "name": "ni",
-      "type": "i",
-      "value": 90,
-      "grid_dimension":"2D"
-   },
-   {
-      "name": "nj",
-      "type": "i",
-      "value": 90,
-      "grid_dimension":"2D"
-   },
-   {
-      "name": "nz",
-      "type": "i",
-      "value": 50,
-      "grid_dimension":"2D"
    }
 ]
-
