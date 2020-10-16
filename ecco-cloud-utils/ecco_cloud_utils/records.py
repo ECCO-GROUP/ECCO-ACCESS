@@ -70,9 +70,23 @@ def make_empty_record(standard_name, long_name, units,
             print('Unsupported model grid format')
             return []
 
+    elif model_grid_type == 'latitudelongitude':
+        # Assumes model_grid.XC/YC is one dimensional
+        data_DA = data_DA.assign_coords(
+            {'longitude': model_grid.XC})
+        data_DA = data_DA.assign_coords(
+            {'latitude': model_grid.YC})
+        data_DA = data_DA.assign_coords(
+            {'XC': (('longitude'), model_grid.XC)})
+        data_DA = data_DA.assign_coords(
+            {'YC': (('latitude'), model_grid.YC)})
+
     else:
         print('invalid grid type!')
         return []
+
+    data_DA.XC.attrs['coverage_content_type'] = 'coordinate'
+    data_DA.YC.attrs['coverage_content_type'] = 'coordinate'
 
     # copy over the attributes from XC and YC to the dataArray
     data_DA.XC.attrs = model_grid.XC.attrs
@@ -167,8 +181,8 @@ def save_to_disk(data_DA,
                      netcdf_fill_value, data_DA.values)
 
         encoding_each = {'zlib': True,
-                         'complevel': 9,
-                         'fletcher32': True,
+                         'complevel': 5,
+                         'shuffle': True,
                          '_FillValue': netcdf_fill_value}
 
         data_DS = data_DA.to_dataset()

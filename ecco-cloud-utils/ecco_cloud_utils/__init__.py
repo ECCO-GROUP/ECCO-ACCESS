@@ -21,7 +21,7 @@ from .generalized_functions import generalized_aggregate_and_save
 from .generalized_functions import generalized_get_data_filepaths_for_year
 from .generalized_functions import generalized_transform_to_model_grid_solr
 
-from .specific_functions import avhrr_sst_kelvin_to_celcius
+from .specific_functions import avhrr_sst_kelvin_to_celsius
 from .specific_functions import RDEFT4_remove_negative_values
 
 __all__ = ['date_time', 'llc_array_conversion', 'records',
