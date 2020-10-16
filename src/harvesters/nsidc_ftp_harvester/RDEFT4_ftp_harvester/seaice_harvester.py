@@ -279,15 +279,15 @@ def solr_update(config, update_body, r=False):
         requests.post(url, json=update_body)
 
 
-def seaice_harvester(path='', s3=None, on_aws=False):
+def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False):
     # =====================================================
     # Read configurations from YAML file
     # =====================================================
-    if not path:
+    if not config_path:
         print('No path for configuration file. Can not run harvester.')
         return
 
-    with open(path, "r") as stream:
+    with open(config_path, "r") as stream:
         config = yaml.load(stream, yaml.Loader)
 
     # =====================================================
@@ -301,10 +301,7 @@ def seaice_harvester(path='', s3=None, on_aws=False):
     # Download raw data files
     # =====================================================
     dataset_name = config['ds_name']
-    parent_path = f'{Path(__file__).resolve().parents[4]}'
-    if '\\' in parent_path:
-        parent_path = parent_path.replace('\\', '/')
-    target_dir = f'{parent_path}/datasets/seaice_conc_RDEFT4/harvested_granules/'
+    target_dir = f'{output_path}{dataset_name}/harvested_granules/'
     folder = f'/tmp/{dataset_name}/'
     data_time_scale = config['data_time_scale']
 
@@ -409,11 +406,15 @@ def seaice_harvester(path='', s3=None, on_aws=False):
 
             # Date in filename is end date of 30 day period
             filename = url.split('/')[-1]
-            local_fp = f'{folder}{config["ds_name"]}_granule.nc' if on_aws else target_dir + filename
 
             date = getdate(config['regex'], filename)
             date_time = datetime.datetime.strptime(date, "%Y%m%d")
             new_date_format = f'{date[:4]}-{date[4:6]}-{date[6:]}T00:00:00Z'
+
+            local_fp = f'{folder}{config["ds_name"]}_granule.nc' if on_aws else f'{target_dir}{date[:4]}/{filename}'
+
+            if not os.path.exists(f'{target_dir}{date[:4]}/'):
+                os.makedirs(f'{target_dir}{date[:4]}/')
 
             # check if file in download date range
             if (start_time <= date_time) and (end_time >= date_time):
@@ -486,7 +487,7 @@ def seaice_harvester(path='', s3=None, on_aws=False):
                         # =====================================================
                         output_filename = config['ds_name'] + \
                             '/' + filename if on_aws else filename
-                        item['pre_transformation_file_path_s'] = target_dir + filename
+                        item['pre_transformation_file_path_s'] = local_fp
 
                         if on_aws:
                             aws_upload = True

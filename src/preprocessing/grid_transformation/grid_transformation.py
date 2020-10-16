@@ -51,10 +51,10 @@ def solr_update(config, solr_host, update_body, r=False):
 
 
 # Calls run_locally and catches any errors
-def run_locally_wrapper(source_file_path, remaining_transformations, output_dir, path=''):
+def run_locally_wrapper(source_file_path, remaining_transformations, output_dir, config_path=''):
     # try:
     return run_locally(source_file_path,
-                       remaining_transformations, output_dir, path=path)
+                       remaining_transformations, output_dir, config_path=config_path)
     # except Exception as e:
     #     print(e)
     #     print('Unable to run local transformation')
@@ -62,22 +62,22 @@ def run_locally_wrapper(source_file_path, remaining_transformations, output_dir,
 
 # Performs and saves locally all remaining transformations for a given source granule
 # Updates Solr with transformation entries and updates descendants, and dataset entries
-def run_locally(source_file_path, remaining_transformations, output_dir, path=''):
+def run_locally(source_file_path, remaining_transformations, output_dir, config_path=''):
     # =====================================================
     # Read configurations from YAML file
     # =====================================================
-    if not path:
+    if not config_path:
         print('No path for configuration file. Can not run transformation.')
         return
 
-    with open(path, "r") as stream:
+    with open(config_path, "r") as stream:
         config = yaml.load(stream, yaml.Loader)
 
     # =====================================================
     # Code to import ecco utils locally...
     # =====================================================
     generalized_functions_path = Path(
-        f'{Path(__file__).resolve().parents[5]}/ECCO-ACCESS/ecco-cloud-utils/')
+        f'{Path(__file__).resolve().parents[4]}/ECCO-ACCESS/ecco-cloud-utils/')
     sys.path.append(str(generalized_functions_path))
     import ecco_cloud_utils as ea  # pylint: disable=import-error
 
@@ -218,16 +218,13 @@ def run_locally(source_file_path, remaining_transformations, output_dir, path=''
                        nearest_source_index_to_target_index_i)
 
             print(f'===Saving {grid_name} factors===')
-            factors_path = f'{grid_dir}grid_factors/{dataset_name}/'
+            factors_path = f'{output_dir}{dataset_name}/transformed_products/{grid_name}/'
 
             # Create directory if needed and save factors
             if not os.path.exists(factors_path):
                 os.makedirs(factors_path)
 
             factors_path += f'{grid_name}_factors'
-
-            if '\\' in factors_path:
-                factors_path = factors_path.replace('\\', '/')
 
             with open(factors_path, 'wb') as f:
                 pickle.dump(factors, f)
@@ -321,11 +318,8 @@ def run_locally(source_file_path, remaining_transformations, output_dir, path=''
                 file_name = file_name[:-3] + 'nc'
 
             output_filename = f'{grid_name}_{field_name}_{file_name}'
-            output_path = f'{output_dir}{dataset_name}/{grid_name}/transformed/{field_name}/'
+            output_path = f'{output_dir}{dataset_name}/transformed_products/{grid_name}/transformed/{field_name}/'
             transformed_location = f'{output_path}{output_filename}'
-
-            if '\\' in transformed_location:
-                transformed_location = transformed_location.replace('\\', '/')
 
             if not os.path.exists(output_path):
                 os.makedirs(output_path)
@@ -757,7 +751,7 @@ def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors
     # Code to import ecco utils locally...
     # =====================================================
     generalized_functions_path = Path(
-        f'{Path(__file__).resolve().parents[5]}/ECCO-ACCESS/ecco-cloud-utils/')
+        f'{Path(__file__).resolve().parents[4]}/ECCO-ACCESS/ecco-cloud-utils/')
     sys.path.append(str(generalized_functions_path))
     import ecco_cloud_utils as ea  # pylint: disable=import-error
 

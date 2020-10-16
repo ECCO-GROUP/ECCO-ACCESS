@@ -76,22 +76,22 @@ def solr_update(config, solr_host, update_body, r=False):
 
 
 # Aggregates data into annual files, saves them, and updates Solr
-def run_aggregation(output_dir, s3=None, path=''):
+def run_aggregation(output_dir, s3=None, config_path=''):
     # =====================================================
     # Read configurations from YAML file
     # =====================================================
-    if not path:
+    if not config_path:
         print('No path for configuration file. Can not run aggregation.')
         return
 
-    with open(path, "r") as stream:
+    with open(config_path, "r") as stream:
         config = yaml.load(stream, yaml.Loader)
 
     # =====================================================
     # Code to import ecco utils locally...
     # =====================================================
     generalized_functions_path = Path(
-        f'{Path(__file__).resolve().parents[5]}/ECCO-ACCESS/ecco-cloud-utils/')
+        f'{Path(__file__).resolve().parents[4]}/ECCO-ACCESS/ecco-cloud-utils/')
     sys.path.append(str(generalized_functions_path))
     import ecco_cloud_utils as ea  # pylint: disable=import-error
 
@@ -99,6 +99,7 @@ def run_aggregation(output_dir, s3=None, path=''):
     # Set configuration options and Solr metadata
     # =====================================================
     dataset_name = config['ds_name']
+
     if s3:
         solr_host = config['solr_host_aws']
     else:
@@ -112,6 +113,13 @@ def run_aggregation(output_dir, s3=None, path=''):
 
     fq = ['type_s:dataset', f'dataset_s:{dataset_name}']
     dataset_metadata = solr_query(config, solr_host, fq)[0]
+
+    aggregate_all_years = False
+    aggregation_version = config['version']
+    if 'aggregation_version_s' in dataset_metadata.keys():
+        existing_aggregation_version = dataset_metadata['aggregation_version_s']
+        if existing_aggregation_version != aggregation_version:
+            aggregate_all_years = True
 
     data_time_scale = dataset_metadata['data_time_scale_s']
 
@@ -143,8 +151,12 @@ def run_aggregation(output_dir, s3=None, path=''):
         # Only aggregate years with updated transformations
         # Based on years_updated_ss field in dataset Solr entry
         solr_years_updated = f'{grid_name}_years_updated_ss'
-        if solr_years_updated in dataset_metadata.keys():
+        if not aggregate_all_years and solr_years_updated in dataset_metadata.keys():
             years = dataset_metadata[solr_years_updated]
+        elif aggregate_all_years:
+            start_year = dataset_metadata['start_date_dt'][:4]
+            end_year = dataset_metadata['end_date_dt'][:4]
+            years = [str(year) for year in range(start_year, end_year + 1)]
         else:
             # If no years to aggregate for this grid, continue to next grid
             print(f'No updated years to aggregate for {grid_name}')
@@ -285,7 +297,7 @@ def run_aggregation(output_dir, s3=None, path=''):
                 output_filenames = {'shortest': shortest_filename,
                                     'monthly': monthly_filename}
 
-                output_path = f'{output_dir}{dataset_name}/{grid_name}/aggregated/{field_name}/'
+                output_path = f'{output_dir}{dataset_name}/transformed_products/{grid_name}/aggregated/{field_name}/'
 
                 bin_output_dir = output_path + 'bin/'
 
@@ -376,7 +388,7 @@ def run_aggregation(output_dir, s3=None, path=''):
                         {
                             "id": doc_id,
                             "aggregation_time_dt": {"set": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")},
-                            "aggregation_version_s": {"set": config['version']}
+                            "aggregation_version_s": {"set": aggregation_version}
                         }
                     ]
 
@@ -421,7 +433,7 @@ def run_aggregation(output_dir, s3=None, path=''):
                             "field_s": field_name,
                             "aggregation_time_dt": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
                             "aggregation_success_b": success,
-                            "aggregation_version_s": config['version']
+                            "aggregation_version_s": aggregation_version
                         }
                     ]
 
@@ -497,7 +509,7 @@ def run_aggregation(output_dir, s3=None, path=''):
                 print("=========exporting data descendants=========")
                 json_output['aggregation'] = docs
                 json_output['transformations'] = transformations
-                json_output_path = f'{output_dir}{dataset_name}/{grid_name}/aggregated/{field_name}/{dataset_name}_{field_name}_{year}_descendants'
+                json_output_path = f'{output_dir}{dataset_name}/transformed_products/{grid_name}/aggregated/{field_name}/{dataset_name}_{field_name}_{year}_descendants'
                 with open(json_output_path, 'w') as f:
                     resp_out = json.dumps(json_output, indent=4)
                     f.write(resp_out)
@@ -507,6 +519,7 @@ def run_aggregation(output_dir, s3=None, path=''):
     update_body = [
         {
             "id": dataset_metadata['id'],
+            "aggregation_version_s": {"set": aggregation_version},
             "status_s": {"set": 'aggregated'}
         }
     ]

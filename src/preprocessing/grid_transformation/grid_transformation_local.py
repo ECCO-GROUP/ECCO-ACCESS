@@ -83,24 +83,24 @@ def get_remaining_transformations(config, source_file_path, grid_transformation)
     return dict(grid_field_dict)
 
 
-def main(path=''):
+def main(config_path='', output_path=''):
     import grid_transformation
     grid_transformation = importlib.reload(grid_transformation)
 
     # Pull config information
-    if not path:
+    if not config_path:
         print('No path for configuration file. Can not run transformation.')
         return
 
-    with open(path, "r") as stream:
+    with open(config_path, "r") as stream:
         config = yaml.load(stream, yaml.Loader)
 
     dataset_name = config['ds_name']
-    output_dir = f'{Path(__file__).resolve().parents[3]}/output/'
+
     solr_host = config['solr_host_local']
 
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
 
     # Get all harvested granules for this dataset
     fq = [f'dataset_s:{dataset_name}', 'type_s:harvested']
@@ -124,7 +124,7 @@ def main(path=''):
         # Perform remaining transformations
         if remaining_transformations:
             grids_updated, year = grid_transformation.run_locally_wrapper(
-                f, remaining_transformations, output_dir, path=path)
+                f, remaining_transformations, output_path, config_path=config_path)
 
             for grid in grids_updated:
                 if grid in years_updated.keys():

@@ -1,7 +1,6 @@
 import os
 import sys
 import gzip
-import json
 import yaml
 import shutil
 import hashlib
@@ -121,15 +120,15 @@ def solr_update(config, solr_host, update_body, r=False):
 # Pulls data files for given PODAAC id and date range
 # If not on_aws, saves locally, else saves to s3 bucket
 # Creates Solr entries for dataset, harvested granule, fields, and descendants
-def podaac_harvester(path='', s3=None, on_aws=False):
+def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False):
     # =====================================================
     # Read configurations from YAML file
     # =====================================================
-    if not path:
+    if not config_path:
         print('No path for configuration file. Can not run harvester.')
         return
 
-    with open(path, "r") as stream:
+    with open(config_path, "r") as stream:
         config = yaml.load(stream, yaml.Loader)
 
     # =====================================================
@@ -147,10 +146,8 @@ def podaac_harvester(path='', s3=None, on_aws=False):
     # Initializing required values
     # =====================================================
     dataset_name = config['ds_name']
-    parent_path = f'{Path(__file__).resolve().parents[3]}'
-    if '\\' in parent_path:
-        parent_path = parent_path.replace('\\', '/')
-    target_dir = f'{parent_path}/datasets/{dataset_name}/harvested_granules/'
+
+    target_dir = f'{output_path}{dataset_name}/harvested_granules/'
     date_regex = config['date_regex']
     aggregated = config['aggregated']
     start_time = config['start']
@@ -364,32 +361,6 @@ def podaac_harvester(path='', s3=None, on_aws=False):
         print('granule metadata post to Solr success')
     else:
         print('granule metadata post to Solr failed')
-
-    # =====================================================
-    # writing metadata to file
-    # =====================================================
-    print("=========creating metadata JSON=========")
-
-    meta_path = f'{dataset_name}.json'
-    meta_local_path = f'{target_dir}{meta_path}'
-    meta_output_path = f'meta/{meta_path}'
-
-    if len(meta) == 0:
-        print('no new downloads')
-
-    # write json file
-    with open(meta_local_path, 'w') as meta_file:
-        json.dump(meta, meta_file)
-
-    print("======creating metadata JSON DONE=======")
-
-    # =====================================================
-    # uploading metadata file to s3
-    # =====================================================
-    if on_aws:
-        print("=========uploading meta to s3=========")
-        target_bucket.upload_file(meta_local_path, meta_output_path)
-        print("======uploading meta to s3 DONE=======")
 
     overall_start = min(start) if len(start) > 0 else None
     overall_end = max(end) if len(end) > 0 else None

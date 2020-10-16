@@ -47,7 +47,7 @@ proj_info:
 #   }
 
 pre_transformation_steps: [] # List of functions to call on the DataSet before transformation
-post_transformation_steps: ["avhrr_sst_kelvin_to_celcius"] # List of functions to call on the DataArrays after transformation
+post_transformation_steps: ["avhrr_sst_kelvin_to_celsius"] # List of functions to call on the DataArrays after transformation
 
 # =====================================================
 # Solr

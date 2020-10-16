@@ -5,24 +5,19 @@ import importlib
 from pathlib import Path
 
 
-def main(path=''):
+def main(config_path='', output_path=''):
     import aggregation
     aggregation = importlib.reload(aggregation)
 
     # Pull config information
-    if not path:
+    if not config_path:
         print('No path for configuration file. Can not run aggregation.')
         return
 
-    with open(path, "r") as stream:
+    with open(config_path, "r") as stream:
         config = yaml.load(stream, yaml.Loader)
 
-    output_dir = f'{Path(__file__).resolve().parents[3]}/output/'
-
-    if '\\' in output_dir:
-        output_dir = output_dir.replace('\\', '/')
-
-    aggregation.run_aggregation(output_dir, path=path)
+    aggregation.run_aggregation(output_path, config_path=config_path)
 
 
 ##################################################

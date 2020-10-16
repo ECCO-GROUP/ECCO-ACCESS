@@ -3,8 +3,10 @@ import sys
 import yaml
 import importlib
 import numpy as np
+import tkinter as tk
 from pathlib import Path
 from shutil import copyfile
+from tkinter import filedialog
 
 
 def print_log(log):
@@ -19,7 +21,7 @@ def print_log(log):
         print(*steps, sep='\n')
 
 
-def run_harvester(datasets, path_to_harvesters, log):
+def run_harvester(datasets, path_to_harvesters, log, output_dir):
     print('\n=========================================================')
     print(
         '================== \033[36mRunning harvesters\033[0m ===================')
@@ -30,7 +32,7 @@ def run_harvester(datasets, path_to_harvesters, log):
             print('=========================================================')
 
             config_path = Path(
-                f'{Path(__file__).resolve().parents[1]}/datasets/{ds}/harvester_config.yaml')
+                f'{Path(__file__).resolve().parents[2]}/datasets/{ds}/harvester_config.yaml')
 
             with open(config_path, "r") as stream:
                 config = yaml.load(stream, yaml.Loader)
@@ -63,7 +65,8 @@ def run_harvester(datasets, path_to_harvesters, log):
                 except:
                     ret_import = importlib.import_module(harvester)
 
-                ret_import.main(path=config_path)
+                ret_import.main(config_path=config_path,
+                                output_path=output_dir)
                 sys.path.remove(str(path_to_code))
 
             log.setdefault(ds, []).append(
@@ -78,7 +81,7 @@ def run_harvester(datasets, path_to_harvesters, log):
     return log
 
 
-def run_transformation(datasets, path_to_preprocessing, log):
+def run_transformation(datasets, path_to_preprocessing, log, output_dir):
     print('\n=========================================================')
     print(
         '=============== \033[36mRunning transformations\033[0m =================')
@@ -89,7 +92,7 @@ def run_transformation(datasets, path_to_preprocessing, log):
             print('=========================================================')
 
             config_path = Path(
-                f'{Path(__file__).resolve().parents[1]}/datasets/{ds}/transformation_config.yaml')
+                f'{Path(__file__).resolve().parents[2]}/datasets/{ds}/transformation_config.yaml')
 
             path_to_code = Path(
                 f'{path_to_preprocessing}/grid_transformation/')
@@ -103,7 +106,7 @@ def run_transformation(datasets, path_to_preprocessing, log):
             except:
                 ret_import = importlib.import_module(transformer)
 
-            ret_import.main(path=config_path)
+            ret_import.main(config_path=config_path, output_path=output_dir)
             sys.path.remove(str(path_to_code))
 
             log.setdefault(ds, []).append(
@@ -118,7 +121,7 @@ def run_transformation(datasets, path_to_preprocessing, log):
     return log
 
 
-def run_aggregation(datasets, path_to_preprocessing, log):
+def run_aggregation(datasets, path_to_preprocessing, log, output_dir):
     print('\n=========================================================')
     print(
         '================ \033[36mRunning aggregations\033[0m ===================')
@@ -128,7 +131,7 @@ def run_aggregation(datasets, path_to_preprocessing, log):
             print(f'\033[93mRunning aggregation for {ds}\033[0m')
             print('=========================================================')
             config_path = Path(
-                f'{Path(__file__).resolve().parents[1]}/datasets/{ds}/aggregation_config.yaml')
+                f'{Path(__file__).resolve().parents[2]}/datasets/{ds}/aggregation_config.yaml')
 
             path_to_code = Path(
                 f'{path_to_preprocessing}/aggregation_by_year/')
@@ -142,7 +145,7 @@ def run_aggregation(datasets, path_to_preprocessing, log):
             except:
                 ret_import = importlib.import_module(aggregation)
 
-            ret_import.main(path=config_path)
+            ret_import.main(config_path=config_path, output_path=output_dir)
             sys.path.remove(str(path_to_code))
             log.setdefault(ds, []).append(
                 f'\tAggregation \033[92msuccessful\033[0m')
@@ -159,12 +162,12 @@ def run_aggregation(datasets, path_to_preprocessing, log):
 if __name__ == '__main__':
     # path to harvester and preprocessing folders
     path_to_harvesters = Path(
-        f'{Path(__file__).resolve().parents[1]}/dataset_template/harvesters')
+        f'{Path(__file__).resolve().parents[1]}/harvesters')
     path_to_preprocessing = Path(
-        f'{Path(__file__).resolve().parents[1]}/dataset_template/preprocessing')
+        f'{Path(__file__).resolve().parents[1]}/preprocessing')
     path_to_grids = Path(
-        f'{Path(__file__).resolve().parents[1]}/grids_to_solr')
-    path_to_datasets = Path(f'{Path(__file__).resolve().parents[1]}/datasets')
+        f'{Path(__file__).resolve().parents[2]}/grids_to_solr')
+    path_to_datasets = Path(f'{Path(__file__).resolve().parents[2]}/datasets')
 
     datasets = os.listdir(path_to_datasets)
     datasets = [ds for ds in datasets if ds != '.DS_Store']
@@ -202,7 +205,8 @@ if __name__ == '__main__':
                 grids_to_solr = 'grids_to_solr'
                 sys.path.insert(1, str(path_to_grids))
                 try:
-                    ret_import = importlib.reload(ret_import)
+                    ret_import = importlib.reload(
+                        ret_import)  # pylint: disable=used-before-assignment
                 except:
                     ret_import = importlib.import_module(grids_to_solr)
                 ret_import.main(path=path_to_grids)
@@ -218,17 +222,28 @@ if __name__ == '__main__':
             print('=========================================================')
             break
 
+    print('\nPlease choose your output directory')
+    root = tk.Tk()
+    root.withdraw()
+    output_dir = f'{filedialog.askdirectory()}/'
+    if not output_dir:
+        print("No output directory given. Exiting.")
+        sys.exit()
+    print(f'Output direcory selected as {output_dir}')
+
     if chosen_option == '1':
         for ds in datasets:
-            log = run_harvester([ds], path_to_harvesters, log)
-            log = run_transformation([ds], path_to_preprocessing, log)
-            log = run_aggregation([ds], path_to_preprocessing, log)
+            log = run_harvester([ds], path_to_harvesters, log, output_dir)
+            log = run_transformation(
+                [ds], path_to_preprocessing, log, output_dir)
+            log = run_aggregation([ds], path_to_preprocessing, log, output_dir)
     elif chosen_option == '2':
-        log = run_harvester(datasets, path_to_harvesters, log)
+        log = run_harvester(datasets, path_to_harvesters, log, output_dir)
     elif chosen_option == '3':
         for ds in datasets:
-            log = run_harvester([ds], path_to_harvesters, log)
-            log = run_transformation([ds], path_to_preprocessing, log)
+            log = run_harvester([ds], path_to_harvesters, log, output_dir)
+            log = run_transformation(
+                [ds], path_to_preprocessing, log, output_dir)
     elif chosen_option == '4':
         while True:
             wanted_ds = input('\nEnter wanted dataset: ')
@@ -250,17 +265,21 @@ if __name__ == '__main__':
                 break
         for step in wanted_steps:
             if step == 'harvest':
-                log = run_harvester([wanted_ds], path_to_harvesters, log)
+                log = run_harvester(
+                    [wanted_ds], path_to_harvesters, log, output_dir)
             elif step == 'transform':
                 log = run_transformation(
-                    [wanted_ds], path_to_preprocessing, log)
+                    [wanted_ds], path_to_preprocessing, log, output_dir)
             elif step == 'aggregate':
-                log = run_aggregation([wanted_ds], path_to_preprocessing, log)
+                log = run_aggregation(
+                    [wanted_ds], path_to_preprocessing, log, output_dir)
             elif step == 'all':
-                log = run_harvester([wanted_ds], path_to_harvesters, log)
+                log = run_harvester(
+                    [wanted_ds], path_to_harvesters, log, output_dir)
                 log = run_transformation(
-                    [wanted_ds], path_to_preprocessing, log)
-                log = run_aggregation([wanted_ds], path_to_preprocessing, log)
+                    [wanted_ds], path_to_preprocessing, log, output_dir)
+                log = run_aggregation(
+                    [wanted_ds], path_to_preprocessing, log, output_dir)
     elif chosen_option == '5':
         for ds in datasets:
             while True:
@@ -271,9 +290,11 @@ if __name__ == '__main__':
                 else:
                     break
             if yes_no == 'Y':
-                log = run_harvester([ds], path_to_harvesters, log)
-                log = run_transformation([ds], path_to_preprocessing, log)
-                log = run_aggregation([ds], path_to_preprocessing, log)
+                log = run_harvester([ds], path_to_harvesters, log, output_dir)
+                log = run_transformation(
+                    [ds], path_to_preprocessing, log, output_dir)
+                log = run_aggregation(
+                    [ds], path_to_preprocessing, log, output_dir)
             elif yes_no == 'E':
                 break
             else:  # yes_no == 'N'

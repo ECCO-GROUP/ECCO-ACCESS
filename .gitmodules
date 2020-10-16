@@ -1,3 +1,0 @@
-[submodule "src/preprocessing/ecco-access/ECCO-ACCESS"]
-	path = src/preprocessing/ecco-access/ECCO-ACCESS
-	url = git@github.com:ECCO-GROUP/ECCO-ACCESS.git
