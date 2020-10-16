@@ -230,7 +230,10 @@ def nsidc_ftp_harvester(path='', s3=None, on_aws=False):
 
                     # If updating, download file
                     if updating:
-                        local_fp = f'{folder}{config["ds_name"]}_granule.nc' if on_aws else target_dir + newfile
+                        local_fp = f'{folder}{config["ds_name"]}_granule.nc' if on_aws else f'{target_dir}{date[:4]}/{newfile}'
+
+                        if not os.path.exists(f'{target_dir}{date[:4]}/'):
+                            os.makedirs(f'{target_dir}{date[:4]}/')
 
                         # If file doesn't exist locally, download it
                         if not os.path.exists(local_fp):
@@ -256,7 +259,7 @@ def nsidc_ftp_harvester(path='', s3=None, on_aws=False):
 
                         output_filename = f'{dataset_name}/{newfile}' if on_aws else newfile
 
-                        item['pre_transformation_file_path_s'] = f'{target_dir}{newfile}'
+                        item['pre_transformation_file_path_s'] = local_fp
 
                         # =====================================================
                         # Push data to s3 bucket
