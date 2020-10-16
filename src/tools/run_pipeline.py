@@ -16,8 +16,6 @@ def print_log(log):
     print('=========================================================')
     for ds, steps in log.items():
         print(f'\033[93mPipeline status for {ds}\033[0m:')
-        if ds == 'obp_AOD1B' or ds == 'ewh_TELLUS_GRAC_MASCON':
-            print(f'\033[91mMascon datasets not currently supported\033[0m')
         print(*steps, sep='\n')
 
 
