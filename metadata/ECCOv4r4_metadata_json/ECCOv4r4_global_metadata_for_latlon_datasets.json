@@ -8,12 +8,12 @@
       "name": "geospatial_lat_resolution",
       "type": "f",
       "value": 0.5,
-      "grid_dimension":"2D"
+      "grid_dimension":"2D 3D"
    },
    {
       "name": "geospatial_lon_resolution",
       "type": "f",
       "value": 0.5,
-      "grid_dimension":"2D"
+      "grid_dimension":"2D 3D"
    }
 ]

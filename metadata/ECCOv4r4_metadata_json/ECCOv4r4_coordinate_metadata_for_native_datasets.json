@@ -1,37 +1,37 @@
 [
    {
-      "name": "latitude",
+      "name": "YC",
       "long_name": "latitude",
       "units": "degrees_north",
       "standard_name": "latitude",
-      "comment": "uniform grid spacing from -89.75 to 89.75 by 0.5",
+      "comment": "nonuniform grid spacing",
       "axis": "Y",
-      "bounds": "latitude_bnds",
+      "bounds": "YC_bnds",
       "grid_dimension":"2D 3D",
       "coverage_content_type": "coordinate"
    },
    {
-      "name": "latitude_bnds",
+      "name": "YC_bnds",
       "units": "degrees_north",
-      "long_name": "latitude bounds grid cells",
+      "long_name": "latitude bounds of grid cells",
       "grid_dimension":"2D 3D",
       "coverage_content_type": "coordinate"
    },
    {
-      "name": "longitude",
+      "name": "XC",
       "long_name": "longitude",
       "units": "degrees_east",
       "standard_name": "longitude",
-      "comment": "uniform grid spacing from -179.75 to 179.75 by 0.5",
+      "comment": "nonuniform grid spacing",
       "axis": "X",
-      "bounds": "longitude_bnds",
+      "bounds": "XC_bnds",
       "grid_dimension":"2D 3D",
       "coverage_content_type": "coordinate"
    },
    {
-      "name": "longitude_bnds",
+      "name": "XC_bnds",
       "units": "degrees_east",
-      "long_name": "longitude bounds grid cells",
+      "long_name": "longitude bounds of grid cells",
       "grid_dimension":"2D 3D",
       "coverage_content_type": "coordinate"
    }

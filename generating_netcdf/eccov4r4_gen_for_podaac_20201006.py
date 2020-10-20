@@ -21,6 +21,7 @@ from collections import OrderedDict
 import matplotlib.pyplot as plt
 import pyresample as pr
 import uuid
+import pickle
 
 
 #%%
@@ -37,16 +38,16 @@ def get_coordinate_attribute_to_data_vars(G):
     return coord_attr, coord_G
 
         
-def find_metadata_in_json_dictionary(var, key, metadata):
+def find_metadata_in_json_dictionary(var, key, metadata, print_output=False):
     for m in metadata:        
         if m[key] == var:
-            print(m)
+            if print_output:
+                print(m)
             return m
     return []
 
 
 def sort_attrs(attrs):
-  
     od = OrderedDict()
     
     keys = sorted(list(attrs.keys()),key=str.casefold)
@@ -56,20 +57,22 @@ def sort_attrs(attrs):
 
     return od
 
-def sort_all_attrs(G):
+
+def sort_all_attrs(G, print_output=False):
     for coord in list(G.coords):
-        print(coord)
+        if print_output:
+            print(coord)
         new_attrs = sort_attrs(G[coord].attrs)
         G[coord].attrs = new_attrs
         
     for dv in list(G.data_vars):
-        print(dv)
+        if print_output:
+            print(dv)
         new_attrs = sort_attrs(G[dv].attrs)
         G[dv].attrs = new_attrs
         
     new_attrs = sort_attrs(G.attrs)
     G.attrs = new_attrs
-        
         
 
 #%%
@@ -100,7 +103,7 @@ start_time = np.datetime64('1992-01-01T12:00:00')
 
 
 ## OUTPUT DIRECTORY
-output_dir = Path('/home/ifenty/tmp/v4r4_nc_output_20201006')
+output_dir = Path('/home/ifenty/tmp/v4r4_nc_output_20201015')
 
 if not output_dir.exists():
     try:
@@ -121,14 +124,11 @@ metadata_json_dir = Path('/home/ifenty/ECCO-GROUP/ECCO-ACCESS/metadata/ECCOv4r4_
 metadata_fields = ['ECCOv4r4_common_metadata', 
                    'ECCOv4r4_common_metadata_for_latlon_datasets',
                    'ECCOv4r4_common_metadata_for_native_grid_datasets',
-                   'ECCOv4r4_coordinate_variable_metadata_for_latlon_datasets',
+                   'ECCOv4r4_coordinate_metadata_for_latlon_datasets',
                    'ECCOv4r4_dataset_groupings_for_latlon_product',
                    'ECCOv4r4_variables_on_latlon_grid_metadata',
                    'ECCOv4r4_variables_on_native_grid_metadata',
-                   'ECCOv4r4_common_GCMD_keywords',
-                   'ECCOv4r4_variable_GCMD_keywords',
                    'ECCOv4r4_podaac_datasets']
-
 
 # load METADATA
 metadata = dict()
@@ -138,39 +138,65 @@ for mf in metadata_fields:
     print(mf_e)
     with open(str(metadata_json_dir / mf_e), 'r') as fp:
         metadata[mf] = json.load(fp)
-    
-        
-        
-groupings = metadata['ECCOv4r4_dataset_groupings_for_latlon_product']
+                    
+latlon_grid_groupings = metadata['ECCOv4r4_dataset_groupings_for_latlon_product']
+
+#native_grid_groupings = metadata['ECCOv4r4_dataset_groupings_for_native_product']
 
 #%%
-# grid dir
-ecco_grid_dir = '/home/ifenty/data/grids/ecco_pipeline_grids'
-
 ##ecco_grid_dir = '/Users/ifenty/inSync Share/Projects/ECCOv4/Release4/nctiles_grid/'
 ecco_grid_dir = '/home/ifenty/ian1/ifenty/ECCOv4/Version4/Release4/nctiles_grid'
-
 ecco_grid = ecco.load_ecco_grid_nc(ecco_grid_dir, 'ECCO-GRID.nc')
 
-# Define the 'swath' (in the terminology of the pyresample module)
-# as the lats/lon pairs of the model grid
-# The routine needs the lats and lons to be one-dimensional vectors.
-source_grid  = \
-    pr.geometry.SwathDefinition(lons=ecco_grid.XC.values.ravel(), 
-                                lats=ecco_grid.YC.values.ravel())
+
+#%%
+
+ 
+# land masks
+ecco_land_mask_c = np.where(ecco_grid.hFacC.values == 0, 0, 1)
+ecco_land_mask_w = np.where(ecco_grid.hFacW.values == 0, 0, 1)
+ecco_land_mask_s = np.where(ecco_grid.hFacS.values == 0, 0, 1)
+
+ecco_land_mask_c_nan = np.where(ecco_grid.hFacC.values == 0, np.nan, 1)
+ecco_land_mask_w_nan = np.where(ecco_grid.hFacW.values == 0, np.nan, 1)
+ecco_land_mask_s_nan = np.where(ecco_grid.hFacS.values == 0, np.nan, 1)
+
+
+wet_pts_k = dict()
+xc_wet_k = dict()
+yc_wet_k = dict()
+
+# Dictionary of pyresample 'grids' for each level of the ECCO grid where
+# there are wet points.  Used for the bin-averaging.  We don't want to bin
+# average dry points.
+source_grid_k = dict()
+
+for k in range(50):
+    wet_pts_k[k] = np.where(ecco_land_mask_c[k,:] == 1)
+    xc_wet_k[k] = ecco_grid.XC.values[wet_pts_k[k]] 
+    yc_wet_k[k] = ecco_grid.YC.values[wet_pts_k[k]] 
     
+    source_grid_k[k]  = \
+        pr.geometry.SwathDefinition(lons=xc_wet_k[k], \
+                                    lats=yc_wet_k[k])
+
+#%%
+# The pyresample 'grid' information for the 'source' (ECCO grid) defined using 
+# all XC and YC points, even land.  Used to create the land mask
+source_grid_all =  pr.geometry.SwathDefinition(lons=ecco_grid.XC.values.ravel(), \
+                                               lats=ecco_grid.YC.values.ravel())
+
+# the largest and smallest length of grid cell size in the ECCO grid.  Used
+# to determine how big of a lookup table we need to do the bin-average interp.
 source_grid_min_L = np.min([float(ecco_grid.dyG.min().values), float(ecco_grid.dxG.min().values)])
 source_grid_max_L = np.max([float(ecco_grid.dyG.max().values), float(ecco_grid.dxG.max().values)])
 
 print(int(source_grid_min_L))
 print(int(source_grid_max_L))
 
-#%%
 
-
-#%%
-
-# TARGET GRID
+# Define the TARGET GRID -- a lat lon grid
+## create target grid.
 product_name = ''
 product_source = ''
 
@@ -195,77 +221,104 @@ target_grid_lons, target_grid_lats = \
                                 proj_info)
 
 
-    
+# pull out just the lats and lons (1D arrays)
 target_grid_lons_1D = target_grid_lons[0,:]
 target_grid_lats_1D = target_grid_lats[:,0]
 
-
-lat_lon_grid_area = ea.area_of_latlon_grid(-180, 180, -90, 90, data_res, data_res)
-
-target_grid_radius = 0.5*np.sqrt(lat_lon_grid_area).ravel()
-
-
-source_indices_within_target_radius_i,\
-num_source_indices_within_target_radius_i,\
-nearest_source_index_to_target_index_i = \
-    ea.find_mappings_from_source_to_target(source_grid,\
-                                           target_grid,\
-                                           target_grid_radius, \
-                                           source_grid_min_L, \
-                                           source_grid_max_L)
-    
-#   
-    
-#%%
-test_d =  \
-        ea.transform_to_target_grid(source_indices_within_target_radius_i,
-                             num_source_indices_within_target_radius_i,
-                             nearest_source_index_to_target_index_i,
-                             ecco_grid.Depth.values.ravel(), \
-                             target_grid_lons.shape,\
-                             operation='mean', allow_nearest_neighbor=True)
-    
-plt.figure(1,clear=True);
-plt.subplot(311);plt.imshow(test_d,origin='lower');plt.colorbar();
-plt.subplot(312);plt.imshow(target_grid_lats,origin='lower');plt.colorbar()
-plt.subplot(313);plt.imshow(target_grid_lons,origin='lower');plt.colorbar()
-
-#%%
-    
-## MAKE A 3D LAND MASK IN LAT-LON GRID   
-
-ecco_land_mask = np.where(ecco_grid.hFacC.values == 0, 0, 1)
-
+# calculate the areas of the lat-lon grid
+lat_lon_grid_area = ea.area_of_latlon_grid(-180, 180, -90, 90, data_res, data_res);
 target_grid_shape = lat_lon_grid_area.shape
 
-land_mask_ll = np.zeros((50, target_grid_shape[0], target_grid_shape[1]))
 
-for k in range(50):
-    print(k)
-    
-    source_field = ecco_land_mask[k,:].ravel()
-    
-    land_mask_ll[k,:] =  \
-        ea.transform_to_target_grid(source_indices_within_target_radius_i,
-                             num_source_indices_within_target_radius_i,
-                             nearest_source_index_to_target_index_i,
-                             source_field, target_grid_shape,\
-                             operation='mean', allow_nearest_neighbor=True)
+# calculate effective radius of each target grid cell.  required for the bin 
+# averaging
+target_grid_radius = np.sqrt(lat_lon_grid_area / np.pi).ravel()
 
+
+#%% CALCULATE GRID-TO-GRID MAPPING FACTORS
+
+grid_mapping_fname = output_dir / "ecco_latlon_grid_mappings.p"
+
+# first check to see if you have already calculated the grid mapping factors
+if grid_mapping_fname.is_file():
+    # if so, load
+    print('.... loading latlon_grid_mappings.p')
+
+    [grid_mappings_all, grid_mappings_k] = \
+        pickle.load(open(grid_mapping_fname, "rb"))
+    
+else:
+    # if not, make new grid mapping factors
+        
+    # find the mapping between all points of the ECCO grid and the target grid.
+    grid_mappings_all = \
+        ea.find_mappings_from_source_to_target(source_grid_all,\
+                                               target_grid,\
+                                               target_grid_radius, \
+                                               source_grid_min_L, \
+                                               source_grid_max_L)
+    
+    # then find the mapping factors between all wet points of the ECCO grid
+    # at each vertical level and the target grid
+    grid_mappings_k = dict()
+    
+    for k in range(50):
+        print(k)
+        grid_mappings_k[k] = \
+            ea.find_mappings_from_source_to_target(source_grid_k[k],\
+                                                   target_grid,\
+                                                   target_grid_radius, \
+                                                   source_grid_min_L, \
+                                                   source_grid_max_L)
+            
+    pickle.dump([grid_mappings_all, grid_mappings_k], \
+                open(grid_mapping_fname, "wb"))
+    
 
 #%%
-plt.figure(2,clear=True);
-plt.subplot(311);plt.imshow(land_mask_ll[0,:],origin='lower');plt.colorbar();
-plt.subplot(312);plt.imshow(land_mask_ll[25,:],origin='lower');plt.colorbar()
-plt.subplot(313);plt.imshow(land_mask_ll[45,:],origin='lower');plt.colorbar()
+# make a land mask in lat-lon using hfacC
+    
+# check to see if you have already calculated the land mask
+land_mask_fname = output_dir / "ecco_latlon_land_mask.p"
+
+if land_mask_fname.is_file():
+    # if so, load
+    print('.... loading land_mask_ll')
+    land_mask_ll = pickle.load(open(land_mask_fname, "rb"))
+
+else:
+    # if not, recalculate.
+    land_mask_ll = np.zeros((50, target_grid_shape[0], target_grid_shape[1]))
+    
+    source_indices_within_target_radius_i, \
+    num_source_indices_within_target_radius_i,\
+    nearest_source_index_to_target_index_i = grid_mappings_all
+    
+    for k in range(50):
+        print(k)
+        
+        source_field = ecco_land_mask_c_nan[k,:].ravel()
+        
+        land_mask_ll[k,:] =  \
+            ea.transform_to_target_grid(source_indices_within_target_radius_i,
+                                        num_source_indices_within_target_radius_i,
+                                        nearest_source_index_to_target_index_i,
+                                        source_field, target_grid_shape,\
+                                        operation='nearest', allow_nearest_neighbor=True)
+
+    pickle.dump(land_mask_ll, open(land_mask_fname, "wb"))
+
+#%%
+
+plt.figure(3,clear=True)
+plt.subplot(131);plt.imshow(land_mask_ll[0,:],origin='lower');plt.colorbar();
+plt.subplot(132);plt.imshow(land_mask_ll[0,:],origin='lower');plt.colorbar();
+plt.xlim([370/2, 410/2]);plt.ylim([420/2,500/2])
+plt.subplot(133);plt.imshow(land_mask_ll[0,:],origin='lower');plt.colorbar();
+plt.xlim([460/2, 530/2]);plt.ylim([610/2,660/2])
 
 
-land_mask_ll = np.where(land_mask_ll ==1,1,np.nan)
 
-plt.figure(3,clear=True);
-plt.subplot(311);plt.imshow(land_mask_ll[0,:],origin='lower');plt.colorbar();
-plt.subplot(312);plt.imshow(land_mask_ll[25,:],origin='lower');plt.colorbar()
-plt.subplot(313);plt.imshow(land_mask_ll[45,:],origin='lower');plt.colorbar()
 #%%
 ## MAKE LAT AND LON BOUNDS FOR NEW DATA ARRAYS        
 lat_bounds = np.zeros((dims[1],2))
@@ -287,13 +340,16 @@ for k in range(50):
     if k == 0:
         depth_bounds[k,0] = 0.0
     else:
-        depth_bounds[k,0] = tmp[k-1]
-    depth_bounds[k,1] = tmp[k]
+        depth_bounds[k,0] = -tmp[k-1]
+    depth_bounds[k,1] = -tmp[k]
     
+#%%
+    
+groupings = latlon_grid_groupings
 #%%
 ###################################################################################################
 
-avgs  = ['AVG_DAY']#,'AVG_MON']
+avgs  = ['AVG_DAY', 'AVG_MON']
 
 diags_root = Path('/home/ifenty/ian1/ifenty/ECCOv4/binary_output/diags_all')
 for avg in avgs:
@@ -302,18 +358,19 @@ for avg in avgs:
         output_freq_code = 'AVG_DAY' ## 'AVG_DAY' or 'SNAPSHOT'
        # mds_diags_root_dir = Path('/Users/ifenty/ECCOv4/Release4/forward_output/v4r4_nc_output_20200729_2311/diags_daily')
         mds_diags_root_dir = diags_root / 'diags_daily'
+        time_steps_to_load = [12,36,60]
+
     elif avg == 'AVG_MON':
         output_freq_code = 'AVG_MON' ## 'AVG_DAY' or 'SNAPSHOT'
         #mds_diags_root_dir = Path('/Users/ifenty/ECCOv4/Release4/forward_output/v4r4_nc_output_20200729_2311/diags_monthly')
         mds_diags_root_dir = diags_root / 'diags_monthly'
-
+        time_steps_to_load = [732,1428,2172]   
     
     ## TIME STEPS TO LOAD
     #all_avail_time_steps = ecco.get_time_steps_from_mds_files(mds_diags_root_dir / 'ETAN', 'ETAN')
     #pprint(all_avail_time_steps)
     
     #time_steps_to_load = all_avail_time_steps[:2]
-    time_steps_to_load = [12]
     print('\nloading time steps')
     pprint(time_steps_to_load)
       
@@ -329,8 +386,7 @@ for avg in avgs:
         period_suffix = 'inst'
      
     field_paths = np.sort(list(mds_diags_root_dir.glob('*' + period_suffix + '*')))
-    
-        
+            
     ## load variable file and directory names
     print (len(field_paths))
     all_field_names = []
@@ -340,8 +396,11 @@ for avg in avgs:
     
     print (all_field_names)
     
+    #%%
     
-    for grouping in groupings[0:1]:
+    max_k = 50
+    
+    for grouping in groupings:
     
         grouping_dim = grouping['dimension']
         
@@ -368,8 +427,9 @@ for avg in avgs:
         for var in vars_to_load:
             print(var, var_directories[var])
             
+        grouping_gcmd_keywords = []
         
-        
+       
         for cur_ts in time_steps_to_load:
             
             time_delta = np.timedelta64(cur_ts, 'h')
@@ -397,29 +457,24 @@ for avg in avgs:
                     if grouping_dim == '2D':
                     
                         F = ecco.read_llc_to_tiles(mds_var_dir, mds_file, llc=90, skip=0, nk=1, nl=1, 
-                          	      filetype = '>f', less_output = False, 
+                          	      filetype = '>f', less_output = True, 
                                   use_xmitgcm=False)
-                  
                         
+                        F_wet_native = F[wet_pts_k[0]]
+
+
+                        source_indices_within_target_radius_i, \
+                        num_source_indices_within_target_radius_i,\
+                        nearest_source_index_to_target_index_i = grid_mappings_k[0]
+                            
+                            
                         F_ll =  \
-                            ea.transform_to_target_grid(source_indices_within_target_radius_i,
-                                 num_source_indices_within_target_radius_i,
-                                 nearest_source_index_to_target_index_i,
-                                 F.ravel(), target_grid_shape,\
-                                 operation='mean', allow_nearest_neighbor=True)
-        
-        
-        
-#                        new_grid_lon, new_grid_lat, F_ll =\
-#                                ecco.resample_to_latlon(x_c, \
-#                                                        y_c, \
-#                                                        F,\
-#                                                        new_grid_min_lat, new_grid_max_lat, new_grid_delta_lat,\
-#                                                        new_grid_min_lon, new_grid_max_lon, new_grid_delta_lon,\
-#                                                        fill_value = np.NaN, \
-#                                                        mapping_method = 'nearest_neighbor',
-#                                                        radius_of_influence = 120000)               
-                        
+                                ea.transform_to_target_grid(source_indices_within_target_radius_i,
+                                                     num_source_indices_within_target_radius_i,
+                                                     nearest_source_index_to_target_index_i,
+                                                     F_wet_native,\
+                                                     target_grid_shape,\
+                                                     operation='mean', allow_nearest_neighbor=True)
                         
                         F_ll_masked = np.expand_dims(F_ll * land_mask_ll[0,:],0)
                         
@@ -433,39 +488,31 @@ for avg in avgs:
                     if grouping_dim == '3D':
                     
                         F = ecco.read_llc_to_tiles(mds_var_dir, mds_file, llc=90, skip=0, nk=50, nl=1, 
-                          	      filetype = '>f', less_output = False, 
+                          	      filetype = '>f', less_output = True, 
                                   use_xmitgcm=False)
                   
-                        
+
                         F_ll = np.zeros((50,360,720))
                         
-                        for k in range(50):
+                        for k in range(max_k):
                             print(var,k)
-                            
-                            
+                            F_k = F[k]
+                            F_wet_native = F_k[wet_pts_k[k]]
+
+                            source_indices_within_target_radius_i, \
+                            num_source_indices_within_target_radius_i,\
+                            nearest_source_index_to_target_index_i = grid_mappings_k[k]
                         
                             F_ll[k,:] =  \
                                 ea.transform_to_target_grid(source_indices_within_target_radius_i,
                                      num_source_indices_within_target_radius_i,
                                      nearest_source_index_to_target_index_i,
-                                     F[k,:].ravel(), target_grid_shape,\
+                                     F_wet_native, target_grid_shape,\
                                      operation='mean', allow_nearest_neighbor=True)
         
         
-                            
-#                            new_grid_lon, new_grid_lat, F_ll[k,:] =\
-#                                    ecco.resample_to_latlon(x_c, \
-#                                                            y_c, \
-#                                                            F[k,:],\
-#                                                            new_grid_min_lat, new_grid_max_lat, new_grid_delta_lat,\
-#                                                            new_grid_min_lon, new_grid_max_lon, new_grid_delta_lon,\
-#                                                            fill_value = np.NaN, \
-#                                                            mapping_method = 'nearest_neighbor',
-#                                                            radius_of_influence = 120000)               
-#                        
-                        
+                        # multiple by land mask
                         F_ll_masked = np.expand_dims(F_ll * land_mask_ll, 0)
-                        
         
                         Z = ecco_grid.Z.values
                         
@@ -473,7 +520,7 @@ for avg in avgs:
                                             coords=[times, Z, \
                                                     target_grid_lats_1D,\
                                                     target_grid_lons_1D], \
-                                            dims=["time", "Z", "latitude","longitude"]     )     
+                                            dims=["time", "Z", "latitude","longitude"])     
     
                                    
                     
@@ -490,16 +537,18 @@ for avg in avgs:
                     # replace nan with fill value
                     F_DA.values = np.where(np.isnan(F_DA.values), netcdf_fill_value, F_DA.values)
                     
+                    # convert to dataset
                     F_DS = F_DA.to_dataset()
                     
+                    # assign lat and lon bounds
                     F_DS=F_DS.assign_coords({"latitude_bnds": (("latitude","nv"), lat_bounds)})
                     F_DS=F_DS.assign_coords({"longitude_bnds": (("longitude","nv"), lon_bounds)})
-                        
-                        
+                               
+                    # if 3D assign depth bounds
                     if grouping_dim == '3D':
-                        F_DS=F_DS.assign_coords({"Z_bnds": (("Z","nv"), depth_bounds)})
+                        F_DS = F_DS.assign_coords({"Z_bnds": (("Z","nv"), depth_bounds)})
                         
-    
+                    # add appropriate time bounds.
                     if 'AVG' in output_freq_code:
                         tb, ct = ecco.make_time_bounds_and_center_times_from_ecco_dataset(F_DS, output_freq_code)
                         
@@ -517,39 +566,62 @@ for avg in avgs:
             
             
             # ADD VARIABLE SPECIFIC METADATA TO VARIABLE ATTRIBUTES (DATA ARRAYS)
+            print('\n... adding metadata specific to the variable')
             metadata_variable_latlon = metadata['ECCOv4r4_variables_on_latlon_grid_metadata']
             metadata_variable_native = metadata['ECCOv4r4_variables_on_native_grid_metadata']
             
             data_vars = G.data_vars
-            keys_to_exclude = ['grid_dimension','name', 'gcmd_keywords','comments_1','comments_2']
-
+            keys_to_exclude = ['grid_dimension','name', 'GCMD_keywords',\
+                               'comments_1', 'comments_2', 'internal_note','internal note']
             for var in data_vars:
-            
+                print("\n# " + var)
+
                 mv = find_metadata_in_json_dictionary(var, 'name', metadata_variable_latlon)
                 
                 if len(mv) == 0:
+                    print('\t--> no metadata found in the latlon variable list, searching native list')
                     mv = find_metadata_in_json_dictionary(var, 'name', metadata_variable_native)
-
-                if len(mv) == 0:
-                    print('NO METADATA FOUND')
+                        
+                    if len(mv) == 0:
+                        print('\t !!! NO METADATA FOUND')
+                        sys.exit()
+                         
+                else:
+                    print('\tmetadata found in the latlon variable list')
                     
                 # loop through each key, add if not on exclude list
                 for m_key in sorted(mv.keys()):
                     if m_key not in keys_to_exclude:
                         G[var].attrs[m_key] = mv[m_key]
-                
+                        print('\t',m_key, ':', mv[m_key])
+                        
                 # merge the two comment fields (both *MUST* be present)
-                G[var].attrs['comment'] =  mv['comments_1'] + '. ' + mv['comments_2']
+                if mv['comments_1'][-1] == '.':
+                    G[var].attrs['comment'] =  mv['comments_1'] + ' ' + mv['comments_2']
+                else:
+                    G[var].attrs['comment'] =  mv['comments_1'] + '. ' + mv['comments_2']
+                    
+                print('\t','comment', ':', G[var].attrs['comment'])
                 
-          
+                # Get GCMD keywords                
+                gcmd_keywords = mv['GCMD_keywords'].split(',')
+                
+                print('\t','GCMD keywords : ', gcmd_keywords)
+                
+                for gcmd_keyword in gcmd_keywords:
+                    grouping_gcmd_keywords.append(gcmd_keyword.strip())
+                    
+                
+                              
             # ADD COORDINATE SPECIFIC METADATA TO COORDINATE ATTRIBUTES (DATA ARRAYS)
-            metadata_coord_latlon = metadata['ECCOv4r4_coordinate_variable_metadata_for_latlon_datasets']
-            
+            print('\n... adding metadata specific to the coordinate attributes')            
+            metadata_coord_latlon = metadata['ECCOv4r4_coordinate_metadata_for_latlon_datasets']
+
             # don't include these helper fields in the attributes
             keys_to_exclude = ['grid_dimension','name']
             
             for coord in G.coords:
-                
+                print("\n# " + coord)
                 mv = find_metadata_in_json_dictionary(coord, 'name', metadata_coord_latlon)
                 
                 if len(mv) == 0:
@@ -558,8 +630,10 @@ for avg in avgs:
                     for m_key in sorted(mv.keys()):
                         if m_key not in keys_to_exclude:
                             G[coord].attrs[m_key] = mv[m_key]
-                            
+                            print('\t',m_key, ':', mv[m_key])
               
+                
+            print("\n... adding ECCOv4 common metadata")
             # ADD ECCOV4 COMMON METADATA TO THE DATASET ATTRS
             for mc in metadata['ECCOv4r4_common_metadata']:
                # print(mc)
@@ -578,7 +652,7 @@ for avg in avgs:
                         add_field = False
                         
                     elif gd == '3D' and grouping_dim == '3D' :
-                        add_field = False
+                        add_field = True
                         
                 if add_field == True:
                     if mtype == 's':
@@ -592,10 +666,11 @@ for avg in avgs:
                         
         
                 else:
-                    print('>>>>>>>> not adding ')
-                    print(mc)
+                    print('\t> not adding ', mc)
+                    #print(mc)
               
                     
+            print("\n... adding common metadata for latlon datasets")
             # ADD COMMON METADATA for latlon dataset to the DATASET attrs
             for mc in metadata['ECCOv4r4_common_metadata_for_latlon_datasets']:
                # print(mc)
@@ -614,7 +689,7 @@ for avg in avgs:
                         add_field = False
                         
                     elif gd == '3D' and grouping_dim == '3D' :
-                        add_field = False
+                        add_field = True
                         
                 if add_field == True:
                     if mtype == 's':
@@ -624,24 +699,21 @@ for avg in avgs:
                     elif mtype == 'i':
                         G.attrs[mname] = np.int32(mc['value'])
                 else:
-                    print('>>>>>>>> not adding ')
-                    print(mc)
+                    print('\t> not adding ', mc)
                                  
             
-            # Add common metadata keywords
-            G.attrs['keywords'] = metadata['ECCOv4r4_common_GCMD_keywords'][0]['GCMDkeywords']
-   
+            print('\n... adding metadata associated with the dataset grouping')
             # ADD METADATA ASSOCIATED WITH THE DATASET GROUPING TO THE DATASET ATTRS)
             G.attrs['title'] = grouping['name']
             G.attrs['summary'] = grouping['dataset_description']
          
             if 'AVG' in output_freq_code:
-                G.attrs['time_coverage_start'] = str(G.time_bnds.values[0][0])
-                G.attrs['time_coverage_end'] = str(G.time_bnds.values[0][1])
+                G.attrs['time_coverage_start'] = str(G.time_bnds.values[0][0])[0:19]
+                G.attrs['time_coverage_end'] = str(G.time_bnds.values[0][1])[0:19]
     
             else:
-                G.attrs['time_coverage_start'] = str(G.time.values[0])
-                G.attrs['time_coverage_end'] = str(G.time.values[0])
+                G.attrs['time_coverage_start'] = str(G.time.values[0])[0:19]
+                G.attrs['time_coverage_end'] = str(G.time.values[0])[0:19]
     
             G.attrs['date_modified'] = datetime.datetime.now().isoformat()
             G.attrs['date_metadata_modified'] = datetime.datetime.now().isoformat()
@@ -650,8 +722,6 @@ for avg in avgs:
             # add coordinate attribute to the variables
             coord_attrs, coord_G= get_coordinate_attribute_to_data_vars(G)
     
-            #G.attrs['coordinates'] = coord_G
-
             # PROVIDE SPECIFIC ENCODING DIRECTIVES FOR EACH DATA VAR
             dv_encoding = dict()
             for dv in G.data_vars:
@@ -684,13 +754,30 @@ for avg in avgs:
             # MERGE ENCODINGS
             encoding = {**dv_encoding, **coord_encoding} 
          
+            # MERGE GCMD KEYWORDS
+            common_gcmd_keywords = G.keywords.split(',')
+            gcmd_keywords_list = set(grouping_gcmd_keywords + common_gcmd_keywords)
             
+            gcmd_keyword_str = ''
+            for gcmd_keyword in gcmd_keywords_list:
+                if len(gcmd_keyword_str) == 0:
+                    gcmd_keyword_str = gcmd_keyword
+                else:
+                    gcmd_keyword_str += ', ' + gcmd_keyword
+                    
+            print(gcmd_keyword_str)
+            G.attrs['keywords'] = gcmd_keyword_str
+            
+            #
             # ADD FINISHING TOUCHES AND MAKE FILENAME 
             # uuid
             
+            print('\n... adding uuid')
             G.attrs['uuid'] = str(uuid.uuid1())
             
             # --- AVG MON
+            print('\n... adding time coverage duration, resolution')
+            
             if output_freq_code == 'AVG_MON':
                 
                 G.attrs['time_coverage_duration'] = 'P1M'
@@ -726,11 +813,14 @@ for avg in avgs:
                     '_ECCO_V4r4_latlon_0p50deg.nc'
        
             # SAVE 
-            print(filename)
+            print('\n... creating filename ', filename)
                     
+            G.attrs['filename'] = filename
             netcdf_output_filename = output_dir / filename
             
+            print('\n... sorting attributes')
             sort_all_attrs(G)
+            print('\n... saving to netcdf ', netcdf_output_filename)
             G.to_netcdf(netcdf_output_filename, encoding=encoding)
     #%%
     #  NetCDF
@@ -846,3 +936,51 @@ for avg in avgs:
 ##
 #testd = np.where(np.abs(A-B) > 0, 1, 0)
 #plt.subplot(224);plt.imshow(testd,origin='lower')
+
+
+#%%
+    
+#
+#source_indices_within_target_radius_i, \
+#num_source_indices_within_target_radius_i,\
+#nearest_source_index_to_target_index_i = grid_mappings_k[0]
+#    
+#field = ecco_grid.Depth.values[wet_pts_k[0]]
+#    
+#test_d =  \
+#        ea.transform_to_target_grid(source_indices_within_target_radius_i,
+#                             num_source_indices_within_target_radius_i,
+#                             nearest_source_index_to_target_index_i,
+#                             field,\
+#                             target_grid_shape,\
+#                             operation='mean', allow_nearest_neighbor=True)
+#    
+#plt.figure(1,clear=True);
+#plt.subplot(311);plt.imshow(test_d,origin='lower');plt.colorbar();
+#plt.subplot(312);plt.imshow(test_d,origin='lower',vmin=0,vmax=1500);plt.colorbar();
+#plt.xlim([370/2, 410/2]);plt.ylim([420/2,500/2])
+#plt.subplot(313);plt.imshow(test_d,origin='lower',vmin=0,vmax=500);plt.colorbar();
+#plt.xlim([460/2, 530/2]);plt.ylim([610/2,660/2])
+#
+#
+##%%
+#source_indices_within_target_radius_i, \
+#num_source_indices_within_target_radius_i,\
+#nearest_source_index_to_target_index_i = grid_mappings_all
+#    
+#field = ecco_grid.Depth.values.ravel()
+#    
+#test_c =  \
+#        ea.transform_to_target_grid(source_indices_within_target_radius_i,
+#                             num_source_indices_within_target_radius_i,
+#                             nearest_source_index_to_target_index_i,
+#                             field,\
+#                             target_grid_shape,\
+#                             operation='mean', allow_nearest_neighbor=True)
+#    
+#plt.figure(2,clear=True);
+#plt.subplot(311);plt.imshow(test_c,origin='lower');plt.colorbar();
+#plt.subplot(312);plt.imshow(test_c,origin='lower',vmin=0,vmax=1500);plt.colorbar();
+#plt.xlim([370/2, 410/2]);plt.ylim([420/2,500/2])
+#plt.subplot(313);plt.imshow(test_c,origin='lower',vmin=0,vmax=500);plt.colorbar();
+#plt.xlim([460/2, 530/2]);plt.ylim([610/2,660/2])
