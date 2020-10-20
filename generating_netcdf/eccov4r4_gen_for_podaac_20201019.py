@@ -176,11 +176,11 @@ binary_fill_value = -9999
 ecco_start_time = np.datetime64('1992-01-01T12:00:00')
 
 # hack to ensure that time bounds and time use same 'encoding' in xarray
-time_encoding_start = 'hours since 1992-01-01 00:00:00'
+time_encoding_start = 'hours since 1992-01-01 12:00:00'
 
 
 ## OUTPUT DIRECTORY
-output_dir = Path('/home/ifenty/tmp/v4r4_nc_output_20201019')
+output_dir = Path('/home/ifenty/tmp/v4r4_nc_output_20201020_latlon')
 
 
 ## ECCO FIELD INPUT DIRECTORY 
