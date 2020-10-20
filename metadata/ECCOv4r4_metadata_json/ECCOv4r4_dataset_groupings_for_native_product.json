@@ -1,49 +1,49 @@
 [
    {
     "name" : "sea surface height",
-    "fields" : "SSH, SSHIBC, SSHNOIBC",
-    "product": "latlon",
-    "dataset_description" : "dynamic sea surface height",
+    "fields" : "SSH, SSHIBC, SSHNOIBC, ETAN",
+    "product": "native",
+    "dataset_description" : "dynamic sea surface height and model sea level anomaly",
     "filename" : "SEA_SURFACE_HEIGHT",
     "dimension" : "2D"
    },
    {
     "name": "ocean bottom pressure",
-    "fields": "OBP, OBPGMAP",
-    "product": "latlon",
-    "dataset_description" : "ocean bottom pressure",
+    "fields": "OBP, OBPGMAP, PHIBOT",
+    "product": "native",
+    "dataset_description" : "ocean bottom pressure and model hydrostatic ocean bottom pressure anomaly",
     "filename" : "OCEAN_BOTTOM_PRESSURE",
     "dimension" : "2D"
    },
    {
     "name": "temperature and salinity",
     "fields": "THETA, SALT",
-    "product": "latlon",
+    "product": "native",
     "dataset_description" : "ocean potential temperature and salinity",
     "filename" : "OCEAN_TEMPERATURE_SALINITY",
     "dimension" : "3D"
    },
    {
     "name": "ocean density, stratification, and hydrostatic pressure",
-    "fields": "RHOAnoma, DRHODR, PHIHYD",
-    "product": "latlon",
+    "fields": "RHOAnoma, DRHODR, PHIHYD, PHIHYDcR",
+    "product": "native",
     "dataset_description" : "ocean density, stratification, and hydrostatic pressure",
     "filename" : "OCEAN_DENS_STRAT_PRESS",
     "dimension" : "3D"
    },
    {
     "name": "ocean velocity",
-    "fields": "EVEL, NVEL, WVELMASS",
-    "product": "latlon",
-    "dataset_description" : "ocean velocitiy",
+    "fields": "UVEL, VVEL, WVELMASS",
+    "product": "native",
+    "dataset_description" : "ocean velocity",
     "variable_rename" : "WVELMASS:WVEL",
     "filename" : "OCEAN_VELOCITY",
     "dimension" : "3D"
    },
    {
     "name": "Gent-McWilliams ocean bolus velocity",
-    "fields": "EVELSTAR, NVELSTAR, WVELSTAR",
-    "product": "latlon",
+    "fields": "UVELSTAR, VVELSTAR, WVELSTAR",
+    "product": "native",
     "dataset_description" : "Gent-McWilliams bolus velocity",
     "filename" : "OCEAN_BOLUS_VELOCITY",
     "dimension" : "3D"
@@ -51,23 +51,23 @@
    {
     "name": "ocean and sea-ice surface freshwater fluxes",
     "fields": "EXFpreci, EXFevap, EXFroff, SIsnPrcp, EXFempmr, oceFWflx, SIatmFW, SFLUX, SIacSubl, SIrsSubl, SIfwThru",
-    "product": "latlon",
+    "product": "native",
     "dataset_description" : "ocean and sea-ice surface freshwater fluxes",
     "filename" : "OCEAN_AND_ICE_SURFACE_FW_FLUX",
     "dimension" : "2D"
    },
    {
     "name": "ocean and sea-ice surface heat fluxes",
-    "fields": "EXFhl,   EXFhs,   EXFlwdn, EXFswdn,  EXFqnet,   oceQnet, SIatmQnt, TFLUX, EXFswnet, EXFlwnet, oceQsw, SIaaflux",
-    "product": "latlon",
+    "fields": "EXFhl,   EXFhs, EXFlwdn, EXFswdn,  EXFqnet, oceQnet, SIatmQnt, TFLUX, EXFswnet, EXFlwnet, oceQsw, SIaaflux",
+    "product": "native",
     "dataset_description" : "ocean and sea-ice surface heat fluxes",
     "filename" : "OCEAN_AND_ICE_SURFACE_HEAT_FLUX",
     "dimension" : "2D"
    },
    {
     "name": "atmosphere surface temperature, humidity, wind, and pressure",
-    "fields": "EXFatemp, EXFaqh, EXFewind, EXFnwind, EXFwspee, EXFpress",
-    "product": "latlon",
+    "fields": "EXFatemp, EXFaqh, EXFuwind, EXFvwind, EXFwspee, EXFpress",
+    "product": "native",
     "dataset_description" : "atmosphere surface temperature, humidity, wind, and pressure",
     "filename" : "ATM_SURFACE_TEMP_HUM_WIND_PRES",
     "dimension" : "2D"
@@ -75,7 +75,7 @@
    {
     "name" : "ocean mixed layer depth",
     "fields" : "MXLDEPTH",
-    "product": "latlon",
+    "product": "native",
     "dataset_description" : "ocean mixed layer depth",
     "filename" : "OCEAN_MIXED_LAYER_DEPTH",
     "dimension" : "2D"
@@ -83,25 +83,65 @@
    {
     "name": "sea-ice and snow concentration, thickness, and pressure loading",
     "fields":"SIarea, SIheff, SIhsnow, sIceLoad",
-    "product": "latlon",
+    "product": "native",
     "dataset_description" : "sea-ice and snow concentration, thickness, and pressure loading",
     "filename" : "SEA_ICE_CONC_THICKNESS",
     "dimension" : "2D"
    },
    {
     "name": "sea-ice velocity",
-    "fields":"SIeice, SInice",
-    "product": "latlon",
+    "fields":"SIuice, SIvice",
+    "product": "native",
     "dataset_description" : "sea-ice velocity",
     "filename" : "SEA_ICE_VELOCITY",
     "dimension" : "2D"
    },
    {
     "name" : "ocean and sea-ice surface stress",
-    "fields" : "EXFtaue, EXFtaun, oceTAUE, oceTAUN",
-    "product": "latlon",
+    "fields" : "EXFtaux, EXFtauy, oceTAUX, oceTAUY",
+    "product": "native",
     "dataset_description" : "ocean and sea-ice surface stress",
     "filename" : "OCEAN_AND_ICE_SURFACE_STRESS",
     "dimension" : "2D"
+   },
+   {
+    "name": "sea-ice and snow horizontal volume fluxes",
+    "fields":"ADVxHEFF, ADVyHEFF, ADVxSNOW , ADVySNOW, DFxESNOW, DFyEHEFF, DFxEHEFF, DFyESNOW",
+    "product": "native",
+    "dataset_description" : "sea-ice and snow horizontal volume fluxes",
+    "filename" : "SEA_ICE_VOLUME_FLUX",
+    "dimension" : "2D"
+   },
+   {
+    "name": "Gent-McWilliams bolus transport streamfunction",
+    "fields": "GM_PsiX, GM_PsiY",
+    "product": "native",
+    "dataset_description" : "Gent-McWilliams bolus transport streamfunction",
+    "filename" : "OCEAN_BOLUS_TRANS_STREAMFUNCTION",
+    "dimension" : "3D"
+   },   
+   {
+    "name": "ocean velocity weighted by time-varying layer fraction",
+    "fields": "UVELMASS, VVELMASS, WVELMASS",
+    "product": "native",
+    "dataset_description" : "ocean velocity weighted by time-varying layer fraction",
+    "filename" : "OCEAN_LAYER_WEIGHTED_VELOCITY",
+    "dimension" : "3D"
+   },   
+   {
+    "name": "ocean three-dimensional potential temperature fluxes",
+    "fields":"ADVx_TH, ADVy_TH, DFrE_TH, DFyE_TH, ADVr_TH, DFxE_TH, DFrI_TH",
+    "product": "native",
+    "dataset_description" : "ocean three-dimensional potential temperature fluxes",
+    "filename" : "OCEAN_3D_TEMPERATURE_FLUX",
+    "dimension" : "3D"
+   },
+   {
+    "name": "ocean three-dimensional salinity fluxes",
+    "fields":"ADVx_SLT, ADVy_SLT, DFrE_SLT, DFyE_SLT, ADVr_SLT, DFxE_SLT, DFrI_SLT",
+    "product": "native",
+    "dataset_description" : "ocean three-dimensional salinity fluxes",
+    "filename" : "OCEAN_3D_SALINITY_FLUX",
+    "dimension" : "3D"
    }
 ]

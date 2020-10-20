@@ -6,8 +6,9 @@
       "comments_1": "Vertical advective flux of salinity (SALT) in the +z direction through the top 'w' face of the tracer cell on the native model grid",
       "comments_2": "Note: in the Arakawa-C grid, vertical flux quantities are staggered relative to the tracer cells with indexing such that +ADVr_SLT(i,j,k_l) corresponds to upward +z fluxes through the top 'w' face of the tracer cell at (i,j,k)",
       "direction": ">0 decreases salinity (SALT)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS;ADVECTION; SALT TRANSPORT",
+      "GCMD_keywords": "EARTH SCIENCE > OCEANS > SALINITY/DENSITY > SALT TRANSPORT",
       "grid_dimension":"3D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -17,8 +18,9 @@
       "comments_1": "Vertical advective flux of potential temperature (THETA) in the +z direction through the top 'w' face of the tracer cell on the native model grid",
       "comments_2": "Note: in the Arakawa-C grid, vertical flux quantities are staggered relative to the tracer cells with indexing such that +ADVr_TH(i,j,k_l) corresponds to upward +z fluxes through the top 'w' face of the tracer cell at (i,j,k)",
       "direction": ">0 decreases potential temperature (THETA)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS;ADVECTION; OCEAN HEAT BUDGET; HEAT FLUX",
+      "GCMD_keywords": "EARTH SCIENCE > OCEANS > OCEAN HEAT BUDGET > HEAT FLUX",
       "grid_dimension":"3D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -28,8 +30,9 @@
       "comments_1": "Lateral advective flux of salinity (SALT) in the +x direction through the 'u' face of the tracer cell on the native model grid",
       "comments_2": "Note: in the Arakawa-C grid, horizontal flux quantities are staggered relative to the tracer cells with indexing such that +ADVx_SLT(i_g,j,k) corresponds to +x fluxes through the 'u' face of the tracer cell at (i,j,k).  Also, the model +x direction does not necessarily correspond to the geographical east-west direction because the x and y axes of the model's curvilinear lat-lon-cap (llc) grid have arbitrary orientations which vary within and across tiles.",
       "direction": ">0 increases salinity (SALT)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS;ADVECTION; SALT TRANSPORT",
+      "GCMD_keywords": "EARTH SCIENCE > OCEANS > SALINITY/DENSITY > SALT TRANSPORT",
       "grid_dimension":"3D",
+      "grid_location": "u",
       "coverage_content_type": "modelResult"
    },
    {
@@ -39,8 +42,9 @@
       "comments_1": "Lateral advective flux of potential temperature (THETA) in the +x direction through the 'u' face of the tracer cell on the native model grid",
       "comments_2": "Note: in the Arakawa-C grid, horizontal flux quantities are staggered relative to the tracer cells with indexing such that +ADVx_TH(i_g,j,k) corresponds to +x fluxes through the 'u' face of the tracer cell at (i,j,k).  Also, the model +x direction does not necessarily correspond to the geographical east-west direction because the x and y axes of the model's lat-lon-cap (llc) curvilinear lat-lon-cap (llc) grid have arbitrary orientations which vary within and across tiles.",
       "direction": ">0 increases potential temperature (THETA)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS;ADVECTION; OCEAN HEAT BUDGET; HEAT FLUX",
+      "GCMD_keywords": "EARTH SCIENCE > OCEANS > OCEAN HEAT BUDGET > HEAT FLUX",
       "grid_dimension":"3D",
+      "grid_location": "u",
       "coverage_content_type": "modelResult"
    },
    {
@@ -50,8 +54,9 @@
       "comments_1": "Lateral advective flux of grid cell mean sea-ice thickness (HEFF) in the +x direction through the 'u' face of the tracer cell on the native model grid",
       "comments_2": "Note: in the Arakawa-C grid, horizontal flux quantities are staggered relative to the tracer cells with indexing such that +ADVxHEFF(i_g,j) corresponds to +x fluxes through the 'u' face of the tracer cell at (i,j,k=0). Also, the model +x direction does not necessarily correspond to the geographical east-west direction because the x and y axes of the model's curvilinear lat-lon-cap (llc) grid have arbitrary orientations which vary within and across tiles.",
       "direction": ">0 increases mean sea-ice thickness (HEFF)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; SEA ICE; SNOW/ICE",
+      "GCMD_keywords" : "EARTH SCIENCE > CRYOSPHERE > SEA ICE > SEA ICE MOTION",
       "grid_dimension":"3D",
+      "grid_location": "u",
       "coverage_content_type": "modelResult"
    },
    {
@@ -61,8 +66,9 @@
       "comments_1": "Lateral advective flux of grid cell mean snow thickness (HSNOW) in the +x direction through the 'u' face of the tracer cell on the native model grid",
       "comments_2": "Note: in the Arakawa-C grid, horizontal flux quantities are staggered relative to the tracer cells with indexing such that +ADVxSNOW(i_g,j) corresponds to +x fluxes through the 'u' face of the tracer cell at (i,j,k=0).  Also, the model +x direction does not necessarily correspond to the geographical east-west direction because the x and y axes of the model's curvilinear lat-lon-cap (llc)  grid have arbitrary orientations which vary within and across tiles.",
       "direction": ">0 increases mean snow thickness (HSNOW)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; SEA ICE; SNOW/ICE",
+      "GCMD_keywords" : "EARTH SCIENCE > CRYOSPHERE > SEA ICE > SEA ICE MOTION",
       "grid_dimension":"3D",
+      "grid_location": "u",
       "coverage_content_type": "modelResult"
    },
    {
@@ -72,7 +78,7 @@
       "comments_1": "Lateral advective flux of salinity (SALT) in the +y direction through the 'v' face of the tracer cell on the native model grid",
       "comments_2": "Note: in the Arakawa-C grid, horizontal flux quantities are staggered relative to the tracer cells with indexing such that +ADVy_SLT(i,j_g,k) corresponds to +y fluxes through the 'v' face of the tracer cell at (i,j,k). Also, the model +y direction does not necessarily correspond to the geographical north-south direction because the x and y axes of the model's curvilinear lat-lon-cap (llc) grid have arbitrary orientations which vary within and across tiles.",
       "direction": ">0 increases salinity (SALT)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS;ADVECTION; SALT TRANSPORT",
+      "GCMD_keywords": "EARTH SCIENCE > OCEANS > SALINITY/DENSITY > SALT TRANSPORT",
       "grid_dimension":"3D",
       "coverage_content_type": "modelResult"
    },
@@ -83,8 +89,9 @@
       "comments_1": "Lateral advective flux of potential temperature (THETA) in the +y direction through the 'v' face of the tracer cell on the native model grid",
       "comments_2": "Note: in the Arakawa-C grid, horizontal flux quantities are staggered relative to the tracer cells with indexing such that +ADVy_TH(i,j_g,k) corresponds to +y fluxes through the 'v' face of the tracer cell at (i,j,k).  Also, the model +y direction does not necessarily correspond to the geographical north-south direction because the x and y axes of the model's curvilinear lat-lon-cap (llc) grid have arbitrary orientations which vary within and across tiles.",
       "direction": ">0 increases potential temperature (THETA)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS;ADVECTION; OCEAN HEAT BUDGET; HEAT FLUX",
+      "GCMD_keywords": "EARTH SCIENCE > OCEANS > OCEAN HEAT BUDGET > HEAT FLUX",
       "grid_dimension":"3D",
+      "grid_location": "v",
       "coverage_content_type": "modelResult"
    },
    {
@@ -94,8 +101,9 @@
       "comments_1": "Lateral advective flux of grid cell mean sea-ice thickness (HEFF) in the +y direction through the 'v' face of the tracer cell on the native model grid",
       "comments_2": "Note: in the Arakawa-C grid, horizontal flux quantities are staggered relative to the tracer cells with indexing such that +ADVyHEFF(i,j_g) corresponds to +y fluxes through the 'v' face of the tracer cell at (i,j,k=0). Also, the model +y direction does not necessarily correspond to the geographical north-south direction because the x and y axes of the model's curvilinear lat-lon-cap (llc) grid have arbitrary orientations which vary within and across tiles.",
       "direction": ">0 increases mean sea-ice thickness (HEFF)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; SEA ICE; SNOW/ICE",
+      "GCMD_keywords" : "EARTH SCIENCE > CRYOSPHERE > SEA ICE > SEA ICE MOTION",
       "grid_dimension":"3D",
+      "grid_location": "v",
       "coverage_content_type": "modelResult"
    },
    {
@@ -105,8 +113,9 @@
       "comments_1": "Lateral advective flux of grid cell mean snow thickness (HSNOW) in the +y direction through the 'v' face of the tracer cell on the native model grid",
       "comments_2": "Note: in the Arakawa-C grid, horizontal flux quantities are staggered relative to the tracer cells with indexing such that +ADVySNOW(i,j_g) corresponds to +y fluxes through the 'v' face of the tracer cell at (i,j,k=0). Also, the model +y direction does not necessarily correspond to the geographical north-south direction because the x and y axes of the model's curvilinear lat-lon-cap (llc) grid have arbitrary orientations which vary within and across tiles.",
       "direction": ">0 increases mean snow thickness (HSNOW)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; SEA ICE; SNOW/ICE",
+      "GCMD_keywords" : "EARTH SCIENCE > CRYOSPHERE > SEA ICE > SEA ICE MOTION",
       "grid_dimension":"3D",
+      "grid_location": "v",
       "coverage_content_type": "modelResult"
    },
    {
@@ -116,8 +125,9 @@
       "comments_1": "Vertical explicit diffusive flux of salinity (SALT) in the +z direction through the top 'w' face of the tracer cell on the native model grid",
       "comments_2": "Note: in the Arakawa-C grid, vertical flux quantities are staggered relative to the tracer cells with indexing such that +DFrE_SLT(i,j,k_l) corresponds to upward +z fluxes through the top 'w' face of the tracer cell at (i,j,k)",
       "direction": ">0 decreases salinity (SALT)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS;DIFFUSION; SALT TRANSPORT",
+      "GCMD_keywords": "EARTH SCIENCE > OCEANS > SALINITY/DENSITY > SALT TRANSPORT",
       "grid_dimension":"3D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -127,8 +137,9 @@
       "comments_1": "Vertical explicit diffusive flux of potential temperature (THETA) in the +z direction through the top 'w' face of the tracer cell on the native model grid",
       "comments_2": "Note: in the Arakawa-C grid, vertical flux quantities are staggered relative to the tracer cells with indexing such that +DFrE_TH(i,j,k_l) corresponds to upward +z fluxes through the top 'w' face of the tracer cell at (i,j,k)",
       "direction": ">0 decreases potential temperature (THETA)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS;DIFFUSION; OCEAN HEAT BUDGET; HEAT FLUX",
+      "GCMD_keywords": "EARTH SCIENCE > OCEANS > OCEAN HEAT BUDGET > HEAT FLUX",
       "grid_dimension":"3D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -138,8 +149,9 @@
       "comments_1": "Vertical implicit diffusive flux of salinity (SALT) in the +z direction through the top 'w' face of the tracer cell on the native model grid",
       "comments_2": "Note: in the Arakawa-C grid, vertical flux quantities are staggered relative to the tracer cells with indexing such that +DFrI_SLT(i,j,k_l) corresponds to upward +z fluxes through the top face 'w' of the tracer cell at (i,j,k)",
       "direction": ">0 decreases salinity (SALT)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS;DIFFUSION; SALT TRANSPORT",
+      "GCMD_keywords": "EARTH SCIENCE > OCEANS > SALINITY/DENSITY > SALT TRANSPORT",
       "grid_dimension":"3D",
+      "grid_location": "c",      
       "coverage_content_type": "modelResult"
    },
    {
@@ -149,8 +161,9 @@
       "comments_1": "Vertical implicit diffusive flux of potential temperature (THETA) in the +z direction through the top 'w' face of the tracer cell on the native model grid",
       "comments_2": "Note: in the Arakawa-C grid, vertical flux quantities are staggered relative to the tracer cells with indexing such that +DFrI_TH(i,j,k_l) corresponds to upward +z fluxes through the top 'w' face of the tracer cell at (i,j,k)",
       "direction": ">0 decreases potential temperature (THETA)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS;DIFFUSION; OCEAN HEAT BUDGET; HEAT FLUX",
+      "GCMD_keywords": "EARTH SCIENCE > OCEANS > OCEAN HEAT BUDGET > HEAT FLUX",
       "grid_dimension":"3D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -160,8 +173,9 @@
       "comments_1": "Lateral diffusive flux of salinity (SALT) in the +x direction through the 'u' face of the tracer cell on the native model grid",
       "comments_2": "Note: in the Arakawa-C grid, horizontal flux quantities are staggered relative to the tracer cells with indexing such that +DFxE_SLT(i_g,j,k) corresponds to +x fluxes through the 'u' face of the tracer cell at (i,j,k).  Also, the model +x direction does not necessarily correspond to the geographical east-west direction because the x and y axes of the model's curvilinear lat-lon-cap (llc) grid have arbitrary orientations which vary within and across tiles.",
       "direction": ">0 increases salinity (SALT)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS;DIFFUSION; SALT TRANSPORT",
+      "GCMD_keywords": "EARTH SCIENCE > OCEANS > SALINITY/DENSITY > SALT TRANSPORT",
       "grid_dimension":"3D",
+      "grid_location": "u",
       "coverage_content_type": "modelResult"
    },
    {
@@ -171,8 +185,9 @@
       "comments_1": "Lateral diffusive flux of potential temperature (THETA) in the +x direction through the 'u' face of the tracer cell on the native model grid",
       "comments_2": "Note: in the Arakawa-C grid, horizontal flux quantities are staggered relative to the tracer cells with indexing such that +DFxE_TH(i_g,j,k) corresponds to +x fluxes through the 'u' face of the tracer cell at (i,j,k).  Also, the model +x direction does not necessarily correspond to the geographical east-west direction because the x and y axes of the model's curvilinear lat-lon-cap (llc) grid have arbitrary orientations which vary within and across tiles.",
       "direction": ">0 increases potential temperature (THETA)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS;DIFFUSION; OCEAN HEAT BUDGET; HEAT FLUX",
+      "GCMD_keywords": "EARTH SCIENCE > OCEANS > OCEAN HEAT BUDGET > HEAT FLUX",
       "grid_dimension":"3D",
+      "grid_location": "u",
       "coverage_content_type": "modelResult"
    },
    {
@@ -182,8 +197,9 @@
       "comments_1": "Lateral diffusive flux of grid cell mean sea-ice thickness (HEFF) in the +x direction through the 'u' face of the tracer cell on the native model grid",
       "comments_2": "Note: in the Arakawa-C grid, horizontal flux quantities are staggered relative to the tracer cells with indexing such that +DFxEHEFF(i_g,j) corresponds to +x fluxes through the 'u' face of the tracer cell at (i,j,k=0).  Also, the model +x direction does not necessarily correspond to the geographical east-west direction because the x and y axes of the model's curvilinear lat-lon-cap (llc)  grid have arbitrary orientations which vary within and across tiles.",
       "direction": ">0 increases mean sea-ice thickness (HEFF)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; SEA ICE; SNOW/ICE; DIFFUSION",
+      "GCMD_keywords" : "EARTH SCIENCE > CRYOSPHERE > SEA ICE > SEA ICE MOTION",
       "grid_dimension":"3D",
+      "grid_location": "u",
       "coverage_content_type": "modelResult"
    },
    {
@@ -193,8 +209,9 @@
       "comments_1": "Lateral diffusive flux of grid cell mean snow thickness (HSNOW) in the +x direction through the 'u' face of the tracer cell on the native model grid",
       "comments_2": "Note: in the Arakawa-C grid, horizontal flux quantities are staggered relative to the tracer cells with indexing such that +DFxESNOW(i_g,j) corresponds to +x fluxes through the 'u' face of the tracer cell at (i,j,k=0).   Also, the model +x direction does not necessarily correspond to the geographical east-west direction because the x and y axes of the model's curvilinear lat-lon-cap (llc)  grid have arbitrary orientations which vary within and across tiles.",
       "direction": ">0 increases mean snow thickness (HSNOW)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; SEA ICE; SNOW/ICE; DIFFUSION",
+      "GCMD_keywords" : "EARTH SCIENCE > CRYOSPHERE > SEA ICE > SEA ICE MOTION",
       "grid_dimension":"3D",
+      "grid_location": "u",
       "coverage_content_type": "modelResult"
    },
    {
@@ -204,8 +221,9 @@
       "comments_1": "Lateral diffusive flux of salinity (SALT) in the +y direction through the 'v' face of the tracer cell on the native model grid",
       "comments_2": "Note: in the Arakawa-C grid, horizontal flux quantities are staggered relative to the tracer cells with indexing such that +DFyE_SLT(i,j_g,k) corresponds to +y fluxes through the 'v' face of the tracer cell at (i,j,k).   Also, the model +y direction does not necessarily correspond to the geographical north-south direction because the x and y axes of the model's curvilinear lat-lon-cap (llc) grid have arbitrary orientations which vary within and across tiles.",
       "direction": ">0 increases salinity (SALT)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS;DIFFUSION; SALT TRANSPORT",
+      "GCMD_keywords": "EARTH SCIENCE > OCEANS > SALINITY/DENSITY > SALT TRANSPORT",
       "grid_dimension":"3D",
+      "grid_location": "v",
       "coverage_content_type": "modelResult"
    },
    {
@@ -215,8 +233,9 @@
       "comments_1": "Lateral diffusive flux of potential temperature (THETA) in the +y direction through the 'v' face of the tracer cell on the native model grid",
       "comments_2": "Note: in the Arakawa-C grid, horizontal flux quantities are staggered relative to the tracer cells with indexing such that +DFyE_TH(i,j_g,k) corresponds to +y fluxes through the 'v' face of the tracer cell at (i,j,k).  Also, the model +y direction does not necessarily correspond to the geographical north-south direction because the x and y axes of the model's curvilinear lat-lon-cap (llc) grid have arbitrary orientations which vary within and across tiles.",
       "direction": ">0 increases potential temperature (THETA)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS;DIFFUSION; OCEAN HEAT BUDGET; HEAT FLUX",
+      "GCMD_keywords": "EARTH SCIENCE > OCEANS > OCEAN HEAT BUDGET > HEAT FLUX",
       "grid_dimension":"3D",
+      "grid_location": "v",
       "coverage_content_type": "modelResult"
    },
    {
@@ -226,8 +245,9 @@
       "comments_1": "Lateral diffusive flux of grid cell mean sea-ice thickness (HEFF) in the +y direction through the 'v' face of the tracer cell on the native model grid",
       "comments_2": "Note: in the Arakawa-C grid, horizontal flux quantities are staggered relative to the tracer cells with indexing such that +DFyEHEFF(i,j_g) corresponds to +y fluxes through the 'v' face of the tracer cell at (i,j,k=0).  Also, the model +y direction does not necessarily correspond to the geographical north-south direction because the x and y axes of the model's curvilinear lat-lon-cap (llc) grid have arbitrary orientations which vary within and across tiles.",
       "direction": ">0 increases mean sea-ice thickness (HEFF)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; SEA ICE; SNOW/ICE; DIFFUSION",
+      "GCMD_keywords" : "EARTH SCIENCE > CRYOSPHERE > SEA ICE > SEA ICE MOTION",
       "grid_dimension":"3D",
+      "grid_location": "v",
       "coverage_content_type": "modelResult"
    },
    {
@@ -237,8 +257,9 @@
       "comments_1": "Lateral diffusive flux of grid cell mean snow thickness (HSNOW) in the +y direction through the 'v' face of the tracer cell on the native model grid",
       "comments_2": "Note: in the Arakawa-C grid, horizontal flux quantities are staggered relative to the tracer cells with indexing such that +DFyESNOW(i,j_g,k) corresponds to +y fluxes through the 'v' face of the tracer cell at (i,j,k=0).  Also, the model +y direction does not necessarily correspond to the geographical north-south direction because the x and y axes of the model's curvilinear lat-lon-cap (llc) grid have arbitrary orientations which vary within and across tiles.",
       "direction": ">0 increases mean snow thickness (HSNOW)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; SEA ICE; SNOW/ICE; DIFFUSION",
+      "GCMD_keywords" : "EARTH SCIENCE > CRYOSPHERE > SEA ICE > SEA ICE MOTION",
       "grid_dimension":"3D",
+      "grid_location": "v",
       "coverage_content_type": "modelResult"
    },
    {
@@ -247,9 +268,10 @@
       "units": "kg m-3 m-1",
       "comments_1": "Density stratification: d(sigma) d z-1",
       "comments_2": "Note: density computations are done with in-situ density.  The vertical derivatives of in-situ density and locally-referenced potential density are identical  The equation of state is a modified UNESCO formula by Jackett and McDougall (1995), which uses the model variable potential temperature as input assuming a horizontally and temporally constant pressure of $p_0=-g \rho_{0} z$.",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; SALINITY/DENSITY",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > SALINITY/DENSITY, EARTH SCIENCE > OCEANS > SALINITY/DENSITY > DENSITY",
       "internal note": "is stratification calculated on z* or z coordinates?",
       "grid_dimension":"3D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -258,8 +280,9 @@
       "units": "m",
       "comments_1": "Model sea level anomaly WITHOUT corrections for global mean density (steric) changes, inverted barometer effect, or volume displacement due to submerged sea-ice and snow  ",
       "comments_2": "Note: ETAN should NOT be used for comparisons with altimetry data products because ETAN is NOT corrected for (a) spurious mass fluxes incurred by density changes in the Boussinesq volume-conserving model (Greatbatch correction, see sterGloH) nor (b) sea level displacement due to submerged sea-ice and snow (see sIceLoad).  These corrections ARE made for the variables SSH and SSHNOIBC.",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; SEA SURFACE HEIGHT; SEA SURFACE TOPOGRAPHY",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > SEA SURFACE TOPOGRAPHY > SEA SURFACE HEIGHT",
       "grid_dimension":"2D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -269,8 +292,9 @@
       "standard_name": "surface_specific_humidity",
       "comments_1": "Surface (2-m) specific humidity over open water",
       "comments_2": "Note: sum of ERA-Interim surface specific humidity and the control adjustment.",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; ATMOSPHERE;ATMOSPHERIC WATER VAPOR",
+      "GCMD_keywords" : "EARTH SCIENCE > ATMOSPHERE > ATMOSPHERIC WATER VAPOR > WATER VAPOR INDICATORS > HUMIDITY > SPECIFIC HUMIDITY",
       "grid_dimension":"2D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -280,8 +304,9 @@
       "standard_name": "air_temperature",
       "comments_1": "Surface (2-m) air temperature over open water",
       "comments_2": "Note: sum of ERA-Interim surface air temperature and the control adjustment.",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; ATMOSPHERE;ATMOSPHERIC TEMPERATURE",
+      "GCMD_keywords" : "EARTH SCIENCE > ATMOSPHERE > ATMOSPHERIC TEMPERATURE > SURFACE TEMPERATURE > AIR TEMPERATURE",
       "grid_dimension":"2D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -291,8 +316,9 @@
       "comments_1": "Net freshwater flux out of the liquid ocean from precipitation, evaporation, and runoff and excluding freshwater fluxes involving sea-ice and snow",
       "comments_2": "Note: calculated as EXFevap-EXFpreci-EXFroff.",
       "direction": ">0 increases salinity (SALT)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; ATMOSPHERE; EVAPORATION; FRESH WATER FLUX",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN CIRCULATION > FRESH WATER FLUX",
       "grid_dimension":"2D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -303,8 +329,9 @@
       "comments_1": "Open ocean evaporation",
       "comments_2": "Note: calculated using the bulk formula following Large and Yeager, 2004, NCAR/TN-460+STR.",
       "direction": ">0 increases salinity (SALT)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; ATMOSPHERE; EVAPORATION; FRESH WATER FLUX",
+      "GCMD_keywords" :" EARTH SCIENCE > ATMOSPHERE > ATMOSPHERIC WATER VAPOR > WATER VAPOR PROCESSES > EVAPORATION",
       "grid_dimension":"2D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -315,8 +342,9 @@
       "comments_1": "Open ocean latent heat flux",
       "comments_2": "Note: calculated from the bulk formula following Large and Yeager, 2004, NCAR/TN-460+STR.",
       "direction": ">0 increases potential temperature (THETA)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; ATMOSPHERE; OCEAN HEAT BUDGET; HEAT FLUX",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN HEAT BUDGET > EVAPORATION",
       "grid_dimension":"2D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -327,8 +355,9 @@
       "comments_1": "Open ocean sensible heat flux",
       "comments_2": "Note: calculated from the bulk formula following Large and Yeager, 2004, NCAR/TN-460+STR.",
       "direction": ">0 increases potential temperature (THETA)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; ATMOSPHERE; OCEAN HEAT BUDGET; HEAT FLUX",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN HEAT BUDGET > HEAT FLUX",
       "grid_dimension":"2D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -339,8 +368,9 @@
       "comments_1": "Downward longwave radiative flux",
       "comments_2": "Note: sum of ERA-Interim downward longwave radiation and the control adjustment.",
       "direction": ">0 increases potential temperature (THETA)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; ATMOSPHERE;ATMOSPHERIC RADIATION; HEAT FLUX; LONGWAVE RADIATION; RADIATIVE FORCING; RADIATIVE FLUX",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN HEAT BUDGET > LONGWAVE RADIATION",
       "grid_dimension":"2D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -351,8 +381,9 @@
       "comments_1": "Open ocean net upward longwave radiative flux",
       "comments_2": "Note: net longwave radiation over open water calculated from downward longave radiation over open water (EXFlwdn) and Stefan-Boltzman.",
       "direction": ">0 increases potential temperature (THETA)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; ATMOSPHERE;ATMOSPHERIC RADIATION; OCEAN HEAT BUDGET; HEAT FLUX; LONGWAVE RADIATION; OUTGOING LONGWAVE RADIATION; NET RADIATION; RADIATIVE FORCING; RADIATIVE FLUX",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN HEAT BUDGET > LONGWAVE RADIATION",
       "grid_dimension":"2D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -363,8 +394,9 @@
       "comments_1": "Precipitation rate",
       "comments_2": "Note: sum of ERA-Interim precipitation and the control adjustment.",
       "direction": ">0 increases salinity (SALT)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; ATMOSPHERE; FRESH WATER FLUX; PRECIPITATION; PRECIPITATION RATE; TOTAL SURFACE PRECIPITATION RATE",
+      "GCMD_keywords" : "EARTH SCIENCE > ATMOSPHERE > PRECIPITATION > PRECIPITATION RATE > SURFACE PRECIPITATION",
       "grid_dimension":"2D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -374,8 +406,9 @@
       "standard_name": "surface_air_pressure",
       "comments_1": "Atmospheric pressure field at sea level",
       "comments_2": "Note: ERA-Interim atmospheric pressure, with air tides removed by a 3-year least-squares fit. Not adjusted by the optimization.",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; ATMOSPHERE;ATMOSPHERIC PRESSURE; SURFACE PRESSURE",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN PRESSURE > SEA LEVEL PRESSURE",
       "grid_dimension":"2D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -385,7 +418,7 @@
       "comments_1": "Open ocean net heat flux (turbulent and radiative)",
       "comments_2": "Note: net upward heat flux over open water, calculated as EXFlwnet+EXFswnet-EXFlh-EXFhs.",
       "direction": ">0 increases potential temperature (THETA)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; ATMOSPHERE; OCEAN HEAT BUDGET; HEAT FLUX",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN HEAT BUDGET > HEAT FLUX",
       "grid_dimension":"2D",
       "coverage_content_type": "modelResult"
    },
@@ -397,8 +430,9 @@
       "comments_1": "River runoff freshwater flux",
       "comments_2": "Note: not adjusted by the optimization.",
       "direction": ">0 increases salinity (SALT)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; ATMOSPHERE",
+      "GCMD_keywords" : "EARTH SCIENCE > TERRESTRIAL HYDROSPHERE > SURFACE WATER > SURFACE WATER PROCESSES/MEASUREMENTS > RUNOFF > RUNOFF RATE",
       "grid_dimension":"2D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -409,7 +443,7 @@
       "comments_1": "Downward shortwave radiative flux",
       "comments_2": "Note: sum of ERA-Interim downward shortwave radiation and the control adjustment.",
       "direction": ">0 increases potential temperature (THETA)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; ATMOSPHERE;ATMOSPHERIC RADIATION; OCEAN HEAT BUDGET; HEAT FLUX; INCOMING SOLAR RADIATION; SHORTWAVE RADIATION; RADIATIVE FORCING; RADIATIVE FLUX",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN HEAT BUDGET > SHORTWAVE RADIATION",
       "grid_dimension":"2D",
       "coverage_content_type": "modelResult"
    },
@@ -421,8 +455,9 @@
       "comments_1": "Open ocean net shortwave radiative flux",
       "comments_2": "Note: net shortwave flux net shortwave radiation over open water calculated from downward longave shortwave over open water (EXFlwdn) and ocean surface albdeo.",
       "direction": ">0 increases potential temperature (THETA)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; ATMOSPHERE;ATMOSPHERIC RADIATION; OCEAN HEAT BUDGET; HEAT FLUX; INCOMING SOLAR RADIATION; NET RADIATION; SHORTWAVE RADIATION; RADIATIVE FORCING; RADIATIVE FLUX",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN HEAT BUDGET > SHORTWAVE RADIATION",
       "grid_dimension":"2D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -433,8 +468,9 @@
       "comments_1": "Wind stress in the +x direction at the tracer cell on the native model grid",
       "comments_2": "Note: EXFtaux is the stress applied to the ice-free ocean surface and sea-ice covered surface.   When sea-ice is present, the total stress applied to the ocean surface in the +x direction is NOT EXFtaux, but a combination of EXFtaux wind stress in the open water fraction and a stress from sea-ice in the ice-covered fraction (see oceTAUX).",
       "direction": " >0 increases horizontal velocity in the +x direction (UVEL)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; ATMOSPHERE; ATMOSPHERIC WINDS; SURFACE WINDS; OCEAN WINDS",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN WINDS > WIND STRESS",
       "grid_dimension":"2D",
+      "grid_location": "u",
       "coverage_content_type": "modelResult"
    },
    {
@@ -445,8 +481,9 @@
       "comments_1": "Wind stress in the +y direction at the tracer cell on the native model grid",
       "comments_2": "Note: EXFtaux is the stress applied to the ice-free ocean surface and sea-ice covered surface.   When sea-ice is present, the total stress applied to the ocean surface in the +y direction is NOT EXFtauy, but a combination of EXFtauy wind stress in the open water fraction and a stress from sea-ice in the ice-covered fraction (see oceTAUY).",
       "direction": " >0 increases horizontal velocity in the +y direction (VVEL)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; ATMOSPHERE; ATMOSPHERIC WINDS; SURFACE WINDS; OCEAN WINDS",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN WINDS > WIND STRESS",
       "grid_dimension":"2D",
+      "grid_location": "v",
       "coverage_content_type": "modelResult"
    },
    {
@@ -456,8 +493,9 @@
       "standard_name": "x_wind",
       "comments_1": "Wind speed at 10m in the +x direction at the tracer cell on the native model grid",
       "comments_2": "Note: ECCO v4r4 is forced with wind stress (see EXFtaux) not wind vector winds. EXFuwind is calculated by converting wind stress to vector wind using bulk formulae.",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; ATMOSPHERE;ATMOSPHERIC WINDS; WIND SPEED; U/V WIND COMPONENTS; SURFACE WINDS; OCEAN WINDS",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN WINDS > SURFACE WINDS",
       "grid_dimension":"2D",
+      "grid_location": "u",
       "coverage_content_type": "modelResult"
    },
    {
@@ -467,8 +505,9 @@
       "standard_name": "y_wind",
       "comments_1": "Wind speed at 10m in the +y direction at the tracer cell on the native model grid",
       "comments_2": "Note: ECCO v4r4 is forced with wind stress (see EXFtauy) not wind vector winds. EXFvwind is calculated by converting wind stress to vector wind using bulk formulae.",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; ATMOSPHERE;ATMOSPHERIC WINDS; WIND SPEED; U/V WIND COMPONENTS; SURFACE WINDS; OCEAN WINDS",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN WINDS > SURFACE WINDS",
       "grid_dimension":"2D",
+      "grid_location": "v",
       "coverage_content_type": "modelResult"
    },
    {
@@ -478,35 +517,9 @@
       "standard_name": "wind_speed",
       "comments_1": "10-m wind speed magnitude (>= 0 ) over open water.",
       "comments_2": "Note: not adjusted by the optimization.",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; ATMOSPHERE;ATMOSPHERIC WINDS; WIND SPEED",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN WINDS > SURFACE WINDS, EARTH SCIENCE > ATMOSPHERE > ATMOSPHERIC WINDS > SURFACE WINDS > WIND SPEED",
       "grid_dimension":"2D",
-      "coverage_content_type": "modelResult"
-   },
-   {
-      "name": "global_mean_barystatic_sea_level_anomaly",
-      "long_name": "Global mean barystatic sea level anomaly",
-      "units": "m",
-      "comments_1": "Global mean barystatic sea level anomaly due to changes in total ocean mass",
-      "comments_2": "Note: ECCOv4 uses a volume-conserving Boussinesq formulation of the MITgcm.  Because volume (and not mass) is conserved in Boussinesq formulations, seawater density changes by buoyancy fluxes (e.g., surface heating/cooling) do not change model sea level anomaly (ETAN) and therefore induce a spurious change in model ocean bottom pressure (PHIBOT) via \"virtual mass fluxes\". The \"Greatbatch correction\" is a time varying, globally-uniform correction to ocean volume due to changes in global mean density.  This correction is used to calculate dynamic sea level (SSH) and ocean bottom pressure (OBP).  Importantly, there is no dynamical significance to the Greatbach correction but it is required to account for steric changes in global sea level. See Greatbatch, 1994. J. of Geophys. Res. Oceans, https://doi.org/10.1029/94JC00847",
-      "grid_dimension":"1D",
-      "coverage_content_type": "modelResult"
-   },
-   {
-      "name": "global_mean_sea_level_anomaly",
-      "long_name": "Global mean sea level anomaly",
-      "units": "m",
-      "comments_1": "Global mean sea level anomaly",
-      "comments_2": "Note: ECCOv4 uses a volume-conserving Boussinesq formulation of the MITgcm.  Because volume (and not mass) is conserved in Boussinesq formulations, seawater density changes by buoyancy fluxes (e.g., surface heating/cooling) do not change model sea level anomaly (ETAN) and therefore induce a spurious change in model ocean bottom pressure (PHIBOT) via \"virtual mass fluxes\". The \"Greatbatch correction\" is a time varying, globally-uniform correction to ocean volume due to changes in global mean density.  This correction is used to calculate dynamic sea level (SSH) and ocean bottom pressure (OBP).  Importantly, there is  no dynamical significance to the Greatbach correction but it is required to account for steric changes in global sea level.  See Greatbatch, 1994. J. of Geophys. Res. Oceans, https://doi.org/10.1029/94JC00847",
-      "grid_dimension":"1D",
-      "coverage_content_type": "modelResult"
-   },
-   {
-      "name": "global_mean_steric_sea_level_anomaly",
-      "long_name": "Global mean steric sea level anomaly",
-      "units": "m",
-      "comments_1": "Steric sea level anomaly associated with seawater expansion/contraction due to density changes",
-      "comments_2": "Note: ECCOv4 uses a volume-conserving Boussinesq formulation of the MITgcm.  Because volume (and not mass) is conserved in Boussinesq formulations, seawater density changes by buoyancy fluxes (e.g., surface heating/cooling) do not change model sea level anomaly (ETAN) and therefore induce a spurious change in model ocean bottom pressure (PHIBOT) via \"virtual mass fluxes\". The \"Greatbatch correction\" is a time varying, globally-uniform correction to ocean volume due to changes in global mean density.  This correction is used to calculate dynamic sea level (SSH) and ocean bottom pressure (OBP).  Importantly, there is  no dynamical significance to the Greatbach correction but it is required to account for steric changes in global sea level.  See Greatbatch, 1994. J. of Geophys. Res. Oceans, https://doi.org/10.1029/94JC00847",
-      "grid_dimension":"1D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -515,8 +528,9 @@
       "units": "m2 s-1",
       "comments_1": "Gent-Mcwilliams bolus transport streamfunction 'u' component",
       "comments_2": "any comments welcome",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; ADVECTION; DIFFUSION",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN CIRCULATION",
       "grid_dimension":"3D",
+      "grid_location": "u",
       "coverage_content_type": "modelResult"
    },
    {
@@ -525,8 +539,9 @@
       "units": "m2 s-1",
       "comments_1": "Gent-Mcwilliams bolus transport streamfunction 'v' component",
       "comments_2": "any comments welcome",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; ADVECTION; DIFFUSION",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN CIRCULATION",
       "grid_dimension":"3D",
+      "grid_location": "v",
       "coverage_content_type": "modelResult"
    },
    {
@@ -536,8 +551,9 @@
       "standard_name": "ocean_mixed_layer_thickness",
       "comments_1": "Mixed-layer depth as determined by the depth where waters are first 0.8 degrees Celsius colder than the surface. See Kara et al. (JGR, 2000). ",
       "comments_2": "Note: the Kara et al. criterion may not be appropriate for some applications.  If needed, mixed layer depth can be calculated using different criteria. See vertical density stratification (DRHODR) and density anomaly (RHOAnoma).",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; OCEAN MIXED LAYER",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN CIRCULATION > OCEAN MIXED LAYER",
       "grid_dimension":"2D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -547,8 +563,9 @@
       "standard_name": "sea_water_pressure_due_to_sea_water",
       "comments_1": "Ocean bottom pressure excluding the contribution from global mean atmospheric pressure, suitable for comparisons with GRACE data",
       "comments_2": "OBP is model ocean bottom pressure in equivalent sea level in meters, calculated by dividing PHIBOT by gravity (9.81 m s-2), and correcting for a) spurious mass fluxes incurred by density changes in the Boussinesq volume-conserving model  (Greatbatch correction) (see sterGloH) and b) global mean atmospheric pressure variations. Use OBP for comparisons with ocean bottom pressure data products that have been corrected for global mean atmospheric pressure variations.  GRACE data typically ARE corrected for global mean atmospheric pressure variations.  In contrast, ocean bottom pressure gauge data typically ARE NOT corrected for global mean atmospheric pressure variations.",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; OCEAN PRESSURE; WATER PRESSURE",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN PRESSURE, EARTH SCIENCE > OCEANS > OCEAN PRESSURE > WATER PRESSURE",
       "grid_dimension":"2D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -558,8 +575,9 @@
       "standard_name": "sea_water_pressure_at_sea_floor",
       "comments_1": "Ocean bottom pressure including the contribution from global mean atmospheric pressure, suitable for comparisons with ocean bottom pressure gauge data",
       "comments_2": "OBPGMAP is model ocean bottom pressure in equivalent sea level in meters, calculated by dividing PHIBOT by gravity (9.81 m s-2) and correcting for spurious mass fluxes incurred by density changes in the Boussinesq volume-conserving model (Greatbatch correction) (see sterGloH).  Use OBPGMAP for comparisons with ocean bottom pressure data products that have NOT been corrected for global mean atmospheric pressure variations.  GRACE data typically ARE corrected for global mean atmospheric pressure variations.  In contrast, ocean bottom pressure gauge data typically ARE NOT corrected for global mean atmospheric pressure variations.",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; OCEAN PRESSURE; WATER PRESSURE",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN PRESSURE, EARTH SCIENCE > OCEANS > OCEAN PRESSURE > WATER PRESSURE",
       "grid_dimension":"2D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -570,8 +588,9 @@
       "comments_1": "Net freshwater flux into the ocean including contributions from runoff, evaporation, precipitation, and mass exchange with sea-ice due to melting and freezing and snow melting",
       "comments_2": "Note: 'oceFWflx' does NOT include freshwater fluxes between the atmosphere and sea-ice and snow. The variable 'SIatmFW' accounts for freshwater fluxes out of the combined ocean+sea-ice+snow reservoir.",
       "direction": ">0 decreases salinity (SALT)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; ATMOSPHERE; FRESH WATER FLUX",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN CIRCULATION > FRESH WATER FLUX",
       "grid_dimension":"2D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -581,8 +600,9 @@
       "comments_1": "Net heat flux across the ocean surface from all processes: air-sea turbulent and radiative fluxes and turbulent and conductive fluxes between the ocean and sea-ice and snow.",
       "comments_2": "Note: 'oceQnet' does not include the change in ocean heat content due to changing ocean ocean mass ('oceFWflx'). Mass fluxes from evaporation, precipitation, and runoff ('EXFempmr') happen at the same temperature as the ocean surface temperature. Consequently, EmPmR does not change ocean surface temperature. Conversely, mass fluxes due to sea-ice thickening/thinning and snow melt in the model are assumed to happen at a fixed 0C. Consequently, mass fluxes due to phase changes between seawater and sea-ice and snow induce a heat flux when the ocean surface temperaure is not 0C. The variable 'TFLUX' does include the change in ocean heat content due to changing ocean mass.",
       "direction": ">0 increases potential temperature (THETA)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; ATMOSPHERE; OCEAN HEAT BUDGET; HEAT FLUX",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN HEAT BUDGET > HEAT FLUX",
       "grid_dimension":"2D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -592,8 +612,9 @@
       "comments_1": "Net shortwave radiative flux across the ocean surface",
       "comments_2": "Note: Shortwave radiation penetrates below the surface grid cell.",
       "direction": ">0 increases potential temperature (THETA)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; ATMOSPHERE;ATMOSPHERIC RADIATION; OCEAN HEAT BUDGET; HEAT FLUX; INCOMING SOLAR RADIATION; SHORTWAVE RADIATION; RADIATIVE FORCING; RADIATIVE FLUX",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN HEAT BUDGET > HEAT FLUX, EARTH SCIENCE > OCEANS > OCEAN HEAT BUDGET > SHORTWAVE RADIATION",
       "grid_dimension":"2D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -601,19 +622,21 @@
       "long_name": "Salt plume depth",
       "units": "m",
       "comments_1": "Depth of parameterized salt plumes formed due to brine rejection during sea-ice formation.",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS",
+      "GCMD_keywords" : "",
       "grid_dimension":"2D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
       "name": "oceSPflx",
       "long_name": "Net salt flux into the ocean due to brine rejection",
       "units": "g m-2 s-1",
-      "comments_1": "Net salt flux into the ocean due to brine rejection during sea-ice formation.  ",
+      "comments_1": "Net salt flux into the ocean due to brine rejection during sea-ice formation.",
       "comments_2": "Note: units are grams of salt per square meter per second , not salinity per square meter per second.",
       "direction": ">0 increases salinity (SALT)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; SALT TRANSPORT",
+      "GCMD_keywords": "EARTH SCIENCE > OCEANS > SALINITY/DENSITY > SALT TRANSPORT",
       "grid_dimension":"2D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -623,8 +646,9 @@
       "comments_1": "Salt tendency due to the vertical transport of salt in high-salinity brine plumes",
       "comments_2": "Note: units are grams of salt per square meter per second , not salinity per square meter per second.",
       "direction": ">0 increases salinity (SALT)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; SALT TRANSPORT",
+      "GCMD_keywords": "EARTH SCIENCE > OCEANS > SALINITY/DENSITY > SALT TRANSPORT",
       "grid_dimension":"2D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -635,8 +659,9 @@
       "comments_1": "Ocean surface stress due to wind and sea-ice in the +x direction centered over the 'u' side of the the native model grid",
       "comments_2": "Note: in the Arakawa-C grid, wind stress acts on horizontal velocities which are staggered relative to the tracer cells with indexing such that +oceTAUX(i_g,j) corresponds to +x momentum fluxes at 'u' edge of the tracer cell at (i,j,k=0).  Also, the model +x direction does not necessarily correspond to the geographical east-west direction because the x and y axes of the model's curvilinear lat-lon-cap (llc) grid have arbitrary orientations which vary within and across tiles.",
       "direction": " >0 increases horizontal velocity in the +x direction (UVEL)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; ATMOSPHERE; WIND STRESS; OCEAN WINDS",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN WINDS > WIND STRESS",
       "grid_dimension":"2D",
+      "grid_location": "u",
       "coverage_content_type": "modelResult"
    },
    {
@@ -647,8 +672,9 @@
       "comments_1": "Ocean surface stress due to wind and sea-ice in the +y direction centered over the 'v' side of the the native model grid",
       "comments_2": "Note: in the Arakawa-C grid, wind stress acts on horizontal velocities which are staggered relative to the tracer cells with indexing such that +oceTAUY(i_g,j) corresponds to +y momentum fluxes at 'v' edge of the tracer cell at (i,j,k=0).  Also, the model +y direction does not necessarily correspond to the geographical north-south direction because the x and y axes of the model's curvilinear lat-lon-cap (llc) grid have arbitrary orientations which vary within and across tiles.",
       "direction": " >0 increases horizontal velocity in the +y direction (VVEL)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; ATMOSPHERE; WIND STRESS; OCEAN WINDS",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN WINDS > WIND STRESS",
       "grid_dimension":"2D",
+      "grid_location": "v",
       "coverage_content_type": "modelResult"
    },
    {
@@ -657,8 +683,9 @@
       "units": "m2 s-2",
       "comments_1": "Anomaly of hydrostatic ocean bottom pressure normalized by a reference density (rhoConst) with respect to gH(t), where 'g' is acceleration due to gravity, 9.81 m s-2,  'H(t)' is model depth at time 't', and 'rhoConst' is 1029 kg m-3.",
       "comments_2": "Note: PHIBOT accounts for the time-varying change of grid cell thicknesses allowed by the z* coordinate system.  PHIBOT is NOT corrected for spurious mass fluxes incurred by density changes in the Boussinesq volume-conserving model (Greatbatch correction) (see sterGloH), and therefore should NOT be used for comparisons with ocean bottom pressure data. Instead, see OBPGMA and OBP. ",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; OCEAN PRESSURE; WATER PRESSURE",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN PRESSURE, EARTH SCIENCE > OCEANS > OCEAN PRESSURE > WATER PRESSURE",
       "grid_dimension":"2D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -667,8 +694,9 @@
       "units": "m2 s-2",
       "comments_1": "Anomaly of hydrostatic ocean pressure normalized by a reference density (rhoConst) with respect to gz*(k,t), where g is acceleration due to gravity, 9.81 m s-2,  z*(k,t) is model depth at level k and time t, and rhoConst is 1029 kg m-3.",
       "comments_2": "Note: also referred to in some contexts as hydrostatic pressure potential anomaly.  PHIHYD is calculated with respect to the model's time-varying grid cell thicknesses allowed by z* coordinate system. See PHIHYDcR for hydrostatic pressure potential anomaly calculated using time-invariant grid cell thicknesses. PHIHYD is NOT corrected for spurious mass fluxes incurred by density changes in the Boussinesq volume-conserving model (Greatbatch correction) (see sterGloH). ",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; OCEAN PRESSURE; WATER PRESSURE",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN PRESSURE, EARTH SCIENCE > OCEANS > OCEAN PRESSURE > WATER PRESSURE",
       "grid_dimension":"3D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -677,8 +705,9 @@
       "units": "m2 s-2",
       "comments_1": "Anomaly of hydrostatic ocean pressure normalized by a reference density (rhoConst) with respect to gz(t), where g is acceleration due to gravity, 9.81 m s-2,  z(k) is model constant depth at level k , and rhoConst is 1029 kg m-3.",
       "comments_2": "Note: PHIHYDcR is calculated with respect to the model's initial, time-invariant grid cell thicknesses.  See PHIHYD for hydrostatic pressure anomaly calculated using time-variable grid cell thicknesses allowed by the model's z* coordinate system.  PHIHYDcR is is NOT corrected for spurious mass fluxes incurred by density changes in the Boussinesq volume-conserving model (Greatbatch correction) (see sterGloH). ",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN PRESSURE, EARTH SCIENCE > OCEANS > OCEAN PRESSURE > WATER PRESSURE",
       "grid_dimension":"3D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -687,9 +716,10 @@
       "units": "kg m-3",
       "comments_1": "In-situ seawater density anomaly relative to the reference density, rhoConst, of 1029 kg m-3.",
       "comments_2": "", 
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; SALINITY/DENSITY",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > SALINITY/DENSITY, EARTH SCIENCE > OCEANS > SALINITY/DENSITY > DENSITY",
       "internal note": "INCLUDE HFACC FOR VOLUME MEAN CALCULATIONS",
       "grid_dimension":"3D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -697,11 +727,12 @@
       "long_name": "Salinity",
       "units": "0.001",
       "standard_name": "sea_water_salinity",
-      "comments_1": "Defined using CF convention \"Sea water salinity is the salt content of sea water, often on the Practical Salinity Scale of 1978. However, the unqualified term 'salinity' is generic and does not necessarily imply any particular method of calculation. The units of salinity are dimensionless and the units attribute should normally be given as 1e-3 or 0.001 i.e. parts per thousand.\" see  https://cfconventions.org/Data/cf-standard-names/73/build/cf-standard-name-table.html",
+      "comments_1": "Defined using CF convention 'Sea water salinity is the salt content of sea water, often on the Practical Salinity Scale of 1978. However, the unqualified term 'salinity' is generic and does not necessarily imply any particular method of calculation. The units of salinity are dimensionless and the units attribute should normally be given as 1e-3 or 0.001 i.e. parts per thousand.' see  https://cfconventions.org/Data/cf-standard-names/73/build/cf-standard-name-table.html",
       "comments_2": "",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; SALINITY; SALINITY/DENSITY",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > SALINITY/DENSITY > SALINITY",
       "internal note": "INCLUDE HFACC FOR VOLUME MEAN CALCULATIONS",
       "grid_dimension":"3D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -709,10 +740,11 @@
       "long_name": "Rate of change of total ocean salinity per m2 accounting for mass fluxes.",
       "units": "g m-2 s-1",
       "comments_1": "The rate of change of total ocean salinity due to freshwater fluxes across the liquid surface and the addition or removal of mass",
-      "comments_2": "Note:  the global area integral of 'SFLUX'  matches the time-derivative of total ocean salinity (psu s-1).  Unlike 'oceFWflx', 'SFLUX' includes the contribution to the total ocean salinity from changing ocean mass (e.g. from the addition or removal of freshwater in 'oceFWflx'). ",
+      "comments_2": "Note:  the global area integral of 'SFLUX'  matches the time-derivative of total ocean salinity (psu s-1). Unlike 'oceFWflx', 'SFLUX' includes the contribution to the total ocean salinity from changing ocean mass (e.g. from the addition or removal of freshwater in 'oceFWflx'). ",
       "direction": ">0 increases salinity (SALT)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; SALT TRANSPORT",
+      "GCMD_keywords": "",
       "grid_dimension":"2D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -723,8 +755,9 @@
       "comments_1": "Freshwater flux to the atmosphere due to sublimation-deposition of snow or ice",
       "comments_2": "Positive values imply sublimation from ice/snow to vapor, negative values imply deposition from atmospheric moisture", 
       "direction": ">0 decreases snow or sea-ice thickness (HSNOW or HEFF)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; SEA ICE; SNOW/ICE",
+      "GCMD_keywords": "EARTH SCIENCE > ATMOSPHERE > ATMOSPHERIC WATER VAPOR > WATER VAPOR PROCESSES > SUBLIMATION",
       "grid_dimension":"2D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -733,8 +766,8 @@
       "units": "1",
       "standard_name": "sea_ice_area_fraction",
       "comments_1": "Fraction of ocean grid cell covered with sea-ice [0 to 1]. CF Standard Name Table v73:  'Area fraction' is the fraction of a grid cell's horizontal area that has some characteristic of interest. It is evaluated as the area of interest divided by the grid cell area. It may be expressed as a fraction, a percentage, or any other dimensionless representation of a fraction. Sea ice area fraction is area of the sea surface occupied by sea ice. It is also called 'sea ice concentration'. 'Sea ice' means all ice floating in the sea which has formed from freezing sea water, rather than by other processes such as calving of land ice to form icebergs.  https://cfconventions.org/Data/cf-standard-names/73/build/cf-standard-name-table.html",
-      "comments_2": "Defined using CF Standard Name Table v73: \"Area fraction\" is the fraction of a grid cell's horizontal area that has some characteristic of interest. It is evaluated as the area of interest divided by the grid cell area. It may be expressed as a fraction, a percentage, or any other dimensionless representation of a fraction. Sea ice area fraction is area of the sea surface occupied by sea ice. It is also called 'sea ice concentration'. 'Sea ice' means all ice floating in the sea which has formed from freezing sea water and precipitation, rather than by other processes such as calving of land ice to form icebergs.  https://cfconventions.org/Data/cf-standard-names/73/build/cf-standard-name-table.html",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; SEA ICE; SNOW/ICE;CRYOSPHERIC INDICATORS; SEA ICE CONCENTRATION; ICE EDGES; ICE EXTENT",
+      "comments_2": "Defined using CF Standard Name Table v73: 'Area fraction' is the fraction of a grid cell's horizontal area that has some characteristic of interest. It is evaluated as the area of interest divided by the grid cell area. It may be expressed as a fraction, a percentage, or any other dimensionless representation of a fraction. Sea ice area fraction is area of the sea surface occupied by sea ice. It is also called 'sea ice concentration'. 'Sea ice' means all ice floating in the sea which has formed from freezing sea water and precipitation, rather than by other processes such as calving of land ice to form icebergs.  https://cfconventions.org/Data/cf-standard-names/73/build/cf-standard-name-table.html",
+      "GCMD_keywords" : "EARTH SCIENCE > CRYOSPHERE > SEA ICE > SEA ICE CONCENTRATION > ICE FRACTION, EARTH SCIENCE > CRYOSPHERE > SEA ICE > SEA ICE CONCENTRATION",
       "internal note": "1 is the CF convention's unit for dimensionless quantities",
       "grid_dimension":"2D",
       "coverage_content_type": "modelResult"
@@ -747,8 +780,9 @@
       "comments_1": "Net freshwater flux into the combined liquid ocean, sea-ice, and snow reservoirs from the atmosphere and runoff.",
       "comments_2": "Note: freshwater fluxes BETWEEN the liquid ocean and sea-ice or snow reservoirs do not contribute to SIatmFW.  SIatmFW counts all fluxes to/from the atmosphere that change the TOTAL freshwater stored in the combined liquid ocean, sea-ice, and snow reservoirs.",
       "direction": ">0 increases salinity (SALT)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; SEA ICE; SNOW/ICE; FRESH WATER FLUX",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN CIRCULATION > FRESH WATER FLUX",
       "grid_dimension":"2D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -759,7 +793,7 @@
       "comments_1": "Net heat flux to the atmosphere across open water and sea-ice or snow surfaces.",
       "comments_2": "Note: for sea-ice covered regions, positive 'SIatmQnt' may have no effect on ocean potential temperature. Does NOT include the contribution to the ocean heat content from changing mass (e.g. from 'oceFWflx'). 'TFLUX' includes the contribution to the ocean heat content from changing mass.",
       "direction": ">0 upward",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; SEA ICE; SNOW/ICE; HEAT FLUX",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN HEAT BUDGET > HEAT FLUX",
       "grid_dimension":"2D",
       "coverage_content_type": "modelResult"
    },
@@ -770,8 +804,9 @@
       "standard_name": "sea_ice_and_surface_snow_amount",
       "comments_1": "Area-averaged mass of sea-ice and snow in a model grid cell",
       "comments_2": "Note: sIceLoad is needed to correct model sea level anomaly, ETAN, to calculate dynamic sea surface height, SSH, and sea surface height without the inverted barometer (IB correction), SSHNOIBC.  In the model, sea-ice is treated as if they are floating above the sea surface. In a 1D sense,  sea-ice growth lowers ETAN while sea-ice melting raises ETAN.  The correction to ETAN is to account for the fact that in reality growing or melting sea-ice does not cause the sea level to change because of Archimedes’ principle.",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; SEA ICE; SNOW/ICE; OCEAN PRESSURE",
+      "GCMD_keywords" : "EARTH SCIENCE > CRYOSPHERE > SEA ICE > ICE DEPTH/THICKNESS, EARTH SCIENCE > CRYOSPHERE > SEA ICE > SNOW DEPTH",
       "grid_dimension":"2D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -781,8 +816,9 @@
       "standard_name": "sea_ice_thickness",
       "comments_1": "Sea-ice thickness averaged over the entire model grid cell, including open water where sea-ice thickness is zero",
       "comments_2": "Note: sea-ice thickness over the ICE-COVERED fraction of the grid cell is SIheff/SIarea",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; SEA ICE; SNOW/ICE; ICE DEPTH/THICKNESS",
+      "GCMD_keywords" : "EARTH SCIENCE > CRYOSPHERE > SEA ICE > ICE DEPTH/THICKNESS",
       "grid_dimension":"2D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -792,8 +828,9 @@
       "standard_name": "surface_snow_thickness",
       "comments_1": "Snow thickness averaged over the entire model grid cell, including open water where snow thickness is zero",
       "comments_2": "Note: snow thickness over the ICE-COVERED fraction of the grid cell is SIhsnow/SIarea",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; SEA ICE; SNOW/ICE; SNOW DEPTH",
+      "GCMD_keywords" : "EARTH SCIENCE > CRYOSPHERE > SEA ICE > SNOW DEPTH",
       "grid_dimension":"2D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -804,8 +841,9 @@
       "comments_1": "Snow precipitation rate over sea-ice, averaged over the entire model grid cell.   ",
       "comments_2": "",
       "direction": ">0 increases snow thickness (HSNOW)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; SEA ICE; SNOW/ICE; FRESH WATER FLUX; PRECIPITATION; PRECIPITATION RATE",
+      "GCMD_keywords" : "EARTH SCIENCE > ATMOSPHERE > PRECIPITATION > SOLID PRECIPITATION > SNOW",
       "grid_dimension":"2D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -815,8 +853,9 @@
       "standard_name": "sea_ice_x_velocity",
       "comments_1": "Horizontal sea-ice velocity in the +x direction at the 'u' face of the tracer cell on the native model grid",
       "comments_2": "Note: in the Arakawa-C grid, horizontal velocities are staggered relative to the tracer cells with indexing such that +SIuice(i_g,j) corresponds to +x fluxes through the 'u' face of the tracer cell at (i,j,k=0).  Also, the model +x direction does not necessarily correspond to the geographical east-west direction because the x and y axes of the model's curvilinear lat-lon-cap (llc) grid have arbitrary orientations which vary within and across tiles.",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; SEA ICE; SNOW/ICE; SEA ICE MOTION",
+      "GCMD_keywords" : "EARTH SCIENCE > CRYOSPHERE > SEA ICE > SEA ICE MOTION",
       "grid_dimension":"2D",
+      "grid_location": "u",
       "coverage_content_type": "modelResult"
    },
    {
@@ -826,8 +865,9 @@
       "standard_name": "sea_ice_y_velocity",
       "comments_1": "Horizontal sea-ice velocity in the +y direction at the 'v' face of the tracer cell on the native model grid",
       "comments_2": "Note: in the Arakawa-C grid, horizontal velocities are staggered relative to the tracer cells with indexing such that +SIvice(i,j_g) corresponds to +y fluxes through the 'v' face of the tracer cell at (i,j,k=0).  Also, the model +y direction does not necessarily correspond to the geographical north-south direction because the x and y axes of the model's curvilinear lat-lon-cap (llc) grid have arbitrary orientations which vary within and across tiles.",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; SEA ICE; SNOW/ICE; SEA ICE MOTION",
+      "GCMD_keywords" : "EARTH SCIENCE > CRYOSPHERE > SEA ICE > SEA ICE MOTION",
       "grid_dimension":"2D",
+      "grid_location": "v",
       "coverage_content_type": "modelResult"
    },
    {
@@ -837,18 +877,20 @@
       "standard_name": "sea_surface_height_above_geoid",
       "comments_1": "Dynamic sea surface height anomaly above the geoid, suitable for comparisons with altimetry sea surface height data products that apply the inverse barometer (IB) correction",
       "comments_2": "Note: SSH is calculated by correcting model sea level anomaly ETAN for three effects: a) spurious mass fluxes incurred by density changes in the Boussinesq volume-conserving model (Greatbatch correction) (see sterGloH), b) the inverted barometer (IB) effect (see SSHIBC) and c) upward sea level displacement due to submerged sea-ice and snow (see sIceLoad). SSH can be compared with the similarly-named SSH variable in previous ECCO products that did not include atmospheric pressure loading (e.g., Version 4 Release 3). Use SSHNOIBC for comparisons with altimetry data products that do NOT apply the IB correction.",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; SEA SURFACE HEIGHT; SEA SURFACE TOPOGRAPHY",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > SEA SURFACE TOPOGRAPHY > SEA SURFACE HEIGHT",
       "grid_dimension":"2D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
       "name": "SSHIBC",
       "long_name": "The inverted barometer (IB) correction to sea surface height due to atmospheric pressure loading",
       "units": "m",
-      "comments_1": "The inverted barometer (IB) correction to model sea level anomaly (ETAN) required to account for sea surface displacement by atmosphere pressure loading",
-      "comments_2": "Note: use SSH for model-data comparisons with altimetry data products that DO apply the IB correction and SSHNOIBC for comparisons with altimetry data products that do NOT apply the IB correction.",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; SEA SURFACE HEIGHT; SEA SURFACE TOPOGRAPHY",
+      "comments_1": "Not an SSH itself, but a correction to model sea level anomaly (ETAN) required to account for sea surface displacement by atmosphere pressure loading: SSH = SSHNOIBC + SSHIBC.",
+      "comments_2": "Note: Use SSH for model-data comparisons with altimetry data products that DO apply the IB correction and SSHNOIBC for comparisons with altimetry data products that do NOT apply the IB correction.",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > SEA SURFACE TOPOGRAPHY > SEA SURFACE HEIGHT",
       "grid_dimension":"2D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -857,8 +899,9 @@
       "units": "m",
       "comments_1": "Sea surface height anomaly above the geoid without the inverse barometer (IB) correction, suitable for comparisons with altimetry sea surface height data products that do NOT apply the inverse barometer (IB) correction",
       "comments_2": "Note: SSHNOIBC is calculated by correcting model sea level anomaly ETAN for two effects: a) spurious mass fluxes incurred by density changes in the Boussinesq volume-conserving model (Greatbatch correction) (see sterGloH), b) sea level displacement due to submerged sea-ice and snow (see sIceLoad). In ECCO Version 4 Release 4 the model is forced with atmospheric pressure loading. SSHNOIBC does not correct for the effect of atmosphere pressure loading on sea surface height (the so-called inverse barometer (IB) correction). Use SSH for comparisons with altimetry data products that DO apply the IB correction.",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; SEA SURFACE HEIGHT; SEA SURFACE TOPOGRAPHY",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > SEA SURFACE TOPOGRAPHY > SEA SURFACE HEIGHT",
       "grid_dimension":"2D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -868,8 +911,9 @@
       "comments_1": "The rate of change of ocean heat content due to heat fluxes across the liquid surface and the addition or removal of mass. ",
       "comments_2": "Note: the global area integral of 'TFLUX' and geothermal flux (geothermalFlux.bin) matches the time-derivative of ocean heat content (J/s). Unlike oceQnet, TFLUX includes the contribution to the ocean heat content from changing ocean mass (e.g. from oceFWflx).",
       "direction": ">0 increases potential temperature (THETA)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; OCEAN HEAT BUDGET; HEAT FLUX",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN HEAT BUDGET > HEAT FLUX",
       "grid_dimension":"2D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -879,9 +923,9 @@
       "standard_name": "sea_water_potential_temperature",
       "comments_1": "Sea water potential temperature is the temperature a parcel of sea water would have if moved adiabatically to sea level pressure.",
       "comments_2": "Note: the equation of state is a modified UNESCO formula by Jackett and McDougall (1995), which uses the model variable potential temperature as input assuming a horizontally and temporally constant pressure of $p_0=-g \rho_{0} z$.",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; WATER TEMPERATURE; SEA SURFACE TEMPERATURE; OCEAN TEMPERATURE; POTENTIAL TEMPERATURE",
-      "internal note": "INCLUDE HFACC FOR VOLUME MEAN CALCULATIONS",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN TEMPERATURE > POTENTIAL TEMPERATURE",
       "grid_dimension":"3D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -890,8 +934,9 @@
       "units": "m s-2",
       "comments_1": "Momentum tendency in the +x direction due to the hydrostatic pressure gradient at the 'u' face of the native model grid cell ",
       "comments_2": "Note: the model +x direction does not necessarily correspond to the geographical east-west direction because the x and y axes of the model's curvilinear lat-lon-cap (llc) grid have arbitrary orientations which vary within and across tiles.",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS",
+      "GCMD_keywords" : "",
       "grid_dimension":"3D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -902,21 +947,23 @@
       "comments_1": "Horizontal velocity in the +x direction at the 'u' face of the tracer cell on the native model grid",
       "comments_2": "Note: in the Arakawa-C grid, horizontal velocities are staggered relative to the tracer cells with indexing such that +UVEL(i_g,j,k) corresponds to +x fluxes through the 'u' face of the tracer cell at (i,j,k). Do NOT use UVEL for mass flux calculations because the model's grid cell thicknesses vary with time (z* coordinates); use UVELMASS instead.  Also, the model +x direction does not necessarily correspond to the geographical east-west direction because the x and y axes of the model's curvilinear lat-lon-cap (llc) grid have arbitrary orientations which vary within and across tiles. See EVEL and NVEL for zonal and meridional velocity.",
       "direction": ">0 increases volume",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS;OCEAN CURRENTS; OCEAN CIRCULATION",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN CIRCULATION, EARTH SCIENCE > OCEANS > OCEAN CIRCULATION > OCEAN CURRENTS",
       "internal note": "INCLUDE HFACW FOR VOLUME MEAN CALCULATIONS",
       "grid_dimension":"3D",
+      "grid_location": "u",
       "coverage_content_type": "modelResult"
    },
    {
       "name": "UVELMASS",
       "long_name": "Grid cell face-averaged horizontal velocity in the model +x direction",
       "units": "m s-1 m3 m-3",
-      "standard_name": "ocean_volume_x_transport",
+      "standard_name": "sea_water_x_velocity",
       "comments_1": "Horizontal velocity in the +x direction averaged over the tracer grid cell 'u' face on the native model grid",
-      "comments_2": "Note: in the Arakawa-C grid, horizontal velocities are staggered relative to the tracer cells with indexing such that +UVELMASS(i_g,j,k) corresponds to +x fluxes through the 'u' face of the tracer cell at (i,j,k). UVELMASS can be used for mass flux calculations because it accounts for the model's grid cell thicknesses variations in the +x direction (hFacW) with time (used in the the model's z* coordinate system). Also, the model +x direction does not necessarily correspond to the geographical east-west direction because the x and y axes of the model's curvilinear lat-lon-cap (llc) grid have arbitrary orientations which vary within and across tiles. See EVELMASS and NVELMASS.",
+      "comments_2": "Note: in the Arakawa-C grid, horizontal velocities are staggered relative to the tracer cells with indexing such that +UVELMASS(i_g,j,k) corresponds to +x fluxes through the 'u' face of the tracer cell at (i,j,k). UVELMASS can be used for mass flux calculations because it accounts for the model's grid cell thicknesses variations in the +x direction (hFacW) with time (used in the the model's z* coordinate system). Also, the model +x direction does not necessarily correspond to the geographical east-west direction because the x and y axes of the model's curvilinear lat-lon-cap (llc) grid have arbitrary orientations which vary within and across tiles. See VVELMASS and WVELMAS",
       "direction": ">0 increases volume",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS;OCEAN CURRENTS; OCEAN CIRCULATION",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN CIRCULATION, EARTH SCIENCE > OCEANS > OCEAN CIRCULATION > OCEAN CURRENTS",
       "grid_dimension":"3D",
+      "grid_location": "u",
       "coverage_content_type": "modelResult"
    },
    {
@@ -926,8 +973,9 @@
       "standard_name": "sea_water_x_velocity_due_to_parameterized_mesoscale_eddies",
       "comments_1": "Gent-McWilliams horizontal velocity in the +x direction at the 'u' face of the tracer cell on the native model grid",
       "comments_2": "Note: UVELSTAR is not a model diagnostic but is calculated offline: UVELSTAR = - d/dz GM_PsiX. In the Arakawa-C grid, horizontal velocities are staggered relative to the tracer cells with indexing such that +UVELSTAR(i_g,j,k) corresponds to +x tracer fluxes through the 'u' face of the tracer cell at (i,j,k). Also, the model +x direction does not necessarily correspond to the geographical east-west direction because the x and y axes of the model's curvilinear lat-lon-cap (llc) grid have arbitrary orientations which vary within and across tiles. See EVELSTAR and NVELSTAR.",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS;OCEAN CURRENTS; OCEAN CIRCULATION",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN CIRCULATION, EARTH SCIENCE > OCEANS > OCEAN CIRCULATION > OCEAN CURRENTS",
       "grid_dimension":"3D",
+      "grid_location": "u",
       "coverage_content_type": "modelResult"
    },
    {
@@ -936,8 +984,9 @@
       "units": "m s-2",
       "comments_1": "Momentum tendency in the +y direction due to the hydrostatic pressure gradient at the 'v' face of the native model grid cell ",
       "comments_2": "Note: the model +y direction does not necessarily correspond to the geographical north-south direction because the x and y axes of the model's curvilinear lat-lon-cap (llc) grid have arbitrary orientations which vary within and across tiles.",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS",
+      "GCMD_keywords" : "",
       "grid_dimension":"3D",
+      "grid_location": "v",
       "coverage_content_type": "modelResult"
    },
    {
@@ -948,21 +997,24 @@
       "comments_1": "Horizontal velocity in the +y direction at the 'v' face of the tracer cell on the native model grid",
       "comments_2": "Note: in the Arakawa-C grid, horizontal velocities are staggered relative to the tracer cells with indexing such that +VVEL(i,j_g,k) corresponds to +y fluxes through the 'v' face of the tracer cell at (i,j,k). Do NOT use VVEL for mass flux calculations because the model's grid cell thicknesses vary with time (z* coordinates); use VVELMASS instead.  Also, the model +y direction does not necessarily correspond to the geographical north-south direction because the x and y axes of the model's curvilinear lat-lon-cap (llc) grid have arbitrary orientations which vary within and across tiles.  See EVEL and NVEL for zonal and meridional velocity.",
       "direction": ">0 increases volume",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS;OCEAN CURRENTS; OCEAN CIRCULATION",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN CIRCULATION, EARTH SCIENCE > OCEANS > OCEAN CIRCULATION > OCEAN CURRENTS",
       "internal note": "INCLUDE HFACS FOR VOLUME MEAN CALCULATIONS",
       "grid_dimension":"3D",
+      "grid_location": "v",
       "coverage_content_type": "modelResult"
    },
    {
       "name": "VVELMASS",
       "long_name": "Grid cell face-averaged horizontal velocity in the model +y direction",
       "units": "m s-1 m3 m-3",
-      "standard_name": "ocean_volume_y_transport",
+      "standard_name": "sea_water_y_velocity",
       "comments_1": "Horizontal velocity in the +y direction averaged over the tracer grid cell 'v' face on the native model grid",
-      "comments_2": "Note: in the Arakawa-C grid, horizontal velocities are staggered relative to the tracer cells with indexing such that +VVELMASS(i,j_g,k) corresponds to +y fluxes through the 'v' face of the tracer cell at (i,j,k). VVELMASS can be used for mass flux calculations because it accounts for the model's grid cell thicknesses variations in the +y direction (hFacS) with time (used in the the model's z* coordinate system).  Also, the model +y direction does not necessarily correspond to the geographical north-south direction because the x and y axes of the model's curvilinear lat-lon-cap (llc) grid have arbitrary orientations which vary within and across tiles.  See EVELMASS and NVELMASS.",
+      "comments_2": "Note: in the Arakawa-C grid, horizontal velocities are staggered relative to the tracer cells with indexing such that +VVELMASS(i,j_g,k) corresponds to +y fluxes through the 'v' face of the tracer cell at (i,j,k). VVELMASS can be used for mass flux calculations because it accounts for the model's grid cell thicknesses variations in the +y direction (hFacS) with time (used in the the model's z* coordinate system).  Also, the model +y direction does not necessarily correspond to the geographical north-south direction because the x and y axes of the model's curvilinear lat-lon-cap (llc) grid have arbitrary orientations which vary within and across tiles.  See UVELMASS and WVELMASS.",
       "direction": ">0 increases volume",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS;OCEAN CURRENTS; OCEAN CIRCULATION",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN CIRCULATION, EARTH SCIENCE > OCEANS > OCEAN CIRCULATION > OCEAN CURRENTS",
+      "internal note": "NOT sea_water_transport standard name",
       "grid_dimension":"3D",
+      "grid_location": "v",
       "coverage_content_type": "modelResult"
    },
    {
@@ -972,8 +1024,9 @@
       "standard_name": "sea_water_y_velocity_due_to_parameterized_mesoscale_eddies",
       "comments_1": "Gent-McWilliams horizontal velocity in the +y direction at the 'v' face of the tracer cell on the native model grid",
       "comments_2": "Note: VVELSTAR is not a model diagnostic but is calculated offline: VVELSTAR = - d/dz GM_PsiY.  In the Arakawa-C grid, horizontal velocities are staggered relative to the tracer cells with indexing such that +VVELSTAR(i,j_g,k) corresponds to +y tracer fluxes through the 'v' face of the tracer cell at (i,j,k). Also, the model +y direction does not necessarily correspond to the geographical north-south direction because the x and y axes of the model's curvilinear lat-lon-cap (llc) grid have arbitrary orientations which vary within and across tiles.  See EVELSTAR and NVELSTAR.",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS;OCEAN CURRENTS; OCEAN CIRCULATION",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN CIRCULATION, EARTH SCIENCE > OCEANS > OCEAN CIRCULATION > OCEAN CURRENTS",
       "grid_dimension":"3D",
+      "grid_location": "v",
       "coverage_content_type": "modelResult"
    },
    {
@@ -984,22 +1037,24 @@
       "comments_1": "Vertical velocity in the +z direction at the top 'w' face of the tracer cell on the native model grid",
       "comments_2": "Note: in the Arakawa-C grid, vertical velocities are staggered relative to the tracer cells with indexing such that +WVEL(i,j,k_l) corresponds to upward +z motion through the top 'w' face of the tracer cell at (i,j,k).  WVEL is identical to WVELMASS.",
       "direction": ">0 decreases volume",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS;OCEAN CURRENTS; OCEAN CIRCULATION",
-      "internal note": "wvel is the same as wvel mass.  wvel,  uvel, and vvel are grouped in the 'ocean velocity' dataset.   wvelmass, uvelmass, and vvelmass are grouped in the 'ocean volume fluxes' dataset.",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN CIRCULATION, EARTH SCIENCE > OCEANS > OCEAN CIRCULATION > OCEAN CURRENTS",
+      "internal note": "wvel is the same as wvel mass.  wvel,  uvel, and vvel are grouped in the 'ocean velocity' dataset.  wvelmass, uvelmass, and vvelmass are grouped in the 'ocean volume fluxes' dataset.",
       "grid_dimension":"3D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
       "name": "WVELMASS",
-      "long_name": "Vertical velocity",
+      "long_name": "Grid cell face-averaged vertical velocity in the model +z direction",
       "units": "m s-1",
       "standard_name": "upward_sea_water_velocity",
       "comments_1": "Vertical velocity in the +z direction at the top 'w' face of the tracer cell on the native model grid",
       "comments_2": "Note: in the Arakawa-C grid, vertical velocities are staggered relative to the tracer cells with indexing such that +WVELMASS(i,j,k_l) corresponds to upward +z motion through the top 'w' face of the tracer cell at (i,j,k).  Unlike UVELMASS and VVELMASS, WVELMASS is not scaled by a time-varying open water fraction because the open water fraction of the 'w' face is always 1.  Thus, WVELMASS is identical to WVEL.",
       "direction": ">0 decreases volume",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS;OCEAN CURRENTS; OCEAN CIRCULATION",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN CIRCULATION, EARTH SCIENCE > OCEANS > OCEAN CIRCULATION > OCEAN CURRENTS",
       "internal note": "INCLUDE DEPTH SO PEOPLE KNOW WHERE BOTTOM IS?",
       "grid_dimension":"3D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -1010,8 +1065,9 @@
       "comments_1": "Gent-McWilliams vertical bolus velocity in the +z direction at the top 'w' face of the tracer cell on the native model grid",
       "comments_2": "Note: in the Arakawa-C grid, vertical velocities are staggered relative to the tracer cells with indexing such that +WVELSTAR(i,j,k_l) corresponds to upward +z motion through the top 'w' face of the tracer cell at (i,j,k).",
       "direction": ">0 decreases volume",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS;OCEAN CURRENTS; OCEAN CIRCULATION",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN CIRCULATION, EARTH SCIENCE > OCEANS > OCEAN CIRCULATION > OCEAN CURRENTS",
       "grid_dimension":"3D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -1021,8 +1077,9 @@
       "comments_1": "Heat flux associated with the temperature difference between sea surface temperature and sea-ice (assume 0 degree C in the model)",
       "comments_2": "Note: heat flux needed to melt/freeze sea-ice at 0 degC to sea water at the ocean surface (at sea surface temperature), excluding the latent heat of fusion.",
       "direction": ">0 decrease potential temperature (THETA)",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; SEA ICE; SNOW/ICE; HEAT FLUX",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN HEAT BUDGET > HEAT FLUX",
       "grid_dimension":"2D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -1032,8 +1089,9 @@
       "comments_1": "Residual freshwater flux by sublimation to remove water from or add water to ocean. When implied sublimation freshwater flux 'SIacSubl' is larger than availabe sea-ice/snow, 'SIrsSubl' is positive and water is removed from ocean",
       "comments_2": "Note: freshwater flux by sublimation that is to remove water from the ocean when it is positive.",
       "direction": ">0 decreases ocean volume",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; OCEANS; SEA ICE; SNOW/ICE; FRESH WATER FLUX",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN CIRCULATION > FRESH WATER FLUX",
       "grid_dimension":"2D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {
@@ -1043,8 +1101,42 @@
       "comments_1": "Precipitation over sea-ice covered regions reaching ocean through sea-ice",
       "comments_2": "Note: Precipitation over sea-ice covered regions that directly reaches ocean through the sea-ice. It is not due to melt of sea-ice/snow.",
       "direction": ">0 increases ocean volume",
-      "gmcd_keywords": "REANALYSIS MODELS; EARTH SCIENCE; GCM; ATMOSPHERE; OCEANS; SEA ICE; SNOW/ICE; FRESH WATER FLUX; PRECIPITATION; PRECIPITATION RATE; TOTAL SURFACE PRECIPITATION RATE",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN CIRCULATION > FRESH WATER FLUX",
       "grid_dimension":"2D",
+      "grid_location": "c",
+      "coverage_content_type": "modelResult"
+   },
+   {
+      "name": "global_mean_barystatic_sea_level_anomaly",
+      "long_name": "Global mean barystatic sea level anomaly",
+      "units": "m",
+      "comments_1": "Global mean barystatic sea level anomaly due to changes in total ocean mass",
+      "comments_2": "Note: ECCOv4 uses a volume-conserving Boussinesq formulation of the MITgcm. Because volume, not mass, is conserved in Boussinesq formulations, seawater density changes by buoyancy fluxes (e.g., surface heating/cooling) do not change model sea level anomaly (ETAN) and therefore induce a spurious change in model ocean bottom pressure (PHIBOT) via 'virtual mass fluxes'. The Greatbatch correction is a time varying, globally-uniform correction to ocean volume due to changes in global mean density.  This correction is used to calculate dynamic sea level (SSH) and ocean bottom pressure (OBP). Importantly, there is no dynamical significance to the Greatbach correction but it is required to account for steric changes in global sea level. See Greatbatch, 1994. J. of Geophys. Res. Oceans, https://doi.org/10.1029/94JC00847",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > SEA SURFACE TOPOGRAPHY > SEA SURFACE HEIGHT",
+      "grid_dimension":"1D",
+      "grid_location": "n/a",
+      "coverage_content_type": "modelResult"
+   },
+   {
+      "name": "global_mean_sea_level_anomaly",
+      "long_name": "Global mean sea level anomaly",
+      "units": "m",
+      "comments_1": "Global mean sea level anomaly",
+      "comments_2": "Note: ECCOv4 uses a volume-conserving Boussinesq formulation of the MITgcm. Because volume, not mass, is conserved in Boussinesq formulations, seawater density changes by buoyancy fluxes (e.g., surface heating/cooling) do not change model sea level anomaly (ETAN) and therefore induce a spurious change in model ocean bottom pressure (PHIBOT) via 'virtual mass fluxes'. The Greatbatch correction is a time varying, globally-uniform correction to ocean volume due to changes in global mean density.  This correction is used to calculate dynamic sea level (SSH) and ocean bottom pressure (OBP). Importantly, there is no dynamical significance to the Greatbach correction but it is required to account for steric changes in global sea level. See Greatbatch, 1994. J. of Geophys. Res. Oceans, https://doi.org/10.1029/94JC00847",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > SEA SURFACE TOPOGRAPHY > SEA SURFACE HEIGHT",      
+      "grid_dimension":"1D",
+      "grid_location": "n/a",
+      "coverage_content_type": "modelResult"
+   },
+   {
+      "name": "global_mean_steric_sea_level_anomaly",
+      "long_name": "Global mean steric sea level anomaly",
+      "units": "m",
+      "comments_1": "Steric sea level anomaly associated with seawater expansion/contraction due to density changes",
+      "comments_2": "Note: ECCOv4 uses a volume-conserving Boussinesq formulation of the MITgcm. Because volume, not mass, is conserved in Boussinesq formulations, seawater density changes by buoyancy fluxes (e.g., surface heating/cooling) do not change model sea level anomaly (ETAN) and therefore induce a spurious change in model ocean bottom pressure (PHIBOT) via 'virtual mass fluxes'. The Greatbatch correction is a time varyings globally-uniform correction to ocean volume due to changes in global mean density.  This correction is used to calculate dynamic sea level (SSH) and ocean bottom pressure (OBP). Importantly, there is no dynamical significance to the Greatbach correction but it is required to account for steric changes in global sea level. See Greatbatch, 1994. J. of Geophys. Res. Oceans, https://doi.org/10.1029/94JC00847",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > SEA SURFACE TOPOGRAPHY > SEA SURFACE HEIGHT",
+      "grid_dimension":"1D",
+      "grid_location": "n/a",
       "coverage_content_type": "modelResult"
    }
 ]

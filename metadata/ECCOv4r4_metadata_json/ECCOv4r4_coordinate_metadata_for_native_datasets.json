@@ -1,0 +1,38 @@
+[
+   {
+      "name": "YC",
+      "long_name": "latitude",
+      "units": "degrees_north",
+      "standard_name": "latitude",
+      "comment": "nonuniform grid spacing",
+      "axis": "Y",
+      "bounds": "YC_bnds",
+      "grid_dimension":"2D 3D",
+      "coverage_content_type": "coordinate"
+   },
+   {
+      "name": "YC_bnds",
+      "units": "degrees_north",
+      "long_name": "latitude bounds of grid cells",
+      "grid_dimension":"2D 3D",
+      "coverage_content_type": "coordinate"
+   },
+   {
+      "name": "XC",
+      "long_name": "longitude",
+      "units": "degrees_east",
+      "standard_name": "longitude",
+      "comment": "nonuniform grid spacing",
+      "axis": "X",
+      "bounds": "XC_bnds",
+      "grid_dimension":"2D 3D",
+      "coverage_content_type": "coordinate"
+   },
+   {
+      "name": "XC_bnds",
+      "units": "degrees_east",
+      "long_name": "longitude bounds of grid cells",
+      "grid_dimension":"2D 3D",
+      "coverage_content_type": "coordinate"
+   }
+]

@@ -37,7 +37,7 @@ def area_of_latlon_grid_cell(lon0, lon1, lat0, lat1):
     return A
 
 
-def area_of_latlon_grid(lon0, lon1, lat0, lat1, dx, dy):
+def area_of_latlon_grid(lon0, lon1, lat0, lat1, dx, dy, less_output=False):
     # Calculates area of a latlon grid with edges lon0 and lon1
     # lat0 and lat1 with grid spacing of dx and dy
     
@@ -57,9 +57,10 @@ def area_of_latlon_grid(lon0, lon1, lat0, lat1, dx, dy):
 
     A = np.zeros((num_grid_cells_y))
     
-    print(lons_grid_cell_edges)
-    print(lats_grid_cell_edges)
-    
+    if not less_output:
+        print(lons_grid_cell_edges)
+        print(lats_grid_cell_edges)
+        
     for lat_i in range(num_grid_cells_y):
         A[lat_i] = area_of_latlon_grid_cell(lons_grid_cell_edges[0], lons_grid_cell_edges[1],\
          lats_grid_cell_edges[lat_i], lats_grid_cell_edges[lat_i+1])

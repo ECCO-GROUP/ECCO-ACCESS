@@ -42,19 +42,33 @@ def transform_to_target_grid(source_indices_within_target_radius_i,
             # average these values
             if operation == 'mean':
                 tmp_r[i] = \
-                    np.mean(
-                        source_field_r[source_indices_within_target_radius_i[i]])
-            # median of these values
+                    np.mean(source_field_r[source_indices_within_target_radius_i[i]])
+            
+            # average of non-nan values (can be slow)
+            elif operation == 'nanmean':
+                tmp_r[i] = \
+                    np.nanmean(source_field_r[source_indices_within_target_radius_i[i]])
+                                
+            # median of these values 
             elif operation == 'median':
                 tmp_r[i] = \
-                    np.median(
-                        source_field_r[source_indices_within_target_radius_i[i]])
-
-        # if there aren't any source grid cells within the target grid cell
-        # search radius then we would use the nearest neighbor, if available
-        elif i in nearest_source_index_to_target_index_i.keys():
-            # just because we have a nearest neighbor doesn't mean use it
-            if allow_nearest_neighbor == True:
+                    np.median(source_field_r[source_indices_within_target_radius_i[i]])
+            
+            # median of non-nan values (can be slow)
+            elif operation == 'nanmedian':
+                tmp_r[i] = \
+                    np.nanmedian(source_field_r[source_indices_within_target_radius_i[i]])
+                    
+            # nearest neighbor is the first element in source_indices
+            elif operation == 'nearest':
+                tmp = source_indices_within_target_radius_i[i]
+                tmp_r[i] = source_field_r[tmp[0]]
+        
+        # number source indices within target radius is 0, then we can potentially
+        # search for a nearest neighbor.
+        elif allow_nearest_neighbor:
+          # there is a nearest neighbor within range
+            if i in nearest_source_index_to_target_index_i.keys():
                 tmp_r[i] = source_field_r[nearest_source_index_to_target_index_i[i]]
 
     return source_on_target_grid
