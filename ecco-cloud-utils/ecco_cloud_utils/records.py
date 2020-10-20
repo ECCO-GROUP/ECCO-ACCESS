@@ -6,6 +6,7 @@ Created on Sun Jun 21 17:24:13 2020
 """
 import xarray as xr
 import numpy as np
+from netCDF4 import default_fillvals
 from pathlib import Path
 from .llc_array_conversion import llc_tiles_to_compact
 
@@ -69,9 +70,23 @@ def make_empty_record(standard_name, long_name, units,
             print('Unsupported model grid format')
             return []
 
+    elif model_grid_type == 'latitudelongitude':
+        # Assumes model_grid.XC/YC is one dimensional
+        data_DA = data_DA.assign_coords(
+            {'longitude': model_grid.XC})
+        data_DA = data_DA.assign_coords(
+            {'latitude': model_grid.YC})
+        data_DA = data_DA.assign_coords(
+            {'XC': (('longitude'), model_grid.XC)})
+        data_DA = data_DA.assign_coords(
+            {'YC': (('latitude'), model_grid.YC)})
+
     else:
         print('invalid grid type!')
         return []
+
+    data_DA.XC.attrs['coverage_content_type'] = 'coordinate'
+    data_DA.YC.attrs['coverage_content_type'] = 'coordinate'
 
     # copy over the attributes from XC and YC to the dataArray
     data_DA.XC.attrs = model_grid.XC.attrs
@@ -87,6 +102,8 @@ def make_empty_record(standard_name, long_name, units,
     data_DA.attrs['long_name'] = long_name
     data_DA.attrs['standard_name'] = standard_name
     data_DA.attrs['units'] = units
+
+    data_DA.name = 'Default empty model grid record'
 
     return data_DA
 
@@ -120,7 +137,7 @@ def save_to_disk(data_DA,
         fd1 = open(str(binary_output_filename), 'ab')
 
         for i in range(len(data_DA.time)):
-            print('saving binary record: ', str(i))
+            # print('saving binary record: ', str(i))
 
             # if we have an llc grid, then we have to reform to compact
             if model_grid_type == 'llc':
@@ -164,14 +181,32 @@ def save_to_disk(data_DA,
                      netcdf_fill_value, data_DA.values)
 
         encoding_each = {'zlib': True,
-                         'complevel': 9,
-                         'fletcher32': True,
+                         'complevel': 5,
+                         'shuffle': True,
                          '_FillValue': netcdf_fill_value}
 
         data_DS = data_DA.to_dataset()
 
-        encoding = {var: encoding_each for var in data_DS.data_vars}
+        coord_encoding = {}
+        for coord in data_DS.coords:
+            coord_encoding[coord] = {'_FillValue': None}
 
+            if 'time' in coord:
+                coord_encoding[coord] = {'_FillValue': None,
+                                         'dtype': 'int32'}
+            if 'lat' in coord:
+                coord_encoding[coord] = {'_FillValue': None,
+                                         'dtype': 'float32'}
+            if 'lon' in coord:
+                coord_encoding[coord] = {'_FillValue': None,
+                                         'dtype': 'float32'}
+            if 'Z' in coord:
+                coord_encoding[coord] = {'_FillValue': None,
+                                         'dtype': 'float32'}
+
+        var_encoding = {var: encoding_each for var in data_DS.data_vars}
+
+        encoding = {**coord_encoding, **var_encoding}
         # the actual saving (so easy with xarray!)
         data_DS.to_netcdf(netcdf_output_filename,  encoding=encoding)
         data_DS.close()

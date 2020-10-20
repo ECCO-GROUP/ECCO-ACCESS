@@ -187,7 +187,7 @@ def generalized_transform_to_model_grid_solr(data_field_info, record_date, model
                                    model_grid, model_grid_type,
                                    array_precision)
 
-    print(data_DA)
+    # print(data_DA)
 
     # add some metadata to the newly formed data array object
     data_DA.attrs['original_filename'] = record_file_name
@@ -208,7 +208,7 @@ def generalized_transform_to_model_grid_solr(data_field_info, record_date, model
     data_DA.name = f'{data_field}_interpolated_to_{model_grid_name}'
 
     # load the file, do the mapping and update the record times
-    print('reading ', record_file_name)
+    print(f'reading {record_file_name} for field {data_field}')
 
     if 'transpose' in extra_information:
         orig_data = ds[data_field].values[0, :].T
@@ -241,6 +241,13 @@ def generalized_transform_to_model_grid_solr(data_field_info, record_date, model
         elif 'time_bnds' in ds.variables:
             data_DA.time_start.values[0] = ds.time_bnds[0][0].values
             data_DA.time_end.values[0] = ds.time_bnds[0][1].values
+        elif 'time_bounds' in ds.variables:
+            try:
+                data_DA.time_start.values[0] = ds.time_bounds[0][0].values
+                data_DA.time_end.values[0] = ds.time_bounds[0][1].values
+            except:
+                data_DA.time_start.values[0] = ds.time_bounds[0].values
+                data_DA.time_end.values[0] = ds.time_bounds[1].values
     elif 'no_time' in extra_information:
         data_DA.time_start.values[0] = record_date
         data_DA.time_end.values[0] = record_date
@@ -260,7 +267,10 @@ def generalized_transform_to_model_grid_solr(data_field_info, record_date, model
         if 'Time' in ds.variables:
             data_DA.time.values[0] = ds.Time[0].values
         elif 'time' in ds.variables:
-            data_DA.time.values[0] = ds.time[0].values
+            try:
+                data_DA.time.values[0] = ds.time[0].values
+            except:
+                data_DA.time.values[0] = ds.time.values
     else:
         data_DA.time.values[0] = record_date
 
@@ -501,6 +511,7 @@ def generalized_aggregate_and_save(DA_year_merged,
     # netcdf or binary files for this year
     if np.sum(~np.isnan(DA_year_merged.values)) == 0:
         print('Empty year not writing to disk', year)
+        return True
     else:
 
         # update the dataset attributes
@@ -510,6 +521,9 @@ def generalized_aggregate_and_save(DA_year_merged,
         DA_year_merged.attrs['original_dataset_doi'] = new_data_attr['original_dataset_doi']
         DA_year_merged.attrs['interpolated_grid_id'] = new_data_attr['interpolated_grid_id']
         DA_year_merged.name = new_data_attr['new_name']
+
+        DA_year_merged.attrs['valid_min'] = np.nanmin(DA_year_merged.values)
+        DA_year_merged.attrs['valid_max'] = np.nanmax(DA_year_merged.values)
 
         if do_monthly_aggregation:
             mon_DA_year = []
@@ -569,6 +583,11 @@ def generalized_aggregate_and_save(DA_year_merged,
 
             mon_DA_year_merged = xr.concat((mon_DA_year), dim='time')
 
+            mon_DA_year_merged.attrs['valid_min'] = np.nanmin(
+                mon_DA_year_merged.values)
+            mon_DA_year_merged.attrs['valid_max'] = np.nanmax(
+                mon_DA_year_merged.values)
+
         save_netcdf = save_netcdf and not on_aws
         save_binary = save_binary or on_aws
 
@@ -592,5 +611,7 @@ def generalized_aggregate_and_save(DA_year_merged,
 
         ## END   SAVE TO DISK                                ##
         #######################################################
+
+    return False
 
  # %%
