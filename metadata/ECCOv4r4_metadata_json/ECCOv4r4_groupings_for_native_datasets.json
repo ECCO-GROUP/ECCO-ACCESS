@@ -2,6 +2,7 @@
    {
     "name" : "dynamic sea surface height and model sea level anomaly",
     "fields" : "SSH, SSHIBC, SSHNOIBC, ETAN",
+    "comment": "SSH (dynamic sea surface height) = SSHNOIBC (dynamic sea surface without with the inverse barometer correction) + SSHIBC (inverse barometer correction). The inverted barometer correction accounts for variations in sea suface height due to atmospheric pressure variations. Note: ETAN is model sea level anomaly and should not be compared with satellite altimetery products, see SSH and ETAN for more details.",
     "product": "native",
     "filename" : "SEA_SURFACE_HEIGHT",
     "dimension" : "2D"
@@ -9,6 +10,7 @@
    {
     "name" : "ocean bottom pressure and model hydrostatic ocean bottom pressure anomaly",
     "fields": "OBP, OBPGMAP, PHIBOT",
+    "comment": "Ocean bottom pressure excluding (OBP) and including (OBPGMAP) the contribution from global mean atmospheric pressure. Note: PHIBOT is model hydrostatic bottom pressure anomaly and should not be compared with satellite bottom pressure products (e.g., from GRACE and GRACE-FO), see OBP and PHIBOT for more details.",    
     "product": "native",
     "filename" : "OCEAN_BOTTOM_PRESSURE",
     "dimension" : "2D"
@@ -108,7 +110,7 @@
    },   
    {
     "name": "ocean three-dimensional volume fluxes",
-    "fields": "UVELMASS, VVELMASS, WVESLMASS",
+    "fields": "UVELMASS, VVELMASS, WVELMASS",
     "product": "native",
     "filename" : "OCEAN_3D_VOLUME_FLUX",
     "dimension" : "3D"
@@ -116,6 +118,7 @@
    {
     "name": "ocean three-dimensional potential temperature fluxes",
     "fields":"ADVx_TH, ADVy_TH, DFrE_TH, DFyE_TH, ADVr_TH, DFxE_TH, DFrI_TH",
+    "comment": "Volume flux in +x = UVELMASS x drF x dyG. Volume flux in +y = VVELMASS x drF x dxG. Volume flux in +z = WVELMASS x drA.",
     "product": "native",
     "filename" : "OCEAN_3D_TEMPERATURE_FLUX",
     "dimension" : "3D"
