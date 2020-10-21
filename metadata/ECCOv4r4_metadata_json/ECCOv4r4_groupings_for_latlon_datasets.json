@@ -1,9 +1,8 @@
 [
    {
-    "name" : "sea surface height",
+    "name" : "dynamic sea surface height",
     "fields" : "SSH, SSHIBC, SSHNOIBC",
     "product": "latlon",
-    "dataset_description" : "dynamic sea surface height",
     "filename" : "SEA_SURFACE_HEIGHT",
     "dimension" : "2D"
    },
@@ -11,15 +10,13 @@
     "name": "ocean bottom pressure",
     "fields": "OBP, OBPGMAP",
     "product": "latlon",
-    "dataset_description" : "ocean bottom pressure",
     "filename" : "OCEAN_BOTTOM_PRESSURE",
     "dimension" : "2D"
    },
    {
-    "name": "temperature and salinity",
+    "name" : "ocean potential temperature and salinity",
     "fields": "THETA, SALT",
     "product": "latlon",
-    "dataset_description" : "ocean potential temperature and salinity",
     "filename" : "OCEAN_TEMPERATURE_SALINITY",
     "dimension" : "3D"
    },
@@ -27,7 +24,6 @@
     "name": "ocean density, stratification, and hydrostatic pressure",
     "fields": "RHOAnoma, DRHODR, PHIHYD",
     "product": "latlon",
-    "dataset_description" : "ocean density, stratification, and hydrostatic pressure",
     "filename" : "OCEAN_DENS_STRAT_PRESS",
     "dimension" : "3D"
    },
@@ -35,7 +31,6 @@
     "name": "ocean velocity",
     "fields": "EVEL, NVEL, WVELMASS",
     "product": "latlon",
-    "dataset_description" : "ocean velocitiy",
     "variable_rename" : "WVELMASS:WVEL",
     "filename" : "OCEAN_VELOCITY",
     "dimension" : "3D"
@@ -44,7 +39,6 @@
     "name": "Gent-McWilliams ocean bolus velocity",
     "fields": "EVELSTAR, NVELSTAR, WVELSTAR",
     "product": "latlon",
-    "dataset_description" : "Gent-McWilliams bolus velocity",
     "filename" : "OCEAN_BOLUS_VELOCITY",
     "dimension" : "3D"
    },
@@ -52,7 +46,6 @@
     "name": "ocean and sea-ice surface freshwater fluxes",
     "fields": "EXFpreci, EXFevap, EXFroff, SIsnPrcp, EXFempmr, oceFWflx, SIatmFW, SFLUX, SIacSubl, SIrsSubl, SIfwThru",
     "product": "latlon",
-    "dataset_description" : "ocean and sea-ice surface freshwater fluxes",
     "filename" : "OCEAN_AND_ICE_SURFACE_FW_FLUX",
     "dimension" : "2D"
    },
@@ -60,7 +53,6 @@
     "name": "ocean and sea-ice surface heat fluxes",
     "fields": "EXFhl,   EXFhs,   EXFlwdn, EXFswdn,  EXFqnet,   oceQnet, SIatmQnt, TFLUX, EXFswnet, EXFlwnet, oceQsw, SIaaflux",
     "product": "latlon",
-    "dataset_description" : "ocean and sea-ice surface heat fluxes",
     "filename" : "OCEAN_AND_ICE_SURFACE_HEAT_FLUX",
     "dimension" : "2D"
    },
@@ -68,7 +60,6 @@
     "name": "atmosphere surface temperature, humidity, wind, and pressure",
     "fields": "EXFatemp, EXFaqh, EXFewind, EXFnwind, EXFwspee, EXFpress",
     "product": "latlon",
-    "dataset_description" : "atmosphere surface temperature, humidity, wind, and pressure",
     "filename" : "ATM_SURFACE_TEMP_HUM_WIND_PRES",
     "dimension" : "2D"
    },
@@ -76,7 +67,6 @@
     "name" : "ocean mixed layer depth",
     "fields" : "MXLDEPTH",
     "product": "latlon",
-    "dataset_description" : "ocean mixed layer depth",
     "filename" : "OCEAN_MIXED_LAYER_DEPTH",
     "dimension" : "2D"
    },
@@ -84,7 +74,6 @@
     "name": "sea-ice and snow concentration, thickness, and pressure loading",
     "fields":"SIarea, SIheff, SIhsnow, sIceLoad",
     "product": "latlon",
-    "dataset_description" : "sea-ice and snow concentration, thickness, and pressure loading",
     "filename" : "SEA_ICE_CONC_THICKNESS",
     "dimension" : "2D"
    },
@@ -92,7 +81,6 @@
     "name": "sea-ice velocity",
     "fields":"SIeice, SInice",
     "product": "latlon",
-    "dataset_description" : "sea-ice velocity",
     "filename" : "SEA_ICE_VELOCITY",
     "dimension" : "2D"
    },
@@ -100,7 +88,6 @@
     "name" : "ocean and sea-ice surface stress",
     "fields" : "EXFtaue, EXFtaun, oceTAUE, oceTAUN",
     "product": "latlon",
-    "dataset_description" : "ocean and sea-ice surface stress",
     "filename" : "OCEAN_AND_ICE_SURFACE_STRESS",
     "dimension" : "2D"
    }
