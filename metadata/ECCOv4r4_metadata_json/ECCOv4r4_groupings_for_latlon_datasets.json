@@ -2,6 +2,7 @@
    {
     "name" : "dynamic sea surface height",
     "fields" : "SSH, SSHIBC, SSHNOIBC",
+    "comment": "SSH (dynamic sea surface height) = SSHNOIBC (dynamic sea surface without with the inverse barometer correction) + SSHIBC (inverse barometer correction). The inverted barometer correction accounts for variations in sea suface height due to atmospheric pressure variations.",
     "product": "latlon",
     "filename" : "SEA_SURFACE_HEIGHT",
     "dimension" : "2D"
@@ -9,6 +10,7 @@
    {
     "name": "ocean bottom pressure",
     "fields": "OBP, OBPGMAP",
+    "comment": "Ocean bottom pressure excluding (OBP) and including (OBPGMAP) the contribution from global mean atmospheric pressure.",
     "product": "latlon",
     "filename" : "OCEAN_BOTTOM_PRESSURE",
     "dimension" : "2D"
