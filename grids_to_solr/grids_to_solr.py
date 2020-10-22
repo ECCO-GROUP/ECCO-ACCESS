@@ -7,9 +7,8 @@ import requests
 import xarray as xr
 from datetime import datetime
 
+
 # Creates checksum from filename
-
-
 def md5(fname):
     hash_md5 = hashlib.md5()
     with open(fname, 'rb') as f:
@@ -59,7 +58,6 @@ def main(path=''):
         config = yaml.load(stream, yaml.Loader)
 
     solr_host = config['solr_host']
-    solr_collection_name = config['solr_collection_name']
 
     # =====================================================
     # Scan directory for grid types
@@ -72,7 +70,7 @@ def main(path=''):
     # =====================================================
     grids = []
 
-    # Assumes grids conform to metadata standard (model_grid_type)
+    # Assumes grids conform to metadata standard (see documentation)
     for grid_file in grid_files:
         if config['grids_to_use']:
             if grid_file in config['grids_to_use']:
