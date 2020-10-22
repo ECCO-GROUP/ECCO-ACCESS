@@ -28,7 +28,7 @@ fields:
     },
     {
       name: stdev_of_seaice_conc_cdr,
-      long_name: Passive Microwave Daily Northern Hemisphere Sea Ice Concentration Source Estimated Standard Deviation,
+      long_name: Passive Microwave Daily Sea Ice Concentration Source Estimated Standard Deviation,
       standard_name: " ",
       units: " ",
     },
