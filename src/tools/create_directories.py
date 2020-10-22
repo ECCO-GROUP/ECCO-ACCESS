@@ -8,7 +8,7 @@ from shutil import copyfile
 def main():
     # all config file paths
     transformation_config_path = Path(
-        f"{Path(__file__).resolve().parents[1]}/preprocessing/grid_transformation/grid_transformation_config.yaml"
+        f"{Path(__file__).resolve().parents[1]}/preprocessing/grid_transformation/transformation_config.yaml"
     )
     aggregation_config_path = Path(
         f"{Path(__file__).resolve().parents[1]}/preprocessing/aggregation_by_year/aggregation_config.yaml"
@@ -55,7 +55,7 @@ def main():
 
     # transformation config file copy
     destination_file = Path(
-        f"{path_to_new_dataset}/grid_transformation_config.yaml")
+        f"{path_to_new_dataset}/transformation_config.yaml")
     copyfile(transformation_config_path, destination_file)
 
     # aggregation config file copy
