@@ -30,17 +30,15 @@ def main():
     ds_name = ""
     harvest_type = ""
     ds_name = input("Enter ds_name for dataset: ")
-    harvest_type = input("Enter harvester type (PODAAC, NSIDC, OSISAF): ").upper()
+    harvest_type = input(
+        "Enter harvester type (PODAAC, NSIDC, OSISAF): ").upper()
 
     # get correct config file name and path for wanted harvester type
     if harvest_type == "PODAAC":
-        harvester_config_name = "podaac_harvester_config.yaml"
         harvester_config_path = podaac_config_path
     elif harvest_type == "NSIDC":
-        harvester_config_name = "nsidc_ftp_harvester_config.yaml"
         harvester_config_path = nsidc_config_path
     elif harvest_type == "OSISAF":
-        harvester_config_name = "osisaf_ftp_harvester_config.yaml"
         harvester_config_path = osisaf_config_path
     else:
         print("Unsupported harvester type")
@@ -52,11 +50,12 @@ def main():
         os.makedirs(path_to_new_dataset)
 
     # harvester config file copy
-    destination_file = Path(f"{path_to_new_dataset}/{harvester_config_name}")
+    destination_file = Path(f"{path_to_new_dataset}/harvester_config.yaml")
     copyfile(harvester_config_path, destination_file)
 
     # transformation config file copy
-    destination_file = Path(f"{path_to_new_dataset}/grid_transformation_config.yaml")
+    destination_file = Path(
+        f"{path_to_new_dataset}/grid_transformation_config.yaml")
     copyfile(transformation_config_path, destination_file)
 
     # aggregation config file copy
