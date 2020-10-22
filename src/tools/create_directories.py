@@ -4,90 +4,59 @@ import numpy as np
 from pathlib import Path
 from shutil import copyfile
 
-# list all template folders
-transformation_template_path = Path(
-    f'{Path(__file__).resolve().parents[1]}/dataset_template/preprocessing/grid_transformation')
-aggregation_template_path = Path(
-    f'{Path(__file__).resolve().parents[1]}/dataset_template/preprocessing/aggregation_by_year')
-podaac_template_path = Path(
-    f'{Path(__file__).resolve().parents[1]}/dataset_template/harvesters/podaac_harvester')
-osisaf_template_path = Path(
-    f'{Path(__file__).resolve().parents[1]}/dataset_template/harvesters/osisaf_ftp_harvester')
-nsidc_template_path = Path(
-    f'{Path(__file__).resolve().parents[1]}/dataset_template/harvesters/nsidc_ftp_harvester')
+def main():
+    # all config file paths
+    transformation_config_path = Path(
+        f'{Path(__file__).resolve().parents[1]}/preprocessing/grid_transformation/grid_transformation_config.yaml')
+    aggregation_config_path = Path(
+        f'{Path(__file__).resolve().parents[1]}/preprocessing/aggregation_by_year/aggregation_config.yaml')
+    podaac_config_path = Path(
+        f'{Path(__file__).resolve().parents[1]}/harvesters/podaac_harvester/podaac_harvester_config.yaml')
+    osisaf_config_path = Path(
+        f'{Path(__file__).resolve().parents[1]}/harvesters/osisaf_ftp_harvester/osisaf_ftp_harvester_config.yaml')
+    nsidc_config_path = Path(
+        f'{Path(__file__).resolve().parents[1]}/harvesters/nsidc_ftp_harvester/nsidc_ftp_harvester_config.yaml')
 
+    # path to datasets folder
+    path_to_datasets = Path(f'{Path(__file__).resolve().parents[2]}/datasets')
 
-# path to harvester and preprocessing folders
-path_to_harvesters = Path(f'{Path(__file__).resolve().parents[1]}/harvesters')
-path_to_preprocessing = Path(f'{Path(__file__).resolve().parents[1]}/preprocessing')
-
-# create new directories -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-use_sys_arg = False
-use_user_input = False
-use_hard_coded_name = True
-
-ds_name = ''
-harvest_type = ''
-
-# get ds_name and harvest_type from user in one of three ways: arguments, user inputs, or hardcoded
-if use_sys_arg:
-    ds_name = sys.argv[0]
-    harvest_type = sys.argv[1]
-elif use_user_input:
-    ds_name = input('Enter ds_name ({main field}_{dataset name}): ')
+    # get ds_name and harvest_type from user
+    ds_name = ''
+    harvest_type = ''
+    ds_name = input('Enter ds_name for dataset: ')
     harvest_type = input('Enter harvester type (PODAAC, NSIDC, OSISAF): ').upper()
-elif use_hard_coded_name:
-    ds_name = 'test_create'
-    harvest_type = 'PODAAC'
 
-# harvester -----------------------------------------------------------------------------------------------------------------------
-# get correct directories for wanted harvester type
-if harvest_type == 'PODAAC':
-    new_harvester_path = Path(
-        f'{path_to_harvesters}/podaac_harvester/{ds_name}')
-    template_path_to_use = podaac_template_path
-elif harvest_type == 'NSIDC':
-    new_harvester_path = Path(
-        f'{path_to_harvesters}/nsidc_ftp_harvester/{ds_name}')
-    template_path_to_use = nsidc_template_path
-elif harvest_type == 'OSISAF':
-    new_harvester_path = Path(
-        f'{path_to_harvesters}/osisaf_ftp_harvester/{ds_name}')
-    template_path_to_use = osisaf_template_path
-else:
-    print('Unsupported harvester type')
+    # get correct config file name and path for wanted harvester type
+    if harvest_type == 'PODAAC':
+        harvester_config_name = 'podaac_harvester_config.yaml'
+        harvester_config_path = podaac_config_path
+    elif harvest_type == 'NSIDC':
+        harvester_config_name = 'nsidc_ftp_harvester_config.yaml'
+        harvester_config_path = nsidc_config_path
+    elif harvest_type == 'OSISAF':
+        harvester_config_name = 'osisaf_ftp_harvester_config.yaml'
+        harvester_config_path = osisaf_config_path
+    else:
+        print('Unsupported harvester type')
+        return
 
-# create new directory and add wanted template files
-if not os.path.exists(new_harvester_path):
-    os.makedirs(new_harvester_path)
-for template_file in os.listdir(template_path_to_use):
-    if '.DS' not in template_file and '__pycache__' != template_file:
-        source_file = Path(f'{template_path_to_use}/{template_file}')
-        destination_file = Path(f'{new_harvester_path}/{template_file}')
-        copyfile(source_file, destination_file)
+    # create new dataset directory
+    path_to_new_dataset = Path(f'{Path(__file__).resolve().parents[2]}/datasets/{ds_name}')
+    if not os.path.exists(path_to_new_dataset):
+        os.makedirs(path_to_new_dataset)
 
-# transformation ------------------------------------------------------------------------------------------------------------------
-# create new directories and add transformation template files
-new_transformation_path = Path(
-    f'{path_to_preprocessing}/{ds_name}/grid_transformation')
-if not os.path.exists(new_transformation_path):
-    os.makedirs(new_transformation_path)
-for template_file in os.listdir(transformation_template_path):
-    if '.DS' not in template_file and '__pycache__' != template_file:
-        source_file = Path(
-            f'{transformation_template_path}/{template_file}')
-        destination_file = Path(
-            f'{new_transformation_path}/{template_file}')
-        copyfile(source_file, destination_file)
+    # harvester config file copy
+    destination_file = Path(f'{path_to_new_dataset}/{harvester_config_name}')
+    copyfile(harvester_config_path, destination_file)
 
-# aggregation ---------------------------------------------------------------------------------------------------------------------
-# create new directories and add aggregation template files
-new_aggregation_path = Path(
-    f'{path_to_preprocessing}/{ds_name}/aggregation_by_year')
-if not os.path.exists(new_aggregation_path):
-    os.makedirs(new_aggregation_path)
-for template_file in os.listdir(aggregation_template_path):
-    if '.DS' not in template_file and '__pycache__' != template_file:
-        source_file = Path(f'{aggregation_template_path}/{template_file}')
-        destination_file = Path(f'{new_aggregation_path}/{template_file}')
-        copyfile(source_file, destination_file)
+    # transformation config file copy
+    destination_file = Path(f'{path_to_new_dataset}/grid_transformation_config.yaml')
+    copyfile(transformation_config_path, destination_file)
+
+    # aggregation config file copy
+    destination_file = Path(f'{path_to_new_dataset}/aggregation_config.yaml')
+    copyfile(aggregation_config_path, destination_file)
+
+#############################################
+if __name__ == "__main__":
+    main()
