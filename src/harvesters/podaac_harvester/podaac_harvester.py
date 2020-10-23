@@ -21,9 +21,8 @@ def md5(fname):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
 
+
 # Creates metadata entry for a harvested granule and uploads to AWS if needed
-
-
 def metadata_maker(config, date, link, mod_time, on_aws, target_bucket, local_fp, file_name, chk_time, descendants_docs, item_id):
     dataset_name = config['ds_name']
     harvest_success = False
@@ -303,7 +302,7 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False):
                         for time in ds_times:
                             new_ds = ds.sel(time=time)
                             file_name = f'{dataset_name}_{time.replace("-","")[:8]}.nc'
-                            local_fp = f'{target_dir}{date_start_str[:4]}/{newfile}'
+                            local_fp = f'{target_dir}{date_start_str[:4]}/{file_name}'
 
                             if not os.path.exists(f'{target_dir}{date_start_str[:4]}'):
                                 os.makedirs(
