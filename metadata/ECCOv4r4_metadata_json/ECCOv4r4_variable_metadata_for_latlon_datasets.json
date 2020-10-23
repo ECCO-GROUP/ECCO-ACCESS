@@ -112,6 +112,20 @@
       "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN CIRCULATION, EARTH SCIENCE > OCEANS > OCEAN CIRCULATION > OCEAN CURRENTS",
       "grid_dimension":"3D",
       "coverage_content_type": "modelResult"
+   },   
+   {
+      "name": "WVEL",
+      "long_name": "Vertical velocity",
+      "units": "m s-1",
+      "standard_name": "upward_sea_water_velocity",
+      "comments_1": "Vertical velocity in the +z direction at the top face of the grid cell",
+      "comments_2": "Note: in the Arakawa-C grid used in ECCO V4r4, vertical velocities are staggered relative to the tracer cell centers with values at the TOP and BOTTOM faces of each grid cell.",
+      "direction": ">0 decreases volume",
+      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN CIRCULATION, EARTH SCIENCE > OCEANS > OCEAN CIRCULATION > OCEAN CURRENTS",
+      "internal note": "wvel is the same as wvel mass. wvel, uvel, and vvel are grouped in the 'ocean velocity' dataset. wvelmass, uvelmass, and vvelmass are grouped in the 'ocean volume fluxes' dataset.",
+      "grid_dimension":"3D",
+      "grid_location": "c",
+      "coverage_content_type": "modelResult"
    },
    {
       "name": "EVELSTAR",
@@ -136,23 +150,12 @@
       "coverage_content_type": "modelResult"
    },   
    {
-      "name": "WVELMASS",
-      "long_name": "Vertical velocity",
-      "units": "m s-1",
-      "standard_name": "upward_sea_water_velocity",
-      "comments_1": "Vertical component of ocean velocity",
-      "comments_2": "Note: in the Arakawa-C grid used in ECCO, vertical velocities are staggered relative to the tracer cell centers with values at the TOP and BOTTOM faces of each grid cell.",
-      "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN CIRCULATION, EARTH SCIENCE > OCEANS > OCEAN CIRCULATION > OCEAN CURRENTS",
-      "grid_dimension":"3D",
-      "coverage_content_type": "modelResult"
-   },
-   {
       "name": "WVELSTAR",
       "long_name": "Gent-McWilliams vertical bolus velocity",
       "units": "m s-1",
       "standard_name": "upward_sea_water_velocity_due_to_parameterized_mesoscale_eddies",
       "comments_1": "Vertical component of the Gent-McWilliams bolus ocean velocity",
-      "comments_2": "Note: in the Arakawa-C grid used in ECCO, vertical velocities are staggered relative to the tracer cell centers with values at the TOP and BOTTOM faces of each grid cell.",
+      "comments_2": "Note: in the Arakawa-C grid used in ECCO V4r4, vertical velocities are staggered relative to the tracer cell centers with values at the TOP and BOTTOM faces of each grid cell.",
       "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN CIRCULATION, EARTH SCIENCE > OCEANS > OCEAN CIRCULATION > OCEAN CURRENTS",
       "grid_dimension":"3D",
       "coverage_content_type": "modelResult"

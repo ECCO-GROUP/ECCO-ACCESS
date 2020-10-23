@@ -61,14 +61,14 @@ def determine_metadata_modifiers(filename: str):
     # Select that row from __datasets__ table and make a copy of it.
     metadata = __datasets__[index].iloc[0].to_dict()
     
-    gcmd_keywords = []
+#    gcmd_keywords = []
     # Select the gcmd keywords to match this dataset ShortName.
-    for prefix, keywords in __keywords__.items():
-        if metadata['DATASET.SHORT_NAME'].startswith(prefix):
-            gcmd_keywords = ", ".join([" > ".join(kw.values()) for kw in keywords])
-            break
+#    for prefix, keywords in __keywords__.items():
+#        if metadata['DATASET.SHORT_NAME'].startswith(prefix):
+#            gcmd_keywords = ", ".join([" > ".join(kw.values()) for kw in keywords])
+#            break
     
-    print(gcmd_keywords)
+#    print(gcmd_keywords)
     
     modifiers = {
         'id': metadata['DATASET.PERSISTENT_ID'].replace("PODAAC-","10.5067/"),
@@ -76,6 +76,7 @@ def determine_metadata_modifiers(filename: str):
         'title': metadata['DATASET.LONG_NAME'],
     }
   
+    print(metadata['DATASET.LONG_NAME'])
     return modifiers
 
 #%%
@@ -158,8 +159,7 @@ def sort_all_attrs(G, print_output=False):
         
     new_attrs = sort_attrs(G.attrs)
     G.attrs = new_attrs
-        
-#%%
+   
     
                         
 def add_global_metadata(metadata, G):
@@ -279,13 +279,13 @@ binary_fill_value = -9999
 ecco_start_time = np.datetime64('1992-01-01T12:00:00')
 
 # hack to ensure that time bounds and time use same 'encoding' in xarray
-time_encoding_start = 'hours since 1992-01-01 12:00:00'
+#time_encoding_start = 'hours since 1992-01-01 12:00:00'
+# --- not necessary with "units" attribute defined in coordinate metadata.
 
-
-mapping_factors_dir = Path('')
+mapping_factors_dir = Path('/home/ifenty/tmp/ecco-v4-podaac-mapping-factors')
 
 ## OUTPUT DIRECTORY
-output_dir = Path('/home/ifenty/tmp/v4r4_nc_output_20201021e_latlon')
+output_dir = Path('/home/ifenty/tmp/v4r4_nc_output_20201022_latlon')
 
 
 ## ECCO FIELD INPUT DIRECTORY 
@@ -324,7 +324,7 @@ metadata_fields = ['ECCOv4r4_global_metadata_for_all_datasets',
                    'ECCOv4r4_variable_metadata_for_latlon_datasets']
 
                     ## PODAAC fields
-podaac_fields = Path('/home/ifenty/git_repo_others/ecco-data-pub/_ecco_podaac_nc_write_tail')
+podaac_fields = Path('/home/ifenty/git_repo_others/ecco-data-pub/metadata')
 
 
 ## ECCO GRID 
@@ -339,6 +339,7 @@ max_k = 3
 mon_ts_to_load = [732, 1428]#,2172]   
 day_ts_to_load = [12, 36]#, 60]
 
+divide_OBP_by_g = True
 
 #%% -- -program start
 
@@ -394,8 +395,8 @@ variable_metadata = metadata['ECCOv4r4_variable_metadata']
       
 __datasets__ = read_csv(podaac_fields / 'datasets.csv')
 
-with open(podaac_fields / 'keywords.json', "r") as f:
-    __keywords__ = json.load(f)
+#with open(podaac_fields / 'keywords.json', "r") as f:
+#    __keywords__ = json.load(f)
         
 # load ECCO grid
 ecco_grid = ecco.load_ecco_grid_nc(ecco_grid_dir, 'ECCO-GRID.nc')
@@ -510,7 +511,7 @@ for product_type in product_types:
             # first check to see if you have already calculated the grid mapping factors
             if grid_mapping_fname.is_file():
                 # if so, load
-                print('.... loading latlon_grid_mappings.p')
+                print('... loading latlon_grid_mappings.p')
             
                 [grid_mappings_all, grid_mappings_k] = \
                     pickle.load(open(grid_mapping_fname, "rb"))
@@ -819,6 +820,13 @@ for product_type in product_types:
 
                         # cast to appropriate precision
                         F_DA = F_DA.astype(array_precision)
+                        
+                        
+                        if divide_OBP_by_g:
+                            if F_DA.name == 'OBP' or F_DA.name == 'OBPGMAP':
+                                print('DIVIDING BY g! ', F_DA.name)
+                                F_DA.values = F_DA.values / 9.81000
+                        
                         
                         # replace nan with fill value
                         F_DA.values = np.where(np.isnan(F_DA.values), \

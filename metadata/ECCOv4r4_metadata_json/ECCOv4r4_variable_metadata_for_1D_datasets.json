@@ -1,0 +1,45 @@
+   [
+      {
+         "name": "global_mean_barystatic_sea_level_anomaly",
+         "long_name": "Global mean of barystatic sea level anomaly",
+         "units": "m",
+         "standard_name": "",
+         "comments_1": "Global mean barystatic sea level anomaly due to changes in total ocean mass.",
+         "comments_2": "Note: ECCOv4 uses a volume-conserving Boussinesq formulation of the MITgcm with a free-surface boundary condition with real freshwater flux forcing. Changes in ocean mass due to evaporation, precipitation, runoff, and sea-ice growth/melt are reflected in model sea level. However, as a consequence of the Boussinsq formulation, changes to seawater density due to net buoyancy fluxes (e.g., global mean surface heating/cooling) do not change model sea level anomaly (ETAN) via seawater expansion/contraction. Changes in global ocean density therefore induce a spurious change in model ocean bottom pressure (PHIBOT) via 'virtual mass fluxes'. The 'Greatbatch correction' is a time varying, globally-uniform correction to account for changes in global mean density in Boussinesq models. This correction is used to calculate dynamic sea surface height (SSH) and ocean bottom pressure (OBP). Importantly, there is no dynamical significance to the Greatbatch correction but it is required to account for steric changes in global sea level. See Greatbatch, 1994. J. of Geophys. Res. Oceans, doi.org/10.1029/94JC00847",
+         "GCMD_keywords" : "",
+         "grid_dimension":"1D",
+         "coverage_content_type": "modelResult"
+      },      
+      {
+         "name": "global_mean_sea_level_anomaly",
+         "long_name": "Global mean of SSH",
+         "units": "m",
+         "standard_name": "",
+         "comments_1": "Global mean of dynamic sea level anomaly, equivalent to global mean sea level change.",
+         "comments_2": "Note: ECCOv4 uses a volume-conserving Boussinesq formulation of the MITgcm with a free-surface boundary condition with real freshwater flux forcing. Changes in ocean mass due to evaporation, precipitation, runoff, and sea-ice growth/melt are reflected in model sea level. However, as a consequence of the Boussinsq formulation, changes to seawater density due to net buoyancy fluxes (e.g., global mean surface heating/cooling) do not change model sea level anomaly (ETAN) via seawater expansion/contraction. Changes in global ocean density therefore induce a spurious change in model ocean bottom pressure (PHIBOT) via 'virtual mass fluxes'. The 'Greatbatch correction' is a time varying, globally-uniform correction to account for changes in global mean density in Boussinesq models. This correction is used to calculate dynamic sea surface height (SSH) and ocean bottom pressure (OBP). Importantly, there is no dynamical significance to the Greatbatch correction but it is required to account for steric changes in global sea level. See Greatbatch, 1994. J. of Geophys. Res. Oceans, doi.org/10.1029/94JC00847",
+         "GCMD_keywords" : "",
+         "grid_dimension":"1D",
+         "coverage_content_type": "modelResult"
+      },
+      {
+         "name": "global_mean_steric_sea_level_anomaly",
+         "long_name": "Global mean of steric sea level anomaly",
+         "units": "m",
+         "standard_name": "",
+         "comments_1": "Steric sea level anomaly associated with seawater expansion/contraction due to density changes.",
+         "comments_2": "Note: ECCOv4 uses a volume-conserving Boussinesq formulation of the MITgcm with a free-surface boundary condition with real freshwater flux forcing. Changes in ocean mass due to evaporation, precipitation, runoff, and sea-ice growth/melt are reflected in model sea level. However, as a consequence of the Boussinsq formulation, changes to seawater density due to net buoyancy fluxes (e.g., global mean surface heating/cooling) do not change model sea level anomaly (ETAN) via seawater expansion/contraction. Changes in global ocean density therefore induce a spurious change in model ocean bottom pressure (PHIBOT) via 'virtual mass fluxes'. The 'Greatbatch correction' is a time varying, globally-uniform correction to account for changes in global mean density in Boussinesq models. This correction is used to calculate dynamic sea surface height (SSH) and ocean bottom pressure (OBP). Importantly, there is no dynamical significance to the Greatbatch correction but it is required to account for steric changes in global sea level. See Greatbatch, 1994. J. of Geophys. Res. Oceans, doi.org/10.1029/94JC00847",
+         "GCMD_keywords" : "",
+         "grid_dimension":"1D",
+         "coverage_content_type": "modelResult"
+      },
+      {
+         "name": "sterGloH",
+         "long_name": "Greatbatch correction to model sea level anomaly (ETAN)",
+         "units": "m",
+         "standard_name": "",
+         "comments_1": "Correction to model sea level anomaly (ETAN) to account for changes in global mean density.",
+         "comments_2": "Note: ECCOv4 uses a volume-conserving Boussinesq formulation of the MITgcm with a free-surface boundary condition with real freshwater flux forcing. Changes in ocean mass due to evaporation, precipitation, runoff, and sea-ice growth/melt are reflected in model sea level. However, as a consequence of the Boussinsq formulation, changes to seawater density due to net buoyancy fluxes (e.g., global mean surface heating/cooling) do not change model sea level anomaly (ETAN) via seawater expansion/contraction. Changes in global ocean density therefore induce a spurious change in model ocean bottom pressure (PHIBOT) via 'virtual mass fluxes'. The 'Greatbatch correction' is a time varying, globally-uniform correction to account for changes in global mean density in Boussinesq models. This correction is used to calculate dynamic sea surface height (SSH) and ocean bottom pressure (OBP). Importantly, there is no dynamical significance to the Greatbatch correction but it is required to account for steric changes in global sea level. See Greatbatch, 1994. J. of Geophys. Res. Oceans, doi.org/10.1029/94JC00847",
+         "grid_dimension":"1D",
+         "coverage_content_type": "modelResult"
+      }
+]     
