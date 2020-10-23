@@ -143,10 +143,12 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
         # =====================================================
         # Make model grid factors if not present locally
         # =====================================================
-        grid_factors = f'{grid_name}{hemi}_{date[:4]}_factors_path_s'
-        grid_factors_version = f'{grid_name}{hemi}_{date[:4]}_factors_version_f'
+        grid_factors = f'{grid_name}{hemi}_factors_path_s'
+        grid_factors_version = f'{grid_name}{hemi}_factors_version_f'
 
-        if grid_factors_version in dataset_metadata.keys() and transformation_version == dataset_metadata[grid_factors_version] and date[:4] in grid_factors:
+        # if grid_factors_version in dataset_metadata.keys() and transformation_version == dataset_metadata[grid_factors_version] and date[:4] in grid_factors:
+        if grid_factors_version in dataset_metadata.keys() and transformation_version == dataset_metadata[grid_factors_version]:
+
             factors_path = dataset_metadata[grid_factors]
 
             print(f'===Loading {grid_name} factors===')
@@ -224,7 +226,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
             if not os.path.exists(factors_path):
                 os.makedirs(factors_path)
 
-            factors_path += f'{grid_name}_factors'
+            factors_path += f'{grid_name}{hemi}_factors'
 
             with open(factors_path, 'wb') as f:
                 pickle.dump(factors, f)
@@ -239,7 +241,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
                 {
                     "id": doc_id,
                     f'{grid_factors}': {"set": factors_path},
-                    f'{grid_name}{hemi}_{date[:4]}_factors_stored_dt': {"set": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")},
+                    f'{grid_name}{hemi}_factors_stored_dt': {"set": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")},
                     f'{grid_factors_version}': {"set": transformation_version}
                 }
             ]
