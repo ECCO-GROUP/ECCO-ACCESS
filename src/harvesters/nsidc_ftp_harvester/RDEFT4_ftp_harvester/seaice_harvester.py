@@ -416,6 +416,11 @@ def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False):
             if not os.path.exists(f'{target_dir}{date[:4]}/'):
                 os.makedirs(f'{target_dir}{date[:4]}/')
 
+            start.append(datetime.datetime.strptime(
+                new_date_format, config['date_regex']))
+            end.append(datetime.datetime.strptime(
+                new_date_format, config['date_regex']))
+
             # check if file in download date range
             if (start_time <= date_time) and (end_time >= date_time):
                 item = {}
