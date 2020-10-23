@@ -179,9 +179,14 @@ def run_aggregation(output_dir, s3=None, config_path=''):
                     f'{year}-01-01', f'{int(year)+1}-01-01', dtype='datetime64[D]')
 
             elif data_time_scale == 'monthly':
-                dates_in_year = np.arange(
-                    f'{year}-01', f'{int(year)+1}-01', dtype='datetime64[M]')
-                dates_in_year = [f'{date}-01' for date in dates_in_year]
+                if config['time_center_in_middle']:
+                    dates_in_year = np.arange(
+                        f'{year}-01', f'{int(year)+1}-01', dtype='datetime64[M]')
+                    dates_in_year = [f'{date}-16' for date in dates_in_year]
+                else:
+                    dates_in_year = np.arange(
+                        f'{year}-01', f'{int(year)+1}-01', dtype='datetime64[M]')
+                    dates_in_year = [f'{date}-01' for date in dates_in_year]
 
             # Iterate through dataset fields
             for field in fields:
