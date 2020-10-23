@@ -7,9 +7,10 @@ array_precision: float32
 remove_nan_days_from_data: True # Remove empty days from data when aggregating
 do_monthly_aggregation: True
 skipna_in_mean: False # Controls skipna when calculating monthly mean
+time_center_in_middle: False # Monthly time is centered on the middle of the month
+monthly_tolerance: 8 # Defines the range of days to look for data around the start of the month (exclusive)
 save_binary: True
 save_netcdf: True
-monthly_tolerance: 8 # Defines the range of days to look for data around the start of the month (exclusive)
 
 # =====================================================
 # Solr
