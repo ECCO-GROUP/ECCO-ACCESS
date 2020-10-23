@@ -187,8 +187,8 @@ if __name__ == '__main__':
                 sys.path.insert(1, str(path_to_tools))
                 try:
                     ret_import = importlib.reload(
-                        ret_import
-                    )  # pylint: disable=used-before-assignment
+                        ret_import                      # pylint: disable=used-before-assignment
+                    )
                 except:
                     ret_import = importlib.import_module('create_directories')
                 ret_import.main()
@@ -265,7 +265,6 @@ if __name__ == '__main__':
     root = tk.Tk()
     root.attributes('-topmost', True)
     root.withdraw()
-
     output_dir = f'{filedialog.askdirectory()}/'
 
     if output_dir == '/':
