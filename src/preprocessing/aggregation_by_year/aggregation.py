@@ -115,7 +115,7 @@ def run_aggregation(output_dir, s3=None, config_path=''):
     dataset_metadata = solr_query(config, solr_host, fq)[0]
 
     aggregate_all_years = False
-    aggregation_version = config['version']
+    aggregation_version = str(config['version'])
     if 'aggregation_version_s' in dataset_metadata.keys():
         existing_aggregation_version = dataset_metadata['aggregation_version_s']
         if existing_aggregation_version != aggregation_version:
