@@ -154,8 +154,8 @@ def run_aggregation(output_dir, s3=None, config_path=''):
         if not aggregate_all_years and solr_years_updated in dataset_metadata.keys():
             years = dataset_metadata[solr_years_updated]
         elif aggregate_all_years:
-            start_year = dataset_metadata['start_date_dt'][:4]
-            end_year = dataset_metadata['end_date_dt'][:4]
+            start_year = int(dataset_metadata['start_date_dt'][:4])
+            end_year = int(dataset_metadata['end_date_dt'][:4])
             years = [str(year) for year in range(start_year, end_year + 1)]
         else:
             # If no years to aggregate for this grid, continue to next grid
