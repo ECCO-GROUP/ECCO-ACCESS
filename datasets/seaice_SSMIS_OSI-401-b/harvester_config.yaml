@@ -1,8 +1,8 @@
 # =====================================================
 # Seaice FTP
 # =====================================================
-start: "20091230T00:00:00Z" # yyyymmddThh:mm:ssZ
-end: "20100105T00:00:00Z" # yyyymmddThh:mm:ssZ
+start: "20091228T00:00:00Z" # yyyymmddThh:mm:ssZ
+end: "20100205T00:00:00Z" # yyyymmddThh:mm:ssZ
 user: anonymous # does not change
 host: osisaf.met.no # does not change
 regex: '\d{8}'

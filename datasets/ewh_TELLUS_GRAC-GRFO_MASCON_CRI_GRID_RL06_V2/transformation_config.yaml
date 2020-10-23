@@ -2,7 +2,7 @@
 # Dataset
 # =====================================================
 ds_name: "ewh_TELLUS_GRAC-GRFO_MASCON_CRI_GRID_RL06_V2" # Name for dataset
-version: 1.3 # Update this value if any changes are made to this file
+version: 1.4 # Update this value if any changes are made to this file
 array_precision: float32
 time_zone_included_with_time: True # Data time values have time zone
 extra_information: ["time_var", "time_bounds_var"] # Unique things to do for dataset
