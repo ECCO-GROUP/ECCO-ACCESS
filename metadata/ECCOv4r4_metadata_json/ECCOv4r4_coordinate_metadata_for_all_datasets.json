@@ -5,6 +5,7 @@
       "bounds": "time_bnds",
       "standard_name": "time",
       "long_name": "record time",
+      "units": "hours since 1992-01-01 12:00:00",
       "comment": "center of averaging period or snapshot instantaneous time",
       "grid_dimension":"1D 2D 3D",
       "coverage_content_type": "coordinate"
@@ -12,22 +13,23 @@
    {
       "name": "time_bnds",
       "long_name": "start and end of averaging period",
+      "units": "hours since 1992-01-01 12:00:00",      
       "grid_dimension":"1D 2D 3D",
       "coverage_content_type": "coordinate"
    },
    {
       "name": "time_step",
       "long_name": "model time step at end of averaging period or at snapshot [hours since 1992-01-01T12:00:00]",
+      "units":"hours",
       "comment": "The ECCO V4r4 model has 1 hour timesteps",
       "grid_dimension":"1D 2D 3D",
-      "units":"hours",
       "coverage_content_type": "coordinate"
    },
    {
       "name": "Z",
+      "standard_name": "depth",
       "long_name": "depth",
       "units": "m",
-      "standard_name": "depth",
       "comment": "depth at center of model grid cell. non-uniform vertical spacing",
       "axis": "Z",
       "positive": "up",

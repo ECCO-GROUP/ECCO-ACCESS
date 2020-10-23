@@ -9,7 +9,7 @@
    },
    {
      "name": "global mean sea level anomalies including barystatic and sterodynamic terms",
-     "fields": "global_mean_sea_level_anomaly, global_mean_barystatic_sea_level_anomaly,global_mean_sterodynamic_sea_level_anomaly",
+     "fields": "global_mean_sea_level_anomaly, global_mean_barystatic_sea_level_anomaly, global_mean_sterodynamic_sea_level_anomaly, sterGloH",
      "product": "1D",
      "filename" : "GLOBAL_MEAN_SEA_LEVEL",
      "dimension" : "1D"
