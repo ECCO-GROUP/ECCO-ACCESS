@@ -68,7 +68,7 @@
     "name": "sea-ice and snow horizontal volume fluxes",
     "fields":"ADVxHEFF, ADVyHEFF, ADVxSNOW , ADVySNOW, DFxESNOW, DFyEHEFF, DFxEHEFF, DFyESNOW",
     "product": "native",
-    "filename" : "SEA_ICE_VOLUME_FLUX",
+    "filename" : "SEA_ICE_HORIZ_VOLUME_FLUX",
     "dimension" : "2D"
    },
    {
