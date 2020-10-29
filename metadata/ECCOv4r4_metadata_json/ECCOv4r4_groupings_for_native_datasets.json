@@ -16,36 +16,6 @@
     "dimension" : "2D"
    },
    {
-    "name" : "ocean potential temperature and salinity",
-    "fields": "THETA, SALT",
-    "product": "native",
-    "filename" : "OCEAN_TEMPERATURE_SALINITY",
-    "dimension" : "3D"
-   },
-   {
-    "name": "ocean density, stratification, and hydrostatic pressure",
-    "fields": "RHOAnoma, DRHODR, PHIHYD, PHIHYDcR",
-    "product": "native",
-    "dataset_description" : "ocean density, stratification, and hydrostatic pressure",
-    "filename" : "OCEAN_DENS_STRAT_PRESS",
-    "dimension" : "3D"
-   },
-   {
-    "name": "ocean velocity",
-    "fields": "UVEL, VVEL, WVELMASS",
-    "product": "native",
-    "variable_rename" : "WVELMASS:WVEL",
-    "filename" : "OCEAN_VELOCITY",
-    "dimension" : "3D"
-   },
-   {
-    "name": "Gent-McWilliams ocean bolus velocity",
-    "fields": "UVELSTAR, VVELSTAR, WVELSTAR",
-    "product": "native",
-    "filename" : "OCEAN_BOLUS_VELOCITY",
-    "dimension" : "3D"
-   },
-   {
     "name": "ocean and sea-ice surface freshwater fluxes",
     "fields": "EXFpreci, EXFevap, EXFroff, SIsnPrcp, EXFempmr, oceFWflx, SIatmFW, SFLUX, SIacSubl, SIrsSubl, SIfwThru",
     "product": "native",
@@ -118,7 +88,7 @@
    },   
    {
     "name": "ocean three-dimensional potential temperature fluxes",
-    "fields":"ADVx_TH, ADVy_TH, DFrE_TH, DFyE_TH, ADVr_TH, DFxE_TH, DFrI_TH",
+    "fields":"ADVx_TH, DFxE_TH, ADVy_TH, DFyE_TH, ADVr_TH, DFrE_TH, DFrI_TH",
     "comment": "ADV*_TH and DF*_TH terms are potential temperature fluxes.",
     "product": "native",
     "filename" : "OCEAN_3D_TEMPERATURE_FLUX",
@@ -126,17 +96,10 @@
    },
    {
     "name": "ocean three-dimensional salinity fluxes",
-    "fields":"ADVx_SLT, ADVy_SLT, DFrE_SLT, DFyE_SLT, ADVr_SLT, DFxE_SLT, DFrI_SLT, oceSPtnd",
+    "fields":"ADVx_SLT, DFxE_SLT, ADVy_SLT, DFyE_SLT, ADVr_SLT, DFrE_SLT, DFrI_SLT, oceSPtnd",
     "comment": "ADV*_SLT and DF*_SLT terms are salinity fluxes. oceSPtnd is salt tendency per unit area (g m-2 s-1), not salinity flux.",
     "product": "native",
     "filename" : "OCEAN_3D_SALINITY_FLUX",
-    "dimension" : "3D"
-   },
-   {
-    "name": "ocean three-dimensional momentum tendency",
-    "fields":"Um_dPHdx, Vm_dPHdy",
-    "product": "native",
-    "filename" : "OCEAN_3D_MOMENTUM_TENDENCY",
     "dimension" : "3D"
    },
    {
@@ -146,5 +109,42 @@
     "product": "native",
     "filename" : "SEA_ICE_PLUME_FLUX",
     "dimension" : "3D"
-   }      
+   },
+   {
+    "name" : "ocean potential temperature and salinity",
+    "fields": "THETA, SALT",
+    "product": "native",
+    "filename" : "OCEAN_TEMPERATURE_SALINITY",
+    "dimension" : "3D"
+   },
+   {
+    "name": "ocean density, stratification, and hydrostatic pressure",
+    "fields": "RHOAnoma, DRHODR, PHIHYD, PHIHYDcR",
+    "product": "native",
+    "dataset_description" : "ocean density, stratification, and hydrostatic pressure",
+    "filename" : "OCEAN_DENS_STRAT_PRESS",
+    "dimension" : "3D"
+   },
+   {
+    "name": "ocean velocity",
+    "fields": "UVEL, VVEL, WVELMASS",
+    "product": "native",
+    "variable_rename" : "WVELMASS:WVEL",
+    "filename" : "OCEAN_VELOCITY",
+    "dimension" : "3D"
+   },
+   {
+    "name": "Gent-McWilliams ocean bolus velocity",
+    "fields": "UVELSTAR, VVELSTAR, WVELSTAR",
+    "product": "native",
+    "filename" : "OCEAN_BOLUS_VELOCITY",
+    "dimension" : "3D"
+   },
+   {
+    "name": "ocean three-dimensional momentum tendency",
+    "fields":"Um_dPHdx, Vm_dPHdy",
+    "product": "native",
+    "filename" : "OCEAN_3D_MOMENTUM_TENDENCY",
+    "dimension" : "3D"
+   }
 ]
