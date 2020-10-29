@@ -16,35 +16,6 @@
     "dimension" : "2D"
    },
    {
-    "name" : "ocean potential temperature and salinity",
-    "fields": "THETA, SALT",
-    "product": "latlon",
-    "filename" : "OCEAN_TEMPERATURE_SALINITY",
-    "dimension" : "3D"
-   },
-   {
-    "name": "ocean density, stratification, and hydrostatic pressure",
-    "fields": "RHOAnoma, DRHODR, PHIHYD",
-    "product": "latlon",
-    "filename" : "OCEAN_DENS_STRAT_PRESS",
-    "dimension" : "3D"
-   },
-   {
-    "name": "ocean velocity",
-    "fields": "EVEL, NVEL, WVELMASS",
-    "product": "latlon",
-    "variable_rename" : "WVELMASS:WVEL",
-    "filename" : "OCEAN_VELOCITY",
-    "dimension" : "3D"
-   },
-   {
-    "name": "Gent-McWilliams ocean bolus velocity",
-    "fields": "EVELSTAR, NVELSTAR, WVELSTAR",
-    "product": "latlon",
-    "filename" : "OCEAN_BOLUS_VELOCITY",
-    "dimension" : "3D"
-   },
-   {
     "name": "ocean and sea-ice surface freshwater fluxes",
     "fields": "EXFpreci, EXFevap, EXFroff, SIsnPrcp, EXFempmr, oceFWflx, SIatmFW, SFLUX, SIacSubl, SIrsSubl, SIfwThru",
     "product": "latlon",
@@ -53,7 +24,7 @@
    },
    {
     "name": "ocean and sea-ice surface heat fluxes",
-    "fields": "EXFhl,   EXFhs, EXFlwdn, EXFswdn, EXFqnet, oceQnet, SIatmQnt, TFLUX, EXFswnet, EXFlwnet, oceQsw, SIaaflux",
+    "fields": "EXFhl, EXFhs, EXFlwdn, EXFswdn, EXFqnet, oceQnet, SIatmQnt, TFLUX, EXFswnet, EXFlwnet, oceQsw, SIaaflux",
     "product": "latlon",
     "filename" : "OCEAN_AND_ICE_SURFACE_HEAT_FLUX",
     "dimension" : "2D"
@@ -92,5 +63,34 @@
     "product": "latlon",
     "filename" : "SEA_ICE_VELOCITY",
     "dimension" : "2D"
-   }   
+   },
+   {
+    "name" : "ocean potential temperature and salinity",
+    "fields": "THETA, SALT",
+    "product": "latlon",
+    "filename" : "OCEAN_TEMPERATURE_SALINITY",
+    "dimension" : "3D"
+   },
+   {
+    "name": "ocean density, stratification, and hydrostatic pressure",
+    "fields": "RHOAnoma, DRHODR, PHIHYD",
+    "product": "latlon",
+    "filename" : "OCEAN_DENS_STRAT_PRESS",
+    "dimension" : "3D"
+   },
+   {
+    "name": "ocean velocity",
+    "fields": "EVEL, NVEL, WVELMASS",
+    "product": "latlon",
+    "variable_rename" : "WVELMASS:WVEL",
+    "filename" : "OCEAN_VELOCITY",
+    "dimension" : "3D"
+   },
+   {
+    "name": "Gent-McWilliams ocean bolus velocity",
+    "fields": "EVELSTAR, NVELSTAR, WVELSTAR",
+    "product": "latlon",
+    "filename" : "OCEAN_BOLUS_VELOCITY",
+    "dimension" : "3D"
+   }
 ]

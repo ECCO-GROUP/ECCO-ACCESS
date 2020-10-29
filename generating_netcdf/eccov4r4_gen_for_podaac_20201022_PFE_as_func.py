@@ -886,7 +886,7 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
         else:
             record_start_time = np.datetime64(times)
                   
-        print('i, tb ', str(cur_ts_i).zfill(4), tb)
+        print('cur_ts, i, tb ', str(cur_ts).zfill(10), str(cur_ts_i).zfill(4), tb)
                     
 
         # loop through variables to load
@@ -1123,7 +1123,7 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
                  
                 
             # PROVIDE SPECIFIC ENCODING DIRECTIVES FOR EACH COORDINATE
-            print('\n creating coordinate encodings')
+            print('\n... creating coordinate encodings')
             coord_encoding = dict()
             
             for coord in G.coords:
@@ -1147,7 +1147,7 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
          
             
             # MERGE GCMD KEYWORDS
-            print('\n merging GCMD keywords')
+            print('\n... merging GCMD keywords')
             common_gcmd_keywords = G.keywords.split(',')
             gcmd_keywords_list = set(grouping_gcmd_keywords + common_gcmd_keywords)
             
@@ -1217,7 +1217,7 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
             
             # make subdirectory for the grouping
             output_dir = output_dir_freq / grouping['filename'] 
-            print('\n.. creating output_dir', output_dir)
+            print('\n... creating output_dir', output_dir)
 
             if not output_dir.exists():
                 try:
@@ -1241,7 +1241,7 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
 
             # apply podaac metadata based on filename
             print('\n... applying PODAAC metadata')
-            print(podaac_metadata)
+            pprint(podaac_metadata)
             G = apply_podaac_metadata(G, podaac_metadata)
 
             # sort comments alphabetically
@@ -1263,28 +1263,26 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
 if __name__ == "__main__":
 
     
-
+    
     num_jobs = 364
     job_id =0
-    grouping_to_process = 0
+    grouping_to_process = 3
     #grouping_to_process='by_job'
     time_steps_to_process = 'by_job'
 
 
     print (sys.argv)
     if len(sys.argv) > 1:
-        # when invoked from 'seq' numbers start from 1, so sub 1 to start from 0
         num_jobs = int(sys.argv[1])
     if len(sys.argv) > 2:
-        job_id = int(sys.argv[2])-1
+        job_id = int(sys.argv[2])
     if len(sys.argv) > 3:
-        # subtract 1 from grouping to process
-        grouping_to_process == int(sys.argv[3]-1)
+        grouping_to_process = int(sys.argv[3])
 
     product_type = 'latlon'
     output_freq_code = 'AVG_DAY'
    
-    debug_mode=True
+    debug_mode=False
     
     print('\n\n===================================')
     print('starting python: num jobs, job_id', num_jobs, job_id)
@@ -1303,3 +1301,6 @@ if __name__ == "__main__":
                      grouping_to_process,\
                      time_steps_to_process, \
                      debug_mode)
+        
+    import time
+    time.sleep(10)
