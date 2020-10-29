@@ -40,9 +40,9 @@ cat "$PBS_NODEFILE" > pbs_nodefile
 # 0..8 are 2D
 # 9..12 are 13
 
-set cur_grouping  = 11
+set cur_grouping  = 9
 # end grouping (if one grouping, 1+cur_grouping)
-set num_groupings = 12 
+set num_groupings = 10
 
 set cpu_start = 0
 set cpu_end = `expr $totcpus - 1`

@@ -1,6 +1,8 @@
 #!/bin/bash
 while true
 do
+echo "qstat query"
+qstat -u ifenty
 echo ""
 echo `date`
 export x=`find . |grep SEA_SURFACE_HEIGHT |wc -l`
