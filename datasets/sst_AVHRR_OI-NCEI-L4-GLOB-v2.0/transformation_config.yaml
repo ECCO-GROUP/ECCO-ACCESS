@@ -2,7 +2,7 @@
 # Dataset
 # =====================================================
 ds_name: "sst_AVHRR_OI-NCEI-L4-GLOB-v2.0" # Name for dataset
-version: 1.9 # Update this value if any changes are made to this file
+version: 1.2 # Update this value if any changes are made to this file
 array_precision: float32
 time_zone_included_with_time: True # Data time values have time zone
 extra_information: ["no_time_dashes"] # Unique things to do for dataset
