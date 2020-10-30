@@ -14,10 +14,9 @@ from datetime import datetime
 
 np.warnings.filterwarnings('ignore')
 
-logger = logging.getLogger('pipeline')
-
-
 # Creates checksum from filename
+
+
 def md5(fname):
     hash_md5 = hashlib.md5()
     with open(fname, 'rb') as f:
@@ -90,8 +89,10 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
     file_name = source_file_path.split('/')[-1]
     dataset_name = config['ds_name']
     transformation_version = config['version']
-
     solr_host = config['solr_host_local']
+
+    # Define logger using dataset name
+    logger = logging.getLogger(f'pipeline.{dataset_name}.transformation')
 
     # Query Solr for dataset entry
     fq = [f'dataset_s:{dataset_name}', 'type_s:dataset']
@@ -758,6 +759,10 @@ def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors
         f'{Path(__file__).resolve().parents[4]}/ECCO-ACCESS/ecco-cloud-utils/')
     sys.path.append(str(generalized_functions_path))
     import ecco_cloud_utils as ea  # pylint: disable=import-error
+
+    # Define logger using dataset name
+    logger = logging.getLogger(
+        f'pipeline.{dataset_metadata["dataset_s"]}.transformation')
 
     # Check if ends in z and drop it if it does
     if record_date[-1] == 'Z':

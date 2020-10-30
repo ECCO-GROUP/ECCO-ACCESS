@@ -7,13 +7,56 @@ import tkinter as tk
 from pathlib import Path
 from shutil import copyfile
 from tkinter import filedialog
+from collections import defaultdict
 
 
-def print_log():
+def print_log(log_path):
     print('\n=========================================================')
     print(
         '===================== \033[36mPrinting log\033[0m ======================')
     print('=========================================================')
+
+    log_dict = []
+    with open(log_path) as f:
+        logs = f.read().splitlines()
+    for l in logs:
+        log_dict.append(eval(l))
+
+    dataset_statuses = defaultdict(lambda: defaultdict(list))
+
+    # Must add info level items first
+    for d in log_dict:
+        ds = d['name'].replace('pipeline.', '').replace('.harvester', '').replace(
+            '.transformation', '').replace('.aggregation', '')
+        preprocessing_step = d['name'].replace(
+            'pipeline.', '').replace(f'{ds}.', '')
+        if len(ds) > 0:
+            if d['level'] == 'INFO':
+                dataset_statuses[ds][preprocessing_step].append(('INFO',
+                                                                 d["message"]))
+    # Then add errors
+    for d in log_dict:
+        ds = d['name'].replace('pipeline.', '').replace('.harvester', '').replace(
+            '.transformation', '').replace('.aggregation', '')
+        preprocessing_step = d['name'].replace(
+            'pipeline.', '').replace(f'{ds}.', '')
+        if len(ds) > 0:
+            if d['level'] == 'ERROR':
+                if ('ERROR', d["message"]) not in dataset_statuses[ds][preprocessing_step]:
+                    dataset_statuses[ds][preprocessing_step].append(
+                        ('ERROR', d["message"]))
+
+    for ds, steps in dataset_statuses.items():
+        print(f'\033[93mPipeline status for {ds}\033[0m:')
+        for step, messages in steps.items():
+            for (level, message) in messages:
+                if level == 'INFO':
+                    if 'successful' in message:
+                        print(f'\t\033[92m{message}\033[0m')
+                    else:
+                        print(f'\t\033[91m{message}\033[0m')
+                elif level == 'ERROR':
+                    print(f'\t\t\033[91m{message}\033[0m')
     # for ds, steps in log.items():
     #     print(f'\033[93mPipeline status for {ds}\033[0m:')
     #     print(*steps, sep='\n')
@@ -76,7 +119,7 @@ def run_harvester(datasets, path_to_harvesters, output_dir):
             # print('\033[92mHarvest successful\033[0m')
         except Exception as e:
             sys.path.remove(str(path_to_code))
-            harv_logger.error(f'Harvest failed: {e}')
+            harv_logger.info(f'Harvest failed: {e}')
             # print('\033[91mHarvesting failed\033[0m')
             # log.setdefault(ds, []).append(
             #     f'\tHarvest \033[91mfailed\033[0m: {e}')
@@ -160,7 +203,7 @@ def run_aggregation(datasets, path_to_preprocessing, output_dir):
             # print('\033[92mAggregation successful\033[0m')
         except Exception as e:
             sys.path.remove(str(path_to_code))
-            agg_logger.error(f'Aggregation failed: {e}')
+            agg_logger.info(f'Aggregation failed: {e}')
             # print('\033[91mAggregation failed\033[0m')
             # log.setdefault(ds, []).append(
             #     f'\tAggregation \033[91mfailed\033[0m: {e}')
@@ -169,26 +212,6 @@ def run_aggregation(datasets, path_to_preprocessing, output_dir):
 
 if __name__ == '__main__':
     import logging
-
-    # create logger
-    logger = logging.getLogger('pipeline')
-    logger.setLevel(logging.DEBUG)
-    # create file handler which logs even debug messages
-    fh = logging.FileHandler('pipeline.log', 'w+')
-    fh.setLevel(logging.DEBUG)
-    # create console handler with a higher log level
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.ERROR)
-    # create formatter and add it to the handlers
-    fh_formatter = logging.Formatter(
-        "{'name': '%(name)s', 'level': '%(levelname)s', 'message': '%(message)s'}")
-    ch_formatter = logging.Formatter('%(message)s')
-
-    fh.setFormatter(fh_formatter)
-    ch.setFormatter(ch_formatter)
-    # add the handlers to the logger
-    logger.addHandler(fh)
-    logger.addHandler(ch)
 
     # path to harvester and preprocessing folders
     path_to_harvesters = Path(
@@ -228,7 +251,7 @@ if __name__ == '__main__':
                 # print('\033[92mcreate_directories successful\033[0m')
             except Exception as e:
                 sys.path.remove(str(path_to_tools))
-                logger.error(
+                logger.info(
                     f'create_directories failed: {e}')
                 # print('\033[91mcreate_directories failed\033[0m')
                 # log.setdefault('grids', []).append(
@@ -305,6 +328,27 @@ if __name__ == '__main__':
         sys.exit()
     print(f'Output direcory selected as {output_dir}')
 
+    # create logger
+    logger_path = f'{output_dir}/pipeline.log'
+    logger = logging.getLogger('pipeline')
+    logger.setLevel(logging.DEBUG)
+    # create file handler which logs even debug messages
+    fh = logging.FileHandler(logger_path, 'w+')
+    fh.setLevel(logging.DEBUG)
+    # create console handler with a higher log level
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.ERROR)
+    # create formatter and add it to the handlers
+    fh_formatter = logging.Formatter(
+        "{'name': '%(name)s', 'level': '%(levelname)s', 'message': '%(message)s'}")
+    ch_formatter = logging.Formatter('%(message)s')
+
+    fh.setFormatter(fh_formatter)
+    ch.setFormatter(ch_formatter)
+    # add the handlers to the logger
+    logger.addHandler(fh)
+    logger.addHandler(ch)
+
     if chosen_option == '1':
         for ds in datasets:
             run_harvester([ds], path_to_harvesters, output_dir)
@@ -366,4 +410,4 @@ if __name__ == '__main__':
                 break
             else:  # yes_no == 'N'
                 continue
-    print_log()
+    print_log(logger_path)
