@@ -4,13 +4,17 @@ import gzip
 import yaml
 import shutil
 import hashlib
+import logging
 import requests
 import numpy as np
 import xarray as xr
+
 from pathlib import Path
 from xml.etree.ElementTree import parse
 from datetime import datetime, timedelta
 from urllib.request import urlopen, urlcleanup, urlretrieve
+
+log = logging.getLogger(__name__)
 
 
 # Creates checksum from filename
@@ -58,7 +62,7 @@ def metadata_maker(config, date, link, mod_time, on_aws, target_bucket, local_fp
         item['file_size_l'] = {"set": os.path.getsize(local_fp)}
         item['checksum_s'] = {"set": md5(local_fp)}
     except Exception as e:
-        print(e)
+        log.debug(e)
         print(f'Failed updating file_size and checksum for {file_name}')
         print('=======failed file_size and checksum======')
 

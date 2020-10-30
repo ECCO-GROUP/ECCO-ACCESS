@@ -151,7 +151,7 @@ def run_aggregation(output_dir, s3=None, config_path=''):
         # Only aggregate years with updated transformations
         # Based on years_updated_ss field in dataset Solr entry
         solr_years_updated = f'{grid_name}_years_updated_ss'
-        if not aggregate_all_years and solr_years_updated in dataset_metadata.keys():
+        if (not aggregate_all_years) and (solr_years_updated in dataset_metadata.keys()):
             years = dataset_metadata[solr_years_updated]
         elif aggregate_all_years:
             start_year = int(dataset_metadata['start_date_dt'][:4])

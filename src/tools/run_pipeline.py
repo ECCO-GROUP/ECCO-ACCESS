@@ -9,22 +9,23 @@ from shutil import copyfile
 from tkinter import filedialog
 
 
-def print_log(log):
+def print_log():
     print('\n=========================================================')
     print(
         '===================== \033[36mPrinting log\033[0m ======================')
     print('=========================================================')
-    for ds, steps in log.items():
-        print(f'\033[93mPipeline status for {ds}\033[0m:')
-        print(*steps, sep='\n')
+    # for ds, steps in log.items():
+    #     print(f'\033[93mPipeline status for {ds}\033[0m:')
+    #     print(*steps, sep='\n')
 
 
-def run_harvester(datasets, path_to_harvesters, log, output_dir):
+def run_harvester(datasets, path_to_harvesters, output_dir):
     print('\n=========================================================')
     print(
         '================== \033[36mRunning harvesters\033[0m ===================')
     print('=========================================================\n')
     for ds in datasets:
+        harv_logger = logging.getLogger(f'pipeline.{ds}.harvester')
         try:
             print(f'\033[93mRunning harvester for {ds}\033[0m')
             print('=========================================================')
@@ -69,24 +70,26 @@ def run_harvester(datasets, path_to_harvesters, log, output_dir):
                                 output_path=output_dir)
                 sys.path.remove(str(path_to_code))
 
-            log.setdefault(ds, []).append(
-                f'\tHarvest \033[92msuccessful\033[0m')
-            print('\033[92mHarvest successful\033[0m')
+            harv_logger.info(f'Harvest successful')
+            # log.setdefault(ds, []).append(
+            #     f'\tHarvest \033[92msuccessful\033[0m')
+            # print('\033[92mHarvest successful\033[0m')
         except Exception as e:
             sys.path.remove(str(path_to_code))
-            print('\033[91mHarvesting failed\033[0m')
-            log.setdefault(ds, []).append(
-                f'\tHarvest \033[91mfailed\033[0m: {e}')
+            harv_logger.error(f'Harvest failed: {e}')
+            # print('\033[91mHarvesting failed\033[0m')
+            # log.setdefault(ds, []).append(
+            #     f'\tHarvest \033[91mfailed\033[0m: {e}')
         print('=========================================================')
-    return log
 
 
-def run_transformation(datasets, path_to_preprocessing, log, output_dir):
+def run_transformation(datasets, path_to_preprocessing, output_dir):
     print('\n=========================================================')
     print(
         '=============== \033[36mRunning transformations\033[0m =================')
     print('=========================================================\n')
     for ds in datasets:
+        trans_logger = logging.getLogger(f'pipeline.{ds}.transformation')
         try:
             print(f'\033[93mRunning transformation for {ds}\033[0m')
             print('=========================================================')
@@ -110,24 +113,26 @@ def run_transformation(datasets, path_to_preprocessing, log, output_dir):
             ret_import.main(config_path=config_path, output_path=output_dir)
             sys.path.remove(str(path_to_code))
 
-            log.setdefault(ds, []).append(
-                f'\tTransformation \033[92msuccessful\033[0m')
-            print('\033[92mTransformation successful\033[0m')
+            trans_logger.info(f'Transformation successful')
+            # log.setdefault(ds, []).append(
+            #     f'\tTransformation \033[92msuccessful\033[0m')
+            # print('\033[92mTransformation successful\033[0m')
         except Exception as e:
             sys.path.remove(str(path_to_code))
-            print('\033[91mTransformation failed\033[0m')
-            log.setdefault(ds, []).append(
-                f'\tTransform \033[91mfailed\033[0m: {e}')
+            trans_logger.error(f'Transform failed: {e}')
+            # print('\033[91mTransformation failed\033[0m')
+            # log.setdefault(ds, []).append(
+            #     f'\tTransform \033[91mfailed\033[0m: {e}')
         print('=========================================================')
-    return log
 
 
-def run_aggregation(datasets, path_to_preprocessing, log, output_dir):
+def run_aggregation(datasets, path_to_preprocessing, output_dir):
     print('\n=========================================================')
     print(
         '================ \033[36mRunning aggregations\033[0m ===================')
     print('=========================================================\n')
     for ds in datasets:
+        agg_logger = logging.getLogger(f'pipeline.{ds}.aggregation')
         try:
             print(f'\033[93mRunning aggregation for {ds}\033[0m')
             print('=========================================================')
@@ -149,19 +154,42 @@ def run_aggregation(datasets, path_to_preprocessing, log, output_dir):
 
             ret_import.main(config_path=config_path, output_path=output_dir)
             sys.path.remove(str(path_to_code))
-            log.setdefault(ds, []).append(
-                f'\tAggregation \033[92msuccessful\033[0m')
-            print('\033[92mAggregation successful\033[0m')
+            agg_logger.info(f'Aggregation successful')
+            # log.setdefault(ds, []).append(
+            #     f'\tAggregation \033[92msuccessful\033[0m')
+            # print('\033[92mAggregation successful\033[0m')
         except Exception as e:
             sys.path.remove(str(path_to_code))
-            print('\033[91mAggregation failed\033[0m')
-            log.setdefault(ds, []).append(
-                f'\tAggregation \033[91mfailed\033[0m: {e}')
+            agg_logger.error(f'Aggregation failed: {e}')
+            # print('\033[91mAggregation failed\033[0m')
+            # log.setdefault(ds, []).append(
+            #     f'\tAggregation \033[91mfailed\033[0m: {e}')
         print('=========================================================')
-    return log
 
 
 if __name__ == '__main__':
+    import logging
+
+    # create logger
+    logger = logging.getLogger('pipeline')
+    logger.setLevel(logging.DEBUG)
+    # create file handler which logs even debug messages
+    fh = logging.FileHandler('pipeline.log', 'w+')
+    fh.setLevel(logging.DEBUG)
+    # create console handler with a higher log level
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.ERROR)
+    # create formatter and add it to the handlers
+    fh_formatter = logging.Formatter(
+        "{'name': '%(name)s', 'level': '%(levelname)s', 'message': '%(message)s'}")
+    ch_formatter = logging.Formatter('%(message)s')
+
+    fh.setFormatter(fh_formatter)
+    ch.setFormatter(ch_formatter)
+    # add the handlers to the logger
+    logger.addHandler(fh)
+    logger.addHandler(ch)
+
     # path to harvester and preprocessing folders
     path_to_harvesters = Path(
         f'{Path(__file__).resolve().parents[1]}/harvesters')
@@ -172,7 +200,7 @@ if __name__ == '__main__':
     path_to_datasets = Path(f'{Path(__file__).resolve().parents[2]}/datasets')
 
     # log = {'ds':['harvest e','transform e','aggregation e']}
-    log = {}
+    # log = {}
 
     while True:
         add_dataset = input('\nAdd new dataset? (Y/N): ').upper()
@@ -193,16 +221,19 @@ if __name__ == '__main__':
                     ret_import = importlib.import_module('create_directories')
                 ret_import.main()
                 sys.path.remove(str(path_to_tools))
-                log.setdefault('add_dataset', []).append(
-                    f'\tcreate_directories \033[92msuccessful\033[0m'
-                )
-                print('\033[92mcreate_directories successful\033[0m')
+                logger.info(f'create_directories successful')
+                # log.setdefault('add_dataset', []).append(
+                #     f'\tcreate_directories \033[92msuccessful\033[0m'
+                # )
+                # print('\033[92mcreate_directories successful\033[0m')
             except Exception as e:
                 sys.path.remove(str(path_to_tools))
-                print('\033[91mcreate_directories failed\033[0m')
-                log.setdefault('grids', []).append(
-                    f'\tcreate_directories \033[91mfailed\033[0m: {e}'
-                )
+                logger.error(
+                    f'create_directories failed: {e}')
+                # print('\033[91mcreate_directories failed\033[0m')
+                # log.setdefault('grids', []).append(
+                #     f'\tcreate_directories \033[91mfailed\033[0m: {e}'
+                # )
             print('=========================================================')
             break
 
@@ -247,16 +278,18 @@ if __name__ == '__main__':
                     ret_import = importlib.import_module(grids_to_solr)
                 ret_import.main(path=path_to_grids)
                 sys.path.remove(str(path_to_grids))
-                log.setdefault('grids', []).append(
-                    f'\tgrids_to_solr \033[92msuccessful\033[0m'
-                )
-                print('\033[92mgrids_to_solr successful\033[0m')
+                logger.info(f'grids_to_solr successful')
+                # log.setdefault('grids', []).append(
+                #     f'\tgrids_to_solr \033[92msuccessful\033[0m'
+                # )
+                # print('\033[92mgrids_to_solr successful\033[0m')
             except Exception as e:
                 sys.path.remove(str(path_to_grids))
-                print('\033[91mgrids_to_solr failed\033[0m')
-                log.setdefault('grids', []).append(
-                    f'\tgrids_to_solr \033[91mfailed\033[0m: {e}'
-                )
+                logger.error(f'grids_to_solr failed: {e}')
+                # print('\033[91mgrids_to_solr failed\033[0m')
+                # log.setdefault('grids', []).append(
+                #     f'\tgrids_to_solr \033[91mfailed\033[0m: {e}'
+                # )
             print('=========================================================')
             break
 
@@ -274,17 +307,15 @@ if __name__ == '__main__':
 
     if chosen_option == '1':
         for ds in datasets:
-            log = run_harvester([ds], path_to_harvesters, log, output_dir)
-            log = run_transformation(
-                [ds], path_to_preprocessing, log, output_dir)
-            log = run_aggregation([ds], path_to_preprocessing, log, output_dir)
+            run_harvester([ds], path_to_harvesters, output_dir)
+            run_transformation([ds], path_to_preprocessing, output_dir)
+            run_aggregation([ds], path_to_preprocessing, output_dir)
     elif chosen_option == '2':
-        log = run_harvester(datasets, path_to_harvesters, log, output_dir)
+        run_harvester(datasets, path_to_harvesters, output_dir)
     elif chosen_option == '3':
         for ds in datasets:
-            log = run_harvester([ds], path_to_harvesters, log, output_dir)
-            log = run_transformation(
-                [ds], path_to_preprocessing, log, output_dir)
+            run_harvester([ds], path_to_harvesters, output_dir)
+            run_transformation([ds], path_to_preprocessing, output_dir)
     elif chosen_option == '4':
         while True:
             wanted_ds = input('\nEnter wanted dataset: ')
@@ -306,25 +337,17 @@ if __name__ == '__main__':
                 break
         for step in wanted_steps:
             if step == 'harvest':
-                log = run_harvester(
-                    [wanted_ds], path_to_harvesters, log, output_dir)
+                run_harvester([wanted_ds], path_to_harvesters, output_dir)
             elif step == 'transform':
-                log = run_transformation(
-                    [wanted_ds], path_to_preprocessing, log, output_dir
-                )
+                run_transformation(
+                    [wanted_ds], path_to_preprocessing, output_dir)
             elif step == 'aggregate':
-                log = run_aggregation(
-                    [wanted_ds], path_to_preprocessing, log, output_dir
-                )
+                run_aggregation([wanted_ds], path_to_preprocessing, output_dir)
             elif step == 'all':
-                log = run_harvester(
-                    [wanted_ds], path_to_harvesters, log, output_dir)
-                log = run_transformation(
-                    [wanted_ds], path_to_preprocessing, log, output_dir
-                )
-                log = run_aggregation(
-                    [wanted_ds], path_to_preprocessing, log, output_dir
-                )
+                run_harvester([wanted_ds], path_to_harvesters, output_dir)
+                run_transformation(
+                    [wanted_ds], path_to_preprocessing, output_dir)
+                run_aggregation([wanted_ds], path_to_preprocessing, output_dir)
     elif chosen_option == '5':
         for ds in datasets:
             while True:
@@ -336,13 +359,11 @@ if __name__ == '__main__':
                 else:
                     break
             if yes_no == 'Y':
-                log = run_harvester([ds], path_to_harvesters, log, output_dir)
-                log = run_transformation(
-                    [ds], path_to_preprocessing, log, output_dir)
-                log = run_aggregation(
-                    [ds], path_to_preprocessing, log, output_dir)
+                run_harvester([ds], path_to_harvesters, output_dir)
+                run_transformation([ds], path_to_preprocessing, output_dir)
+                run_aggregation([ds], path_to_preprocessing, output_dir)
             elif yes_no == 'E':
                 break
             else:  # yes_no == 'N'
                 continue
-    print_log(log)
+    print_log()

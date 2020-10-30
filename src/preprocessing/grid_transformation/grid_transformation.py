@@ -4,6 +4,7 @@ import json
 import yaml
 import pickle
 import hashlib
+import logging
 import requests
 import numpy as np
 import xarray as xr
@@ -12,6 +13,8 @@ from pathlib import Path
 from datetime import datetime
 
 np.warnings.filterwarnings('ignore')
+
+logger = logging.getLogger('pipeline')
 
 
 # Creates checksum from filename
@@ -95,7 +98,6 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
     dataset_metadata = solr_query(config, solr_host, fq)[0]
 
     # Query Solr for harvested entry to get origin_checksum and date
-    print(source_file_path)
     query_fq = [f'dataset_s:{dataset_name}', 'type_s:harvested',
                 f'pre_transformation_file_path_s:"{source_file_path}"']
     harvested_metadata = solr_query(config, solr_host, query_fq)[0]
@@ -118,7 +120,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
     # =====================================================
     # Load file to transform
     # =====================================================
-    print(f'=====loading {file_name} data======')
+    print(f'====== Loading {file_name} data =======')
     ds = xr.open_dataset(source_file_path, decode_times=True)
     ds.attrs['original_file_name'] = file_name
 
@@ -780,8 +782,9 @@ def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors
             try:
                 ds = callable_func(ds)
             except Exception as e:
-                print(e)
-                print(f'Pre-transformation {func_to_run} failed.')
+                logger.error(f'Pre-transformation {func_to_run} failed: {e}')
+                # print(e)
+                # print(f'Pre-transformation {func_to_run} failed.')
                 return []
 
     # fields is a list of dictionaries
@@ -797,12 +800,17 @@ def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors
             if post_transformations:
                 for func_to_run in post_transformations:
                     callable_func = getattr(ea, func_to_run)
+
                     try:
                         field_DA = callable_func(
                             field_DA, data_field_info['name_s'])
-                    except:
-                        field_DA = ea.make_empty_record(data_field_info['standard_name_s'], data_field_info['long_name_s'], data_field_info['units_s'],
-                                                        record_date, model_grid, model_grid_type, array_precision)
+                    except Exception as e:
+                        logger.error(
+                            f'Post-transformation {func_to_run} failed: {e}')
+                        # print(e)
+                        # print(f'Post-transformation {func_to_run} failed.')
+                        field_DA = ea.make_empty_record(data_field_info['standard_name_s'], data_field_info['long_name_s'],
+                                                        data_field_info['units_s'], record_date, model_grid, model_grid_type, array_precision)
                         success = False
                         break
 
