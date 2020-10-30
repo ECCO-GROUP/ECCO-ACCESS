@@ -91,9 +91,6 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
     transformation_version = config['version']
     solr_host = config['solr_host_local']
 
-    # Define logger using dataset name
-    logger = logging.getLogger(f'pipeline.{dataset_name}.transformation')
-
     # Query Solr for dataset entry
     fq = [f'dataset_s:{dataset_name}', 'type_s:dataset']
     dataset_metadata = solr_query(config, solr_host, fq)[0]
@@ -761,6 +758,7 @@ def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors
     import ecco_cloud_utils as ea  # pylint: disable=import-error
 
     # Define logger using dataset name
+    # Logger could be a problem when running on AWS
     logger = logging.getLogger(
         f'pipeline.{dataset_metadata["dataset_s"]}.transformation')
 
