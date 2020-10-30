@@ -504,7 +504,9 @@ def generalized_aggregate_and_save(DA_year_merged,
                                    on_aws='',
                                    save_binary=True,
                                    save_netcdf=True,
-                                   remove_nan_days_from_data=False):
+                                   remove_nan_days_from_data=False,
+                                   data_time_scale='DAILY',
+                                   uuids=[]):
 
     # if everything comes back nans it means there were no files
     # to load for the entire year.  don't bother saving the
@@ -524,6 +526,23 @@ def generalized_aggregate_and_save(DA_year_merged,
 
         DA_year_merged.attrs['valid_min'] = np.nanmin(DA_year_merged.values)
         DA_year_merged.attrs['valid_max'] = np.nanmax(DA_year_merged.values)
+
+        DA_year_merged.attrs['uuid'] = uuids[0]
+
+        if data_time_scale.upper() == 'DAILY':
+            DA_year_merged.attrs['time_coverage_duration'] = 'P1D'
+            DA_year_merged.attrs['time_coverage_resolution'] = 'P1D'
+            DA_year_merged.attrs['time_coverage_start'] = str(
+                DA_year_merged.time_start.values[0])[0:19]
+            DA_year_merged.attrs['time_coverage_end'] = str(
+                DA_year_merged.time_end.values[-1])[0:19]
+        elif data_time_scale.upper() == 'MONTHLY':
+            DA_year_merged.attrs['time_coverage_duration'] = 'P1M'
+            DA_year_merged.attrs['time_coverage_resolution'] = 'P1M'
+            DA_year_merged.attrs['time_coverage_start'] = str(
+                DA_year_merged.time_start.values[0])[0:19]
+            DA_year_merged.attrs['time_coverage_end'] = str(
+                DA_year_merged.time_end.values[-1])[0:19]
 
         if do_monthly_aggregation:
             mon_DA_year = []
@@ -559,6 +578,8 @@ def generalized_aggregate_and_save(DA_year_merged,
 
                 mon_DA = mon_DA.assign_coords({'time': ct})
                 mon_DA = mon_DA.expand_dims('time', axis=0)
+                mon_DA.attrs['time_coverage_duration'] = 'P1M'
+                mon_DA.attrs['time_coverage_resolution'] = 'P1M'
 
                 avg_start_time = mon_DA.time.copy(deep=True)
                 avg_start_time.values[0] = tb[0]
@@ -587,6 +608,13 @@ def generalized_aggregate_and_save(DA_year_merged,
                 mon_DA_year_merged.values)
             mon_DA_year_merged.attrs['valid_max'] = np.nanmax(
                 mon_DA_year_merged.values)
+
+            mon_DA_year_merged.attrs['time_coverage_start'] = str(
+                mon_DA_year_merged.time_start.values[0])[0:19]
+            mon_DA_year_merged.attrs['time_coverage_end'] = str(
+                mon_DA_year_merged.time_end.values[-1])[0:19]
+
+            mon_DA_year_merged.attrs['uuid'] = uuids[1]
 
         save_netcdf = save_netcdf and not on_aws
         save_binary = save_binary or on_aws

@@ -194,6 +194,8 @@ def save_to_disk(data_DA,
             if 'time' in coord:
                 coord_encoding[coord] = {'_FillValue': None,
                                          'dtype': 'int32'}
+                if coord != 'time_step':
+                    coord_encoding[coord]['units'] = "hours since 1992-01-01 12:00:00"
             if 'lat' in coord:
                 coord_encoding[coord] = {'_FillValue': None,
                                          'dtype': 'float32'}
