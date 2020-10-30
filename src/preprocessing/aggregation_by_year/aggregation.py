@@ -1,8 +1,10 @@
 import os
 import sys
 import json
+import uuid
 import yaml
 import hashlib
+import logging
 import requests
 import numpy as np
 import xarray as xr
@@ -99,6 +101,9 @@ def run_aggregation(output_dir, s3=None, config_path=''):
     # Set configuration options and Solr metadata
     # =====================================================
     dataset_name = config['ds_name']
+
+    # Define logger using dataset name
+    logger = logging.getLogger(f'pipeline.{dataset_name}.aggregation')
 
     if s3:
         solr_host = config['solr_host_aws']
@@ -325,6 +330,8 @@ def run_aggregation(output_dir, s3=None, config_path=''):
 
                 # print(daily_DA_year_merged)
 
+                uuids = [str(uuid.uuid1()), str(uuid.uuid1())]
+
                 try:
                     # Performs the aggreagtion of the yearly data, and saves it
                     empty_year = ea.generalized_aggregate_and_save(daily_DA_year_merged,
@@ -340,7 +347,10 @@ def run_aggregation(output_dir, s3=None, config_path=''):
                                                                    on_aws=s3,
                                                                    save_binary=config['save_binary'],
                                                                    save_netcdf=config['save_netcdf'],
-                                                                   remove_nan_days_from_data=config['remove_nan_days_from_data'])
+                                                                   remove_nan_days_from_data=config[
+                                                                       'remove_nan_days_from_data'],
+                                                                   data_time_scale=data_time_scale,
+                                                                   uuids=uuids)
 
                     # Upload files to s3
                     if s3:
@@ -364,7 +374,7 @@ def run_aggregation(output_dir, s3=None, config_path=''):
                     success = True
 
                 except Exception as e:
-                    print(e)
+                    logger.error(e)
                     empty_year = True
                     success = False
                     output_filepaths = {'daily_bin': '',
@@ -407,16 +417,24 @@ def run_aggregation(output_dir, s3=None, config_path=''):
                             "set": output_filepaths['monthly_bin']}
                         update_body[0]["aggregated_monthly_netCDF_path_s"] = {
                             "set": output_filepaths['monthly_netCDF']}
+                        update_body[0]["daily_aggregated_uuid_s"] = {
+                            "set": uuids[0]}
+                        update_body[0]["monthly_aggregated_uuid_s"] = {
+                            "set": uuids[1]}
                     elif (data_time_scale == 'daily') and not (config['do_monthly_aggregation']):
                         update_body[0]["aggregated_daily_bin_path_s"] = {
                             "set": output_filepaths['daily_bin']}
                         update_body[0]["aggregated_daily_netCDF_path_s"] = {
                             "set": output_filepaths['daily_netCDF']}
+                        update_body[0]["daily_aggregated_uuid_s"] = {
+                            "set": uuids[0]}
                     elif data_time_scale == 'monthly':
                         update_body[0]["aggregated_monthly_bin_path_s"] = {
                             "set": output_filepaths['monthly_bin']}
                         update_body[0]["aggregated_monthly_netCDF_path_s"] = {
                             "set": output_filepaths['monthly_netCDF']}
+                        update_body[0]["monthly_aggregated_uuid_s"] = {
+                            "set": uuids[1]}
 
                     if s3:
                         update_body[0]['s3_path_s'] = {"set": s3_path}
@@ -452,16 +470,24 @@ def run_aggregation(output_dir, s3=None, config_path=''):
                             "set": output_filepaths['monthly_bin']}
                         update_body[0]["aggregated_monthly_netCDF_path_s"] = {
                             "set": output_filepaths['monthly_netCDF']}
+                        update_body[0]["daily_aggregated_uuid_s"] = {
+                            "set": uuids[0]}
+                        update_body[0]["monthly_aggregated_uuid_s"] = {
+                            "set": uuids[1]}
                     elif (data_time_scale == 'daily') and (not config['do_monthly_aggregation']):
                         update_body[0]["aggregated_daily_bin_path_s"] = {
                             "set": output_filepaths['daily_bin']}
                         update_body[0]["aggregated_daily_netCDF_path_s"] = {
                             "set": output_filepaths['daily_netCDF']}
+                        update_body[0]["daily_aggregated_uuid_s"] = {
+                            "set": uuids[0]}
                     elif data_time_scale == 'monthly':
                         update_body[0]["aggregated_monthly_bin_path_s"] = {
                             "set": output_filepaths['monthly_bin']}
                         update_body[0]["aggregated_monthly_netCDF_path_s"] = {
                             "set": output_filepaths['monthly_netCDF']}
+                        update_body[0]["monthly_aggregated_uuid_s"] = {
+                            "set": uuids[1]}
 
                     if s3:
                         update_body[0]['s3_path'] = s3_path
