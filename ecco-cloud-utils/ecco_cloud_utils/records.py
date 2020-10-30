@@ -18,6 +18,8 @@ def make_empty_record(standard_name, long_name, units,
                       model_grid, model_grid_type,
                       array_precision):
 
+    # model_grid must contain the corrdinates XC and YC
+
     # make an empty data array to hold the interpolated 2D field
     # all values are nans.
     # dimensions are the same as model_grid.XC
@@ -61,6 +63,11 @@ def make_empty_record(standard_name, long_name, units,
                 {'XC': (('lat', 'lon'), model_grid.XC)})
             data_DA = data_DA.assign_coords(
                 {'YC': (('lat', 'lon'), model_grid.YC)})
+        elif 'latitude' in model_grid and 'longitude' in model_grid:
+            data_DA = data_DA.assign_coords(
+                {'XC': (('latitude', 'longitude'), model_grid.XC)})
+            data_DA = data_DA.assign_coords(
+                {'YC': (('latitude', 'longitude'), model_grid.YC)})
         elif 'XC' in model_grid and 'YC' in model_grid:
             data_DA = data_DA.assign_coords(
                 {'XC': (('NY', 'NX'), model_grid.XC)})

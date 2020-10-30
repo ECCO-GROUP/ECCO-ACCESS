@@ -66,7 +66,7 @@ def generalized_grid_product(product_name,
 
 
 def generalized_get_data_filepaths_for_year(year, data_dir, data_file_suffix,
-                                            data_time_scale, date_format):
+                                            data_time_scale, date_format, hemi=''):
 
     # check data_time_scale and date_format are supported
     supported_time_scales = ['monthly', 'daily']
@@ -93,6 +93,8 @@ def generalized_get_data_filepaths_for_year(year, data_dir, data_file_suffix,
     # find all etcdf files in this directory that have the year and suffix
     all_netcdf_files_year = np.sort(
         list(data_dir.glob(f'**/*{year}*{data_file_suffix}')))
+
+    all_netcdf_files_year = [file for file in all_netcdf_files_year if hemi in str(file)]
 
     dates_in_year = []
     if data_time_scale == 'monthly':
