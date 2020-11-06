@@ -273,11 +273,9 @@ if __name__ == '__main__':
                     ret_import = importlib.import_module(grids_to_solr)
                 ret_import.main(path=path_to_grids)
                 sys.path.remove(str(path_to_grids))
-                logger.info(f'grids_to_solr successful')
                 print('\033[92mgrids_to_solr successful\033[0m')
             except Exception as e:
                 sys.path.remove(str(path_to_grids))
-                logger.error(f'grids_to_solr failed: {e}')
                 print('\033[91mgrids_to_solr failed\033[0m')
             print('=========================================================')
             break
