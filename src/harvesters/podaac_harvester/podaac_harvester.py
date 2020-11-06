@@ -306,11 +306,11 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False):
                         for time in ds_times:
                             new_ds = ds.sel(time=time)
                             file_name = f'{dataset_name}_{time.replace("-","")[:8]}.nc'
-                            local_fp = f'{target_dir}{date_start_str[:4]}/{file_name}'
+                            local_fp = f'{target_dir}{time[:4]}/{file_name}'
 
-                            if not os.path.exists(f'{target_dir}{date_start_str[:4]}'):
+                            if not os.path.exists(f'{target_dir}{time[:4]}'):
                                 os.makedirs(
-                                    f'{target_dir}{date_start_str[:4]}')
+                                    f'{target_dir}{time[:4]}')
 
                             new_ds.to_netcdf(path=local_fp)
                             time_s = f'{time[:-10]}Z'
