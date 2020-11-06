@@ -11,6 +11,11 @@ from tkinter import filedialog
 from collections import defaultdict
 
 
+# Hardcoded output directory path for pipeline files
+# Leave blank to be prompted for an output directory
+output_dir = ''
+
+
 def print_log(log_path):
     print('\n=========================================================')
     print(
@@ -206,6 +211,65 @@ if __name__ == '__main__':
         f'{Path(__file__).resolve().parents[2]}/grids_to_solr')
     path_to_datasets = Path(f'{Path(__file__).resolve().parents[2]}/datasets')
 
+    # ------------------- Grids to Solr -------------------
+    while True:
+        run_grids = input(
+            '\nUpdate Solr with local grid files? (Y/N): ').upper()
+        if run_grids not in ['Y', 'N']:
+            print(
+                f'Invalid response, "{run_grids}", please enter a valid response')
+        elif run_grids == 'N':
+            break
+        else:
+            try:
+                print(f'\n\033[93mRunning grids_to_solr\033[0m')
+                print('=========================================================')
+                grids_to_solr = 'grids_to_solr'
+                sys.path.insert(1, str(path_to_grids))
+                try:
+                    ret_import = importlib.reload(
+                        ret_import                  # pylint: disable=used-before-assignment
+                    )
+                except:
+                    ret_import = importlib.import_module(grids_to_solr)
+                ret_import.main(path=str(path_to_grids))
+                sys.path.remove(str(path_to_grids))
+                print('\033[92mgrids_to_solr successful\033[0m')
+            except Exception as e:
+                print(e)
+                sys.path.remove(str(path_to_grids))
+                print('\033[91mgrids_to_solr failed\033[0m')
+            print('=========================================================')
+            break
+
+    # ------------------- Output directory -------------------
+    while True:
+        dir_response = input(
+            '\nUse hardcoded output directory? (Y/N): ').upper()
+        if dir_response not in ['Y', 'N']:
+            print(
+                f'Invalid response, "{dir_response}", please enter a valid response')
+        else:
+            if not output_dir or dir_response == 'N':
+                print('\nPlease choose your output directory')
+
+                root = tk.Tk()
+                root.attributes('-topmost', True)
+                root.withdraw()
+                output_dir = f'{filedialog.askdirectory()}/'
+
+                if output_dir == '/':
+                    print('No output directory given. Exiting.')
+                    sys.exit()
+            else:
+                output_dir = str(Path(output_dir))
+                if not os.path.exists(output_dir):
+                    print(f'{output_dir} is an invalid output directory. Exiting.')
+                    sys.exit()
+            break
+    print(f'Output direcory selected as {output_dir}')
+
+    # ------------------- Add new dataset -------------------
     while True:
         add_dataset = input('\nAdd new dataset? (Y/N): ').upper()
         if add_dataset not in ['Y', 'N']:
@@ -235,8 +299,9 @@ if __name__ == '__main__':
     datasets = os.listdir(path_to_datasets)
     datasets = [ds for ds in datasets if ds != '.DS_Store']
 
+    # ------------------- Run pipeline -------------------
     while True:
-        print('------------- OPTIONS -------------')
+        print('\n------------- OPTIONS -------------')
         print('1) Run all')
         print('2) Harvesters only')
         print('3) Up to aggregation')
@@ -250,47 +315,6 @@ if __name__ == '__main__':
             print(
                 f'Unknown option entered, "{chosen_option}", please enter a valid option\n'
             )
-
-    while True:
-        run_grids = input(
-            '\nUpdate Solr with local grid files? (Y/N): ').upper()
-        if run_grids not in ['Y', 'N']:
-            print(
-                f'Invalid response, "{run_grids}", please enter a valid response')
-        elif run_grids == 'N':
-            break
-        else:
-            try:
-                print(f'\n\033[93mRunning grids_to_solr\033[0m')
-                print('=========================================================')
-                grids_to_solr = 'grids_to_solr'
-                sys.path.insert(1, str(path_to_grids))
-                try:
-                    ret_import = importlib.reload(
-                        ret_import
-                    )  # pylint: disable=used-before-assignment
-                except:
-                    ret_import = importlib.import_module(grids_to_solr)
-                ret_import.main(path=path_to_grids)
-                sys.path.remove(str(path_to_grids))
-                print('\033[92mgrids_to_solr successful\033[0m')
-            except Exception as e:
-                sys.path.remove(str(path_to_grids))
-                print('\033[91mgrids_to_solr failed\033[0m')
-            print('=========================================================')
-            break
-
-    print('\nPlease choose your output directory')
-
-    root = tk.Tk()
-    root.attributes('-topmost', True)
-    root.withdraw()
-    output_dir = f'{filedialog.askdirectory()}/'
-
-    if output_dir == '/':
-        print('No output directory given. Exiting.')
-        sys.exit()
-    print(f'Output direcory selected as {output_dir}')
 
     # Initialize logger
     logger_path = f'{output_dir}/pipeline.log'
