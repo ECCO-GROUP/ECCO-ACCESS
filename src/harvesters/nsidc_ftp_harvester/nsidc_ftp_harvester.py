@@ -169,7 +169,7 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False):
                 files = [e.split()[-1] for e in files]
 
                 if not files:
-                    print('No granules found')
+                    print(f'No granules found for region {region} in {year}.')
             except:
                 print(f'Error finding files at {urlbase}')
 

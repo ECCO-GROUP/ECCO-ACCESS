@@ -179,7 +179,8 @@ def osisaf_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False):
                 filename for filename in files if config["filename_filter"] in filename and hemi in filename]
 
             if not hemi_files:
-                print('No granules found')
+                print(
+                    f'No granules found for region {region} in {year}-{month}')
 
             for newfile in hemi_files:
                 try:
