@@ -298,6 +298,8 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False):
 
                     if aggregated:
                         # Break up into granules
+                        print(
+                            f'Extracting individual data granules from aggregated data file')
                         ds = xr.open_dataset(local_fp)
 
                         ds_times = [time for time in np.datetime_as_string(
