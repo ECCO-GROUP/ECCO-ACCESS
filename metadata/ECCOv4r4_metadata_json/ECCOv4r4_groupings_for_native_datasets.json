@@ -75,7 +75,7 @@
     "name": "Gent-McWilliams ocean bolus transport streamfunction",
     "fields": "GM_PsiX, GM_PsiY",
     "product": "native",
-    "filename" : "OCEAN_BOLUS_TRANS_STREAMFUNCTION",
+    "filename" : "OCEAN_BOLUS_STREAMFUNCTION",
     "dimension" : "3D"
    },   
    {
@@ -105,9 +105,9 @@
    {
     "name": "sea-ice salt plume fluxes",
     "fields":"oceSPflx, oceSPDep",
-    "comment": "oceSPflx is salt flux per unit area (g m-2 s-1), not salinity flux.",
+    "comment": "oceSPflx is salt mass flux per unit area (g m-2 s-1), not salinity flux.",
     "product": "native",
-    "filename" : "SEA_ICE_PLUME_FLUX",
+    "filename" : "SEA_ICE_SALT_PLUME_FLUX",
     "dimension" : "3D"
    },
    {
