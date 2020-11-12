@@ -12,7 +12,7 @@ from collections import defaultdict
 
 # Determines grid/field combinations that have yet to be transformed for a given granule
 # Returns dictionary where key is grid and value is list of fields
-def get_remaining_transformations(config, source_file_path, grid_transformation):
+def get_remaining_transformations(config, granule_file_path, grid_transformation):
     dataset_name = config['ds_name']
     solr_host = config['solr_host_local']
 
@@ -31,8 +31,19 @@ def get_remaining_transformations(config, source_file_path, grid_transformation)
 
     # Query for existing transformations
     fq = [f'dataset_s:{dataset_name}', 'type_s:transformation',
-          f'pre_transformation_file_path_s:"{source_file_path}"']
+          f'pre_transformation_file_path_s:"{granule_file_path}"']
     docs = grid_transformation.solr_query(config, solr_host, fq)
+
+
+    # if a transformation entry exists for this granule, check to see if the
+    # checksum of the harvested granule matches the checksum recorded in the
+    # transformation entry for this granule, if not then we have to retransform
+    # also check to see if the version of the transformation code recorded in
+    # the entry matches the current version of the transformation code, if not
+    # redo the transformation.
+
+    # these checks are made for each grid/field pair associated with the
+    # harvested granule)
 
     if len(docs) > 0:
 
@@ -51,7 +62,7 @@ def get_remaining_transformations(config, source_file_path, grid_transformation)
 
                 # Query for harvested granule checksum
                 fq = [f'dataset_s:{dataset_name}', 'type_s:harvested',
-                      f'pre_transformation_file_path_s:"{source_file_path}"']
+                      f'pre_transformation_file_path_s:"{granule_file_path}"']
                 harvested_checksum = grid_transformation.solr_query(config, solr_host, fq)[
                     0]['checksum_s']
 
@@ -59,13 +70,21 @@ def get_remaining_transformations(config, source_file_path, grid_transformation)
 
                 # Query for existing transformation
                 fq = [f'dataset_s:{dataset_name}', 'type_s:transformation',
-                      f'pre_transformation_file_path_s:"{source_file_path}"']
+                      f'pre_transformation_file_path_s:"{granule_file_path}"']
                 transformation = grid_transformation.solr_query(
                     config, solr_host, fq)[0]
 
-                # Compare transformation version number and config version number
-                # Compare origin checksum for transformed file
-                if 'transformation_version_f' in transformation.keys() and transformation['transformation_version_f'] == config['version'] and origin_checksum == harvested_checksum:
+                # Triple if:
+                # 1. do we have a version entry,
+                # 2. compare transformation version number and current transformation version number
+                # 3. compare checksum of harvested file (currently in solr) and checksum
+                #    of the harvested file that was previously transformed (recorded in transformation entry)
+                if 'transformation_version_f' in transformation.keys() and \
+                    transformation['transformation_version_f'] == config['version'] and \
+                        origin_checksum == harvested_checksum:
+
+                    # all tests passed, we do not need to redo the transformation
+                    # for this grid/field pair
 
                     # Add grid/field combination to drop_list
                     drop_list.append((grid, field))
@@ -75,6 +94,7 @@ def get_remaining_transformations(config, source_file_path, grid_transformation)
             combo for combo in grid_field_combinations if combo not in drop_list]
 
     # Build dictionary of remaining transformations
+    # -- grid_field_dict has grid key, entries is list of fields
     grid_field_dict = defaultdict(list)
 
     for grid, field in grid_field_combinations:
@@ -110,6 +130,7 @@ def main(config_path='', output_path=''):
 
     # For each harvested granule get remaining transformations and perform transformation
     for granule in harvested_granules:
+        # f is file path to granule from solr
         f = granule.get('pre_transformation_file_path_s', '')
 
         # Skips granules that weren't harvested properly
