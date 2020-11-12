@@ -99,6 +99,8 @@ def main(config_path='', output_path=''):
 
     solr_host = config['solr_host_local']
 
+    transformation_version = config['version']
+
     if not os.path.exists(output_path):
         os.makedirs(output_path)
 
@@ -107,6 +109,59 @@ def main(config_path='', output_path=''):
     harvested_granules = grid_transformation.solr_query(config, solr_host, fq)
 
     years_updated = {}
+
+    # PRE GENERATE FACTORS TO ACCOMODATE MULTIPROCESSING
+    # Query for dataset metadata
+    fq = [f'dataset_s:{dataset_name}', 'type_s:dataset']
+    dataset_metadata = grid_transformation.solr_query(config, solr_host, fq)
+
+    # Query for grids
+    fq = ['type_s:grid']
+    docs = grid_transformation.solr_query(config, solr_host, fq)
+    grids = [doc['grid_name_s'] for doc in docs]
+
+    for grid in grids:
+        data_for_factors = []
+        nh_added = False
+        sh_added = False
+
+        for granule in harvested_granules:
+            if 'hemisphere_s' in granule.keys():
+                hemi = f'_{granule["hemisphere_s"]}'
+            else:
+                hemi = ''
+
+            grid_factors = f'{grid}{hemi}_factors_path_s'
+            grid_factors_version = f'{grid}{hemi}_factors_version_f'
+
+            if grid_factors in dataset_metadata.keys() and transformation_version == dataset_metadata[grid_factors_version]:
+                continue
+
+            file_path = granule.get('pre_transformation_file_path_s', '')
+            if file_path:
+                if hemi:
+                    # Get one of each
+                    if hemi == '_nh' and not nh_added:
+                        data_for_factors.append(granule)
+                        nh_added = True
+                    elif hemi == '_sh' and not sh_added:
+                        data_for_factors.append(granule)
+                        sh_added = True
+                    if nh_added and sh_added:
+                        break
+                else:
+                    data_for_factors.append(granule)
+                    break
+
+        for granule in data_for_factors:
+            file_path = granule['pre_transformation_file_path_s']
+
+            # Get transformations to be completed for this file
+            remaining_transformations = get_remaining_transformations(
+                config, file_path, grid_transformation)
+
+            grids_updated, year = grid_transformation.run_locally_wrapper(
+                file_path, remaining_transformations, output_path, config_path=config_path)
 
     # For each harvested granule get remaining transformations and perform transformation
     for granule in harvested_granules:
