@@ -146,8 +146,11 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
         grid_factors = f'{grid_name}{hemi}_factors_path_s'
         grid_factors_version = f'{grid_name}{hemi}_factors_version_f'
 
-        # if grid_factors_version in dataset_metadata.keys() and transformation_version == dataset_metadata[grid_factors_version] and date[:4] in grid_factors:
-        if grid_factors_version in dataset_metadata.keys() and transformation_version == dataset_metadata[grid_factors_version]:
+        # check to see if there is 'grid_factors_version' key in the
+        # dataset and whether the transformation version matches with the
+        # current version
+        if grid_factors_version in dataset_metadata.keys() and \
+            transformation_version == dataset_metadata[grid_factors_version]:
 
             factors_path = dataset_metadata[grid_factors]
 
