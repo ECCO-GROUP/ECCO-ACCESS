@@ -167,6 +167,8 @@ def run_aggregation(output_dir, s3=None, config_path=''):
             print(f'No updated years to aggregate for {grid_name}')
             continue
 
+        print(f'\nAggregating years {min(years)} to {max(years)}\n')
+
         if grid_path[:5] == 's3://':
             source_bucket_name, key_name = split_s3_bucket_key(grid_path)
             obj = s3.Object(source_bucket_name, key_name)
@@ -195,16 +197,16 @@ def run_aggregation(output_dir, s3=None, config_path=''):
 
             # Iterate through dataset fields
             for field in fields:
-                json_output = {}
-                transformations = []
-                json_output['dataset'] = dataset_metadata
 
                 field_name = field['name_s']
 
                 print(
-                    f'===initializing {str(year)}_{grid_name}_{field_name}===')
+                    f'\n====== Aggregating {str(year)}_{grid_name}_{field_name} ======\n')
 
-                print("===looping through all files===")
+                json_output = {}
+                transformations = []
+                json_output['dataset'] = dataset_metadata
+
                 daily_DA_year = []
 
                 for date in dates_in_year:
@@ -351,6 +353,9 @@ def run_aggregation(output_dir, s3=None, config_path=''):
                                                                        'remove_nan_days_from_data'],
                                                                    data_time_scale=data_time_scale,
                                                                    uuids=uuids)
+
+                    print(
+                        f' - Saving {str(year)}_{grid_name}_{field_name} file(s) DONE')
 
                     # Upload files to s3
                     if s3:
@@ -537,14 +542,14 @@ def run_aggregation(output_dir, s3=None, config_path=''):
                 docs = solr_query(config, solr_host, fq)
 
                 # Export annual descendants JSON file for each aggregation created
-                print("=========exporting data descendants=========")
+                print(
+                    f' - Exporting {year} descendants for grid {grid_name} and field {field_name}')
                 json_output['aggregation'] = docs
                 json_output['transformations'] = transformations
                 json_output_path = f'{output_dir}{dataset_name}/transformed_products/{grid_name}/aggregated/{field_name}/{dataset_name}_{field_name}_{year}_descendants'
                 with open(json_output_path, 'w') as f:
                     resp_out = json.dumps(json_output, indent=4)
                     f.write(resp_out)
-                print("=========exporting data descendants DONE=========")
 
     # Update Solr dataset entry status and years_updated to empty
     update_body = [
@@ -561,6 +566,9 @@ def run_aggregation(output_dir, s3=None, config_path=''):
 
     r = solr_update(config, solr_host, update_body, r=True)
 
-    if r.status_code != 200:
+    if r.status_code == 200:
         print(
-            f'Failed to update Solr dataset entry with aggregation information for {dataset_name}')
+            f'\nSuccessfully updated Solr with aggregation information for {dataset_name}\n')
+    else:
+        print(
+            f'\nFailed to update Solr dataset entry with aggregation information for {dataset_name}\n')

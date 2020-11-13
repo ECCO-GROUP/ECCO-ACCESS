@@ -310,10 +310,10 @@ def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False):
     version = '1'
 
     if not on_aws:
-        print("!!downloading files to "+target_dir)
+        print(f'Downloading {dataset_name} files to {target_dir}\n')
     else:
-        print("!!downloading files to "+folder+" and uploading to " +
-              target_bucket_name+"/"+config['ds_name'])
+        print(
+            f'Downloading {dataset_name} files and uploading to {target_bucket_name}/{dataset_name}\n')
 
     print("======downloading files========")
 
@@ -458,7 +458,7 @@ def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False):
                     if updating:
                         if not os.path.exists(local_fp):
 
-                            print('Downloading: ' + local_fp)
+                            print(f' - Downloading {filename} to {local_fp}')
 
                             credentials = get_credentials(url)
                             req = Request(url)
@@ -471,7 +471,8 @@ def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False):
                         # elif datetime.datetime.fromtimestamp(os.path.getmtime(local_fp)) <= time:
                         elif datetime.datetime.fromtimestamp(os.path.getmtime(local_fp)) <= parser.parse(file_date):
 
-                            print('Updating: ' + local_fp)
+                            print(
+                                f' - Updating {filename} and downloading to {local_fp}')
 
                             credentials = get_credentials(url)
                             req = Request(url)
@@ -482,7 +483,8 @@ def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False):
                             open(local_fp, 'wb').write(data)
 
                         else:
-                            print('File already downloaded and up to date')
+                            print(
+                                f' - {filename} already downloaded and up to date')
 
                         # calculate checksum and expected file size
                         item['checksum_s'] = md5(local_fp)
@@ -517,8 +519,7 @@ def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False):
                             item['message_s'] = 'aws upload unsuccessful'
 
                         else:
-                            print("Download "+filename+" failed.")
-                            print("======file not successful=======")
+                            print(f'    - {filename} failed to download')
 
                         item['harvest_success_b'] = False
                         item['filename'] = ''
@@ -544,45 +545,19 @@ def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False):
                     # store meta for last successful download
                     last_success_item = item
 
-    # =====================================================
-    # ### writing metadata to file
-    # =====================================================
-    print("=========creating meta=========")
+    print(f'\nDownloading {dataset_name} complete\n')
 
-    meta_path = config['ds_name']+'.json'
-    meta_local_path = target_dir+meta_path
-    meta_output_path = 'meta/'+meta_path
+    if meta:
+        # post granule metadata documents for downloaded granules
+        r = solr_update(config, meta, r=True)
 
-    if len(meta) == 0:
-        print('no new downloads')
+        if r.status_code == 200:
+            print('Successfully created or updated Solr harvested documents')
+        else:
+            print('Failed to create Solr harvested documents')
 
-    # write json file
-    with open(meta_local_path, 'w') as meta_file:
-        json.dump(meta, meta_file)
-
-    print("======creating meta DONE=======")
-
-    if on_aws:
-        # =====================================================
-        # ### uploading metadata file to s3
-        # =====================================================
-        print("=========uploading meta=========")
-
-        target_bucket.upload_file(meta_local_path, meta_output_path)
-
-        print("======uploading meta DONE=======")
-
-    # =====================================================
-    # ### posting metadata logs to Solr
-    # =====================================================
-    print("=========posting meta=========")
-
-    headers = {'Content-Type': 'application/json'}
     overall_start = min(start) if len(start) > 0 else None
     overall_end = max(end) if len(end) > 0 else None
-    # =====================================================
-    # Query for Solr Dataset-level Document
-    # =====================================================
 
     fq = ['type_s:dataset', 'dataset_s:'+config['ds_name']]
     docs = solr_query(config, solr_host, fq)
@@ -690,15 +665,6 @@ def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False):
         r = solr_update(config, body, r=True)
 
         if r.status_code == 200:
-            print('Successfully updated Solr dataset document')
+            print('Successfully updated Solr dataset document\n')
         else:
-            print('Failed to update Solr dataset document')
-
-    # post granule metadata documents for downloaded granules
-    r = solr_update(config, meta, r=True)
-
-    if r.status_code == 200:
-        print('granule metadata post to Solr success')
-    else:
-        print('granule metadata post to Solr failed')
-    print("=========posted meta==========")
+            print('Failed to update Solr dataset document\n')

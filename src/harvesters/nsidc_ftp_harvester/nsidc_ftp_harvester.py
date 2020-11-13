@@ -95,10 +95,10 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False):
     ftp.login(config['user'])
 
     if not on_aws:
-        print(f'!!downloading files to {target_dir}')
+        print(f'Downloading {dataset_name} files to {target_dir}\n')
     else:
         print(
-            f'!!downloading files to {folder} and uploading to {target_bucket_name}/{dataset_name}')
+            f'Downloading {dataset_name} files and uploading to {target_bucket_name}/{dataset_name}\n')
 
     # if target path doesn't exist, make them
     if not os.path.exists(folder):
@@ -171,7 +171,8 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False):
                 if not files:
                     print(f'No granules found for region {region} in {year}.')
             except:
-                print(f'Error finding files at {urlbase}')
+                print(
+                    f'Error finding files at {urlbase}. Check harvester config.')
 
             for newfile in files:
                 try:
@@ -217,7 +218,7 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False):
                         mod_time = mod_date_time.strftime("%Y-%m-%dT%H:%M:%SZ")
                         item['modified_time_dt'] = mod_time
                     except:
-                        print('Cannot find last modified time. Downloading granule.')
+                        # print(f' - Cannot find last modified time. Downloading granule.')
                         mod_date_time = now
 
                     # If granule doesn't exist or previously failed or has been updated since last harvest
@@ -233,7 +234,7 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False):
 
                         # If file doesn't exist locally, download it
                         if not os.path.exists(local_fp):
-                            print(f'Downloading: {local_fp}')
+                            print(f' - Downloading {newfile} to {local_fp}')
 
                             # new ftp retrieval
                             with open(local_fp, 'wb') as f:
@@ -241,14 +242,16 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False):
 
                         # If file exists, but is out of date, download it
                         elif datetime.fromtimestamp(os.path.getmtime(local_fp)) <= mod_date_time:
-                            print(f'Updating: {local_fp}')
+                            print(
+                                f' - Updating {newfile} and downloading to {local_fp}')
 
                             # new ftp retrieval
                             with open(local_fp, 'wb') as f:
                                 ftp.retrbinary('RETR '+url, f.write)
 
                         else:
-                            print('File already downloaded and up to date')
+                            print(
+                                f' - {newfile} already downloaded and up to date')
 
                         # Create checksum for file
                         item['checksum_s'] = md5(local_fp)
@@ -281,8 +284,7 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False):
                             item['message_s'] = 'aws upload unsuccessful'
 
                         else:
-                            print(f'Download {newfile} failed.')
-                            print("======file not successful=======")
+                            print(f'    - {newfile} failed to download')
 
                         item['harvest_success_b'] = False
                         item['filename'] = ''
@@ -310,18 +312,19 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False):
                     # store meta for last successful download
                     last_success_item = item
 
+    print(f'\nDownloading {dataset_name} complete\n')
+
     ftp.quit()
 
-    # post granule metadata documents for downloaded granules
-    r = solr_update(config, solr_host, meta, r=True)
-
     if meta:
-        if r.status_code == 200:
-            print('granule metadata post to Solr success')
-        else:
-            print('granule metadata post to Solr failed')
-    else:
-        print('no new granules found')
+        # post granule metadata documents for downloaded granules
+        r = solr_update(config, solr_host, meta, r=True)
+
+        if meta:
+            if r.status_code == 200:
+                print('Successfully created or updated Solr harvested documents')
+            else:
+                print('Failed to create Solr harvested documents')
 
     overall_start = min(granule_dates) if granule_dates else None
     overall_end = max(granule_dates) if granule_dates else None
@@ -435,6 +438,6 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False):
         r = solr_update(config, solr_host, [update_doc], r=True)
 
         if r.status_code == 200:
-            print('Successfully updated Solr dataset document')
+            print('Successfully updated Solr dataset document\n')
         else:
-            print('Failed to update Solr dataset document')
+            print('Failed to update Solr dataset document\n')
