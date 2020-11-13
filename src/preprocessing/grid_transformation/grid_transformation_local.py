@@ -9,9 +9,7 @@ import numpy as np
 import xarray as xr
 from pathlib import Path
 from multiprocessing import Pool
-# from multiprocessing.pool import ThreadPool as Pool
 from collections import defaultdict
-# from pathos.multiprocessing import ProcessingPool as Pool
 
 
 # Determines grid/field combinations that have yet to be transformed for a given granule
@@ -110,7 +108,6 @@ def multiprocess_transformation(granule, config_path, output_path):
     import grid_transformation
     grid_transformation = importlib.reload(grid_transformation)
 
-    print(f'PID: {os.getpid()}')
     with open(config_path, "r") as stream:
         config = yaml.load(stream, yaml.Loader)
 
@@ -129,7 +126,7 @@ def multiprocess_transformation(granule, config_path, output_path):
     # Perform remaining transformations
     if remaining_transformations:
         grids_updated, year = grid_transformation.run_locally_wrapper(
-            f, remaining_transformations, output_path, config_path=config_path)
+            f, remaining_transformations, output_path, config_path=config_path, verbose=False)
 
         return (grids_updated, year)
     else:
@@ -137,7 +134,7 @@ def multiprocess_transformation(granule, config_path, output_path):
         return ('', '')
 
 
-def main(config_path='', output_path='', mp=False, user_cpus=1):
+def main(config_path='', output_path='', multiprocessing=False, user_cpus=1):
     import grid_transformation
     grid_transformation = importlib.reload(grid_transformation)
 
@@ -164,65 +161,73 @@ def main(config_path='', output_path='', mp=False, user_cpus=1):
 
     years_updated = defaultdict(list)
 
-    # PRE GENERATE FACTORS TO ACCOMODATE MULTIPROCESSING
-    # Query for dataset metadata
-    fq = [f'dataset_s:{dataset_name}', 'type_s:dataset']
-    dataset_metadata = grid_transformation.solr_query(config, solr_host, fq)[0]
+    if multiprocessing:
+        # PRE GENERATE FACTORS TO ACCOMODATE MULTIPROCESSING
+        # Query for dataset metadata
+        fq = [f'dataset_s:{dataset_name}', 'type_s:dataset']
+        dataset_metadata = grid_transformation.solr_query(
+            config, solr_host, fq)[0]
 
-    # Query for grids
-    fq = ['type_s:grid']
-    docs = grid_transformation.solr_query(config, solr_host, fq)
-    grids = [doc['grid_name_s'] for doc in docs]
+        # Query for grids
+        fq = ['type_s:grid']
+        docs = grid_transformation.solr_query(config, solr_host, fq)
+        grids = [doc['grid_name_s'] for doc in docs]
 
-    for grid in grids:
-        data_for_factors = []
-        nh_added = False
-        sh_added = False
+        # Precompute grid factors using one dataset data file
+        # (or one from each hemisphere, if data is hemispherical) before running main loop
+        for grid in grids:
+            data_for_factors = []
+            nh_added = False
+            sh_added = False
 
-        for granule in harvested_granules:
-            if 'hemisphere_s' in granule.keys():
-                hemi = f'_{granule["hemisphere_s"]}'
-            else:
-                hemi = ''
-
-            grid_factors = f'{grid}{hemi}_factors_path_s'
-            grid_factors_version = f'{grid}{hemi}_factors_version_f'
-
-            if grid_factors in dataset_metadata.keys() and transformation_version == dataset_metadata[grid_factors_version]:
-                continue
-
-            file_path = granule.get('pre_transformation_file_path_s', '')
-            if file_path:
-                if hemi:
-                    # Get one of each
-                    if hemi == '_nh' and not nh_added:
-                        data_for_factors.append(granule)
-                        nh_added = True
-                    elif hemi == '_sh' and not sh_added:
-                        data_for_factors.append(granule)
-                        sh_added = True
-                    if nh_added and sh_added:
-                        break
+            # Find appropriate granule(s) to use for factor calculation
+            for granule in harvested_granules:
+                if 'hemisphere_s' in granule.keys():
+                    hemi = f'_{granule["hemisphere_s"]}'
                 else:
-                    data_for_factors.append(granule)
-                    break
+                    hemi = ''
 
-        for granule in data_for_factors:
-            file_path = granule['pre_transformation_file_path_s']
+                grid_factors = f'{grid}{hemi}_factors_path_s'
+                grid_factors_version = f'{grid}{hemi}_factors_version_f'
 
-            # Get transformations to be completed for this file
-            remaining_transformations = get_remaining_transformations(
-                config, file_path, grid_transformation)
+                if grid_factors in dataset_metadata.keys() and transformation_version == dataset_metadata[grid_factors_version]:
+                    continue
 
-            grids_updated, year = grid_transformation.run_locally_wrapper(
-                file_path, remaining_transformations, output_path, config_path=config_path)
+                file_path = granule.get('pre_transformation_file_path_s', '')
+                if file_path:
+                    if hemi:
+                        # Get one of each
+                        if hemi == '_nh' and not nh_added:
+                            data_for_factors.append(granule)
+                            nh_added = True
+                        elif hemi == '_sh' and not sh_added:
+                            data_for_factors.append(granule)
+                            sh_added = True
+                        if nh_added and sh_added:
+                            break
+                    else:
+                        data_for_factors.append(granule)
+                        break
 
-            for grid in grids_updated:
-                if year not in years_updated[grid]:
-                    years_updated[grid].append(year)
+            # Actually perform transformation on chosen granule(s)
+            # This will generate factors and avoid redundant calculations when using multiprocessing
+            for granule in data_for_factors:
+                file_path = granule['pre_transformation_file_path_s']
 
-    if mp:
+                # Get transformations to be completed for this file
+                remaining_transformations = get_remaining_transformations(
+                    config, file_path, grid_transformation)
+
+                grids_updated, year = grid_transformation.run_locally_wrapper(
+                    file_path, remaining_transformations, output_path, config_path=config_path, verbose=True)
+
+                for grid in grids_updated:
+                    if year not in years_updated[grid]:
+                        years_updated[grid].append(year)
+
         # For each harvested granule get remaining transformations and perform transformation
+
+        # Create list of tuples of function arguments (necessary for using pool.starmap)
         multiprocess_tuples = [(granule, config_path, output_path)
                                for granule in harvested_granules]
 
@@ -257,7 +262,7 @@ def main(config_path='', output_path='', mp=False, user_cpus=1):
             # Perform remaining transformations
             if remaining_transformations:
                 grids_updated, year = grid_transformation.run_locally_wrapper(
-                    f, remaining_transformations, output_path, config_path=config_path)
+                    f, remaining_transformations, output_path, config_path=config_path, verbose=True)
 
                 for grid in grids_updated:
                     if grid in years_updated.keys():

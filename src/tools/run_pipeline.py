@@ -125,7 +125,7 @@ def run_harvester(datasets, path_to_harvesters, output_dir):
         print('=========================================================')
 
 
-def run_transformation(datasets, path_to_preprocessing, output_dir, mp, user_cpus):
+def run_transformation(datasets, path_to_preprocessing, output_dir, multiprocessing, user_cpus):
     print('\n=========================================================')
     print(
         '=============== \033[36mRunning transformations\033[0m =================')
@@ -153,7 +153,7 @@ def run_transformation(datasets, path_to_preprocessing, output_dir, mp, user_cpu
                 ret_import = importlib.import_module(transformer)
 
             ret_import.main(config_path=config_path,
-                            output_path=output_dir, mp=mp, user_cpus=user_cpus)
+                            output_path=output_dir, multiprocessing=multiprocessing, user_cpus=user_cpus)
             sys.path.remove(str(path_to_code))
 
             trans_logger.info(f'Transformation successful')
