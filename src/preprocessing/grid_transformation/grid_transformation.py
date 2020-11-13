@@ -836,7 +836,7 @@ def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors
             field_DA.attrs['valid_max'] = np.nanmax(field_DA.values)
 
         except Exception as e:
-            print(e)
+            logger.error(f'Transformation failed: {e}')
             field_DA = ea.make_empty_record(data_field_info['standard_name_s'], data_field_info['long_name_s'], data_field_info['units_s'],
                                             record_date, model_grid, model_grid_type, array_precision)
             success = False
