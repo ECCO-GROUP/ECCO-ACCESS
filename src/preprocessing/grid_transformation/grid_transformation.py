@@ -124,7 +124,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
     # =====================================================
     # Load file to transform
     # =====================================================
-    verboseprint(f'====== Loading {file_name} data =======')
+    verboseprint(f'\n====== Loading {file_name} data =======\n')
     ds = xr.open_dataset(source_file_path, decode_times=True)
     ds.attrs['original_file_name'] = file_name
 
@@ -143,7 +143,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
         # =====================================================
         # Load grid
         # =====================================================
-        verboseprint(f'======Loading {grid_name} model grid=======')
+        verboseprint(f' - Loading {grid_name} model grid')
         model_grid = xr.open_dataset(grid_path).reset_coords()
 
         # =====================================================
@@ -160,12 +160,12 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
 
             factors_path = dataset_metadata[grid_factors]
 
-            verboseprint(f'===Loading {grid_name} factors===')
+            verboseprint(f' - Loading {grid_name} factors')
             with open(factors_path, "rb") as f:
                 factors = pickle.load(f)
 
         else:
-            verboseprint(f'===Creating {grid_name} factors===')
+            verboseprint(f' - Creating {grid_name} factors')
 
             fq = [f'dataset_s:{dataset_name}', 'type_s:dataset']
             short_name = dataset_metadata['short_name_s']
@@ -212,7 +212,8 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
             elif 'rA' in model_grid:
                 target_grid_radius = 0.5*np.sqrt(model_grid.rA.values.ravel())
             else:
-                verboseprint(f'{grid_name} grid not supported')
+                print(f'ERROR - {grid_name} grid not supported')
+                continue
 
             # Compute the mapping between the data and model grid
             source_indices_within_target_radius_i,\
@@ -228,7 +229,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
                        num_source_indices_within_target_radius_i,
                        nearest_source_index_to_target_index_i)
 
-            verboseprint(f'===Saving {grid_name} factors===')
+            verboseprint(f' - Saving {grid_name} factors')
             factors_path = f'{output_dir}{dataset_name}/transformed_products/{grid_name}/'
 
             # Create directory if needed and save factors
@@ -240,7 +241,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
             with open(factors_path, 'wb') as f:
                 pickle.dump(factors, f)
 
-            verboseprint('===Updating Solr with factors===')
+            verboseprint(' - Updating Solr with factors')
             # Query Solr for dataset entry
             query_fq = [f'dataset_s:{dataset_name}', 'type_s:dataset']
             doc_id = solr_query(config, solr_host, query_fq)[0]['id']
@@ -259,9 +260,10 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
 
             if r.status_code == 200:
                 verboseprint(
-                    'Successfully updated Solr with factors information')
+                    '    - Successfully updated Solr with factors information')
             else:
-                verboseprint('Failed to update Solr with factors information')
+                verboseprint(
+                    '    - Failed to update Solr with factors information')
 
         update_body = []
 
@@ -309,17 +311,17 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
         # Run transformation
         # =====================================================
 
-        verboseprint(f'===Running transformations for {file_name}===')
+        verboseprint(
+            f' - Running transformations for {file_name}')
 
         # Returns list of transformed DAs, one for each field in fields
 
         field_DAs = run_in_any_env(
-            model_grid, grid_name, grid_type, fields, factors, ds, date, dataset_metadata, config)
+            model_grid, grid_name, grid_type, fields, factors, ds, date, dataset_metadata, config, verbose=verbose)
 
         # =====================================================
         # Save the output in netCDF format
         # =====================================================
-        verboseprint(f'======saving {file_name} output=======')
 
         # Save each transformed granule for the current field
         for field, (field_DA, success) in zip(fields, field_DAs):
@@ -375,7 +377,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
                 grids_updated.append(grid_name)
 
         # Always print regardless of verbosity
-        print(f'======saving {file_name} output DONE=======')
+        print(f' - Saving {file_name} output file(s) DONE')
 
     # Query Solr for descendants entry by date
     query_fq = [f'dataset_s:{dataset_name}',
@@ -659,7 +661,7 @@ def run_using_aws(s3, filename):
     # Transform/remap data to grid
     # =====================================================
     field_DAs = run_in_any_env(
-        model_grid, grid_name, grid_type, fields, factors, ds, date, dataset_metadata, config)
+        model_grid, grid_name, grid_type, fields, factors, ds, date, dataset_metadata, config, verbose=True)
 
     # =====================================================
     # ### Save the output in the model grid format
@@ -759,7 +761,8 @@ def run_using_aws(s3, filename):
             f'Failed to update Solr with descendants information for {dataset_name} on {date}')
 
 
-def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors, ds, record_date, dataset_metadata, config):
+def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors, ds, record_date, dataset_metadata, config, verbose=True):
+    verboseprint = print if verbose else lambda *a, **k: None
     # =====================================================
     # Code to import ecco utils locally...
     # =====================================================
@@ -803,7 +806,8 @@ def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors
 
     # fields is a list of dictionaries
     for data_field_info in fields:
-
+        verboseprint(
+            f'    - Transforming {record_file_name} for field {data_field_info["name_s"]}')
         try:
             field_DA = ea.generalized_transform_to_model_grid_solr(data_field_info, record_date, model_grid, model_grid_type,
                                                                    array_precision, record_file_name, original_dataset_metadata,
@@ -831,7 +835,8 @@ def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors
             field_DA.attrs['valid_min'] = np.nanmin(field_DA.values)
             field_DA.attrs['valid_max'] = np.nanmax(field_DA.values)
 
-        except:
+        except Exception as e:
+            print(e)
             field_DA = ea.make_empty_record(data_field_info['standard_name_s'], data_field_info['long_name_s'], data_field_info['units_s'],
                                             record_date, model_grid, model_grid_type, array_precision)
             success = False

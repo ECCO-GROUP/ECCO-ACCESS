@@ -157,10 +157,10 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False):
     end_time = config['end']
 
     if not on_aws:
-        print(f'!!downloading files to {target_dir}')
+        print(f'Downloading {dataset_name} files to {target_dir}\n')
     else:
         print(
-            f'!!downloading files and uploading to {target_bucket_name}/{dataset_name}')
+            f'Downloading {dataset_name} files and uploading to {target_bucket_name}/{dataset_name}\n')
 
     if config['aggregated']:
         url = f'{config["host"]}&datasetId={config["podaac_id"]}'
@@ -259,7 +259,7 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False):
                         mod_time, date_regex)
 
                 except:
-                    print('Cannot find last modified time.  Downloading granule.')
+                    # print('Cannot find last modified time.  Downloading granule.')
                     mod_time = str(now)
                     mod_date_time = now
 
@@ -281,25 +281,27 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False):
 
                     # If file doesn't exist locally, download it
                     if not os.path.exists(local_fp):
-                        print(f'Downloading: {local_fp}')
+                        print(f' - Downloading {newfile} to {local_fp}')
 
                         urlcleanup()
                         urlretrieve(link, local_fp)
 
                     # If file exists, but is out of date, download it
                     elif datetime.fromtimestamp(os.path.getmtime(local_fp)) <= mod_date_time:
-                        print(f'Updating: {local_fp}')
+                        print(
+                            f' - Updating {newfile} and downloading to {local_fp}')
 
                         urlcleanup()
                         urlretrieve(link, local_fp)
 
                     else:
-                        print('File already downloaded and up to date')
+                        print(
+                            f' - {newfile} already downloaded and up to date')
 
                     if aggregated:
                         # Break up into granules
                         print(
-                            f'Extracting individual data granules from aggregated data file')
+                            f' - Extracting individual data granules from aggregated data file')
                         ds = xr.open_dataset(local_fp)
 
                         ds_times = [time for time in np.datetime_as_string(
@@ -346,26 +348,30 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False):
 
                         if item['harvest_success_b']:
                             last_success_item = item
+                else:
+                    print(
+                        f' - {newfile} already downloaded and up to date')
 
             except Exception as e:
                 print(e)
-                print(f'{file_name} unsuccessful')
+                print(f'    - {file_name} download unsuccessful')
 
         # Check if more granules are available
         next = xml.find("{%(atom)s}link[@rel='next']" % namespace)
         if next is None:
             more = False
-            print(f'{dataset_name} done')
+            print(f'\nDownloading {dataset_name} complete\n')
         else:
             url = next.attrib['href']
 
-    # Update Solr with downloaded granule metadata entries
-    r = solr_update(config, solr_host, meta, r=True)
+    if meta:
+        # Update Solr with downloaded granule metadata entries
+        r = solr_update(config, solr_host, meta, r=True)
 
-    if r.status_code == 200:
-        print('granule metadata post to Solr success')
-    else:
-        print('granule metadata post to Solr failed')
+        if r.status_code == 200:
+            print('Successfully created or updated Solr harvested documents')
+        else:
+            print('Failed to create Solr harvested documents')
 
     overall_start = min(start) if len(start) > 0 else None
     overall_end = max(end) if len(end) > 0 else None
@@ -480,6 +486,6 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False):
         r = solr_update(config, solr_host, [update_doc], r=True)
 
         if r.status_code == 200:
-            print('Successfully updated Solr dataset document')
+            print('Successfully updated Solr dataset document\n')
         else:
-            print('Failed to update Solr dataset document')
+            print('Failed to update Solr dataset document\n')

@@ -224,14 +224,16 @@ def main(config_path='', output_path='', multiprocessing=False, user_cpus=1):
                 for grid in grids_updated:
                     if year not in years_updated[grid]:
                         years_updated[grid].append(year)
+        # END PRE GENERATE FACTORS TO ACCOMODATE MULTIPROCESSING
 
-        # For each harvested granule get remaining transformations and perform transformation
-
+        # BEGIN MULTIPROCESSING
         # Create list of tuples of function arguments (necessary for using pool.starmap)
         multiprocess_tuples = [(granule, config_path, output_path)
                                for granule in harvested_granules]
 
         grid_years_list = []
+
+        print('\nUSING MULTIPROCESSING. LOW VERBOSITY FOR TRANSFORMATIONS.\n')
 
         with Pool(processes=user_cpus) as pool:
             grid_years_list = pool.starmap(
@@ -301,9 +303,11 @@ def main(config_path='', output_path='', multiprocessing=False, user_cpus=1):
     r = grid_transformation.solr_update(config, solr_host, update_body, r=True)
 
     if r.status_code == 200:
-        print('Successfully updated Solr dataset entry with transformation information')
+        print(
+            f'\nSuccessfully updated Solr with transformation information for {dataset_name}\n')
     else:
-        print('Failed to update Solr dataset entry with transformation information')
+        print(
+            f'\nFailed to update Solr with transformation information for {dataset_name}\n')
 
 
 ##################################################
