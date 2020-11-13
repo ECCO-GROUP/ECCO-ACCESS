@@ -169,7 +169,7 @@ def save_to_disk(data_DA,
         fd1.close()
 
     if save_netcdf:
-        print('saving netcdf record')
+        # print('saving netcdf record')
 
         # create directory
         netcdf_output_dir.mkdir(exist_ok=True)

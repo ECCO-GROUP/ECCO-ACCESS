@@ -94,7 +94,8 @@ def generalized_get_data_filepaths_for_year(year, data_dir, data_file_suffix,
     all_netcdf_files_year = np.sort(
         list(data_dir.glob(f'**/*{year}*{data_file_suffix}')))
 
-    all_netcdf_files_year = [file for file in all_netcdf_files_year if hemi in str(file)]
+    all_netcdf_files_year = [
+        file for file in all_netcdf_files_year if hemi in str(file)]
 
     dates_in_year = []
     if data_time_scale == 'monthly':
@@ -208,9 +209,6 @@ def generalized_transform_to_model_grid_solr(data_field_info, record_date, model
     data_DA.attrs['original_dataset_doi'] = original_dataset_metadata['original_dataset_doi_s']
     data_DA.attrs['interpolated_grid_id'] = model_grid_name
     data_DA.name = f'{data_field}_interpolated_to_{model_grid_name}'
-
-    # load the file, do the mapping and update the record times
-    print(f'reading {record_file_name} for field {data_field}')
 
     if 'transpose' in extra_information:
         orig_data = ds[data_field].values[0, :].T
