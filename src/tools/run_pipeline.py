@@ -9,11 +9,11 @@ from pathlib import Path
 from shutil import copyfile
 from tkinter import filedialog
 from collections import defaultdict
-
+from multiprocessing import cpu_count
 
 # Hardcoded output directory path for pipeline files
 # Leave blank to be prompted for an output directory
-output_dir = ''
+output_dir = '/Users/kevinmarlis/Developer/JPL/pipeline_output/'
 
 
 def print_log(log_path):
@@ -125,7 +125,7 @@ def run_harvester(datasets, path_to_harvesters, output_dir):
         print('=========================================================')
 
 
-def run_transformation(datasets, path_to_preprocessing, output_dir):
+def run_transformation(datasets, path_to_preprocessing, output_dir, mp, user_cpus):
     print('\n=========================================================')
     print(
         '=============== \033[36mRunning transformations\033[0m =================')
@@ -152,7 +152,8 @@ def run_transformation(datasets, path_to_preprocessing, output_dir):
             except:
                 ret_import = importlib.import_module(transformer)
 
-            ret_import.main(config_path=config_path, output_path=output_dir)
+            ret_import.main(config_path=config_path,
+                            output_path=output_dir, mp=mp, user_cpus=user_cpus)
             sys.path.remove(str(path_to_code))
 
             trans_logger.info(f'Transformation successful')
@@ -262,7 +263,6 @@ if __name__ == '__main__':
                     print('No output directory given. Exiting.')
                     sys.exit()
             else:
-                output_dir = str(Path(output_dir))
                 if not os.path.exists(output_dir):
                     print(f'{output_dir} is an invalid output directory. Exiting.')
                     sys.exit()
@@ -294,6 +294,29 @@ if __name__ == '__main__':
                 sys.path.remove(str(path_to_tools))
                 print('\033[91mcreate_directories failed\033[0m')
             print('=========================================================')
+            break
+
+    # ------------------- Multiprocessing -------------------
+    multiprocessing = False
+    user_cpus = 1
+    while True:
+        mp_input = input('\nUse multiprocessing? (Y/N): ').upper()
+        if mp_input not in ['Y', 'N']:
+            print(
+                f'Invalid response, "{mp_input}", please enter a valid response')
+        elif mp_input == 'N':
+            break
+        else:
+            while True:
+                user_cpus = int(
+                    input(f'\nEnter number of parallel processes (max = {cpu_count()}): '))
+                if user_cpus > cpu_count():
+                    print(
+                        f'Invalid response, "{user_cpus}", please enter a valid response')
+                else:
+                    multiprocessing = True
+                    break
+        if multiprocessing:
             break
 
     datasets = os.listdir(path_to_datasets)
@@ -339,14 +362,16 @@ if __name__ == '__main__':
     if chosen_option == '1':
         for ds in datasets:
             run_harvester([ds], path_to_harvesters, output_dir)
-            run_transformation([ds], path_to_preprocessing, output_dir)
+            run_transformation([ds], path_to_preprocessing,
+                               output_dir, multiprocessing, user_cpus)
             run_aggregation([ds], path_to_preprocessing, output_dir)
     elif chosen_option == '2':
         run_harvester(datasets, path_to_harvesters, output_dir)
     elif chosen_option == '3':
         for ds in datasets:
             run_harvester([ds], path_to_harvesters, output_dir)
-            run_transformation([ds], path_to_preprocessing, output_dir)
+            run_transformation([ds], path_to_preprocessing,
+                               output_dir, multiprocessing, user_cpus)
     elif chosen_option == '4':
         while True:
             wanted_ds = input('\nEnter wanted dataset: ')
@@ -371,13 +396,13 @@ if __name__ == '__main__':
                 run_harvester([wanted_ds], path_to_harvesters, output_dir)
             elif step == 'transform':
                 run_transformation(
-                    [wanted_ds], path_to_preprocessing, output_dir)
+                    [wanted_ds], path_to_preprocessing, output_dir, multiprocessing, user_cpus)
             elif step == 'aggregate':
                 run_aggregation([wanted_ds], path_to_preprocessing, output_dir)
             elif step == 'all':
                 run_harvester([wanted_ds], path_to_harvesters, output_dir)
                 run_transformation(
-                    [wanted_ds], path_to_preprocessing, output_dir)
+                    [wanted_ds], path_to_preprocessing, output_dir, multiprocessing, user_cpus)
                 run_aggregation([wanted_ds], path_to_preprocessing, output_dir)
     elif chosen_option == '5':
         for ds in datasets:
@@ -391,7 +416,8 @@ if __name__ == '__main__':
                     break
             if yes_no == 'Y':
                 run_harvester([ds], path_to_harvesters, output_dir)
-                run_transformation([ds], path_to_preprocessing, output_dir)
+                run_transformation([ds], path_to_preprocessing,
+                                   output_dir, multiprocessing, user_cpus)
                 run_aggregation([ds], path_to_preprocessing, output_dir)
             elif yes_no == 'E':
                 break

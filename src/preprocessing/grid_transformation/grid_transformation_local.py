@@ -1,13 +1,17 @@
 import os
 import sys
 import yaml
+import pickle
 import requests
 import importlib
 import itertools
 import numpy as np
 import xarray as xr
 from pathlib import Path
+from multiprocessing import Pool
+# from multiprocessing.pool import ThreadPool as Pool
 from collections import defaultdict
+# from pathos.multiprocessing import ProcessingPool as Pool
 
 
 # Determines grid/field combinations that have yet to be transformed for a given granule
@@ -33,7 +37,6 @@ def get_remaining_transformations(config, granule_file_path, grid_transformation
     fq = [f'dataset_s:{dataset_name}', 'type_s:transformation',
           f'pre_transformation_file_path_s:"{granule_file_path}"']
     docs = grid_transformation.solr_query(config, solr_host, fq)
-
 
     # if a transformation entry exists for this granule, check to see if the
     # checksum of the harvested granule matches the checksum recorded in the
@@ -103,7 +106,38 @@ def get_remaining_transformations(config, granule_file_path, grid_transformation
     return dict(grid_field_dict)
 
 
-def main(config_path='', output_path=''):
+def multiprocess_transformation(granule, config_path, output_path):
+    import grid_transformation
+    grid_transformation = importlib.reload(grid_transformation)
+
+    print(f'PID: {os.getpid()}')
+    with open(config_path, "r") as stream:
+        config = yaml.load(stream, yaml.Loader)
+
+    # f is file path to granule from solr
+    f = granule.get('pre_transformation_file_path_s', '')
+
+    # Skips granules that weren't harvested properly
+    if f == '':
+        print("ERROR - pre transformation path doesn't exist")
+        return ('', '')
+
+    # Get transformations to be completed for this file
+    remaining_transformations = get_remaining_transformations(
+        config, f, grid_transformation)
+
+    # Perform remaining transformations
+    if remaining_transformations:
+        grids_updated, year = grid_transformation.run_locally_wrapper(
+            f, remaining_transformations, output_path, config_path=config_path)
+
+        return (grids_updated, year)
+    else:
+        print(f'No new transformations for {granule["date_s"]}')
+        return ('', '')
+
+
+def main(config_path='', output_path='', mp=False, user_cpus=1):
     import grid_transformation
     grid_transformation = importlib.reload(grid_transformation)
 
@@ -128,12 +162,12 @@ def main(config_path='', output_path=''):
     fq = [f'dataset_s:{dataset_name}', 'type_s:harvested']
     harvested_granules = grid_transformation.solr_query(config, solr_host, fq)
 
-    years_updated = {}
+    years_updated = defaultdict(list)
 
     # PRE GENERATE FACTORS TO ACCOMODATE MULTIPROCESSING
     # Query for dataset metadata
     fq = [f'dataset_s:{dataset_name}', 'type_s:dataset']
-    dataset_metadata = grid_transformation.solr_query(config, solr_host, fq)
+    dataset_metadata = grid_transformation.solr_query(config, solr_host, fq)[0]
 
     # Query for grids
     fq = ['type_s:grid']
@@ -183,33 +217,56 @@ def main(config_path='', output_path=''):
             grids_updated, year = grid_transformation.run_locally_wrapper(
                 file_path, remaining_transformations, output_path, config_path=config_path)
 
-    # For each harvested granule get remaining transformations and perform transformation
-    for granule in harvested_granules:
-        # f is file path to granule from solr
-        f = granule.get('pre_transformation_file_path_s', '')
-
-        # Skips granules that weren't harvested properly
-        if f == '':
-            print("ERROR - pre transformation path doesn't exist")
-            continue
-
-        # Get transformations to be completed for this file
-        remaining_transformations = get_remaining_transformations(
-            config, f, grid_transformation)
-
-        # Perform remaining transformations
-        if remaining_transformations:
-            grids_updated, year = grid_transformation.run_locally_wrapper(
-                f, remaining_transformations, output_path, config_path=config_path)
-
             for grid in grids_updated:
-                if grid in years_updated.keys():
+                if year not in years_updated[grid]:
+                    years_updated[grid].append(year)
+
+    if mp:
+        # For each harvested granule get remaining transformations and perform transformation
+        multiprocess_tuples = [(granule, config_path, output_path)
+                               for granule in harvested_granules]
+
+        grid_years_list = []
+
+        with Pool(processes=user_cpus) as pool:
+            grid_years_list = pool.starmap(
+                multiprocess_transformation, multiprocess_tuples)
+            pool.close()
+            pool.join()
+
+        for (grids, year) in grid_years_list:
+            if grids and year:
+                for grid in grids:
                     if year not in years_updated[grid]:
                         years_updated[grid].append(year)
-                else:
-                    years_updated[grid] = [year]
-        else:
-            print(f'No new transformations for {granule["date_s"]}')
+
+    else:
+        for granule in harvested_granules:
+            # f is file path to granule from solr
+            f = granule.get('pre_transformation_file_path_s', '')
+
+            # Skips granules that weren't harvested properly
+            if f == '':
+                print("ERROR - pre transformation path doesn't exist")
+                continue
+
+            # Get transformations to be completed for this file
+            remaining_transformations = get_remaining_transformations(
+                config, f, grid_transformation)
+
+            # Perform remaining transformations
+            if remaining_transformations:
+                grids_updated, year = grid_transformation.run_locally_wrapper(
+                    f, remaining_transformations, output_path, config_path=config_path)
+
+                for grid in grids_updated:
+                    if grid in years_updated.keys():
+                        if year not in years_updated[grid]:
+                            years_updated[grid].append(year)
+                    else:
+                        years_updated[grid] = [year]
+            else:
+                print(f'No new transformations for {granule["date_s"]}')
 
     # Query Solr for dataset metadata
     fq = [f'dataset_s:{dataset_name}', 'type_s:dataset']

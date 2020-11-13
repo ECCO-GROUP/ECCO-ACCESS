@@ -150,7 +150,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
         # dataset and whether the transformation version matches with the
         # current version
         if grid_factors_version in dataset_metadata.keys() and \
-            transformation_version == dataset_metadata[grid_factors_version]:
+                transformation_version == dataset_metadata[grid_factors_version]:
 
             factors_path = dataset_metadata[grid_factors]
 
