@@ -28,6 +28,7 @@
       "name": "i",
       "long_name": "grid index in x for variables at tracer and 'v' locations",
       "comment": "In the Arakawa C-grid system, tracer (e.g., THETA) and 'v' variables (e.g., VVEL) have the same x coordinate on the model grid.",
+      "axis": "X",
       "grid_dimension": "2D 3D",
       "coverage_content_type": "coordinate"
    },
@@ -42,6 +43,7 @@
       "name": "j",
       "long_name": "grid index in y for variables at tracer and 'u' locations",
       "comment": "In the Arakawa C-grid system, tracer (e.g., THETA) and 'u' variables (e.g., UVEL) have the same y coordinate on the model grid.",
+      "axis": "Y",
       "grid_dimension": "2D 3D",
       "coverage_content_type": "coordinate"
    },
@@ -55,6 +57,7 @@
    {
       "name": "k",
       "long_name": "grid index in z for tracer variables",
+      "axis": "Z",
       "grid_dimension": "3D",
       "coverage_content_type": "coordinate"
    },
@@ -109,14 +112,14 @@
    {
       "name": "XC_bnds",
       "long_name": "longitudes of tracer grid cell corners",
-      "comment": "Bounds array follows CF conventions. XC_bnd[i,j,0] = 'southwest' corner (j-1, i-1), XC_bnd[i,j,1] = 'southeast' corner (j-1, i+1), XC_bnd[i,j,2] = 'northeast' corner (j+1, i+1), XC_bnd[i,j,3]  = 'northwest' corner (j+1, i-1). Note: 'southwest', 'southeast', northwest', and 'northeast' do not correspond to geographic orientation but are used for convenience to describe the computational grid. See MITgcm dcoumentation for details.",
+      "comment": "Bounds array follows CF conventions. XC_bnds[i,j,0] = 'southwest' corner (j-1, i-1), XC_bnds[i,j,1] = 'southeast' corner (j-1, i+1), XC_bnds[i,j,2] = 'northeast' corner (j+1, i+1), XC_bnds[i,j,3]  = 'northwest' corner (j+1, i-1). Note: 'southwest', 'southeast', northwest', and 'northeast' do not correspond to geographic orientation but are used for convenience to describe the computational grid. See MITgcm dcoumentation for details.",
       "grid_dimension": "2D 3D",
       "coverage_content_type": "coordinate"
    },
    {
       "name": "YC_bnds",
       "long_name": "latitudes of tracer grid cell corners",
-      "comment": "Bounds array follows CF conventions. YC_bnd[i,j,0] = 'southwest' corner (j-1, i-1), YC_bnd[i,j,1] = 'southeast' corner (j-1, i+1), YC_bnd[i,j,2] = 'northeast' corner (j+1, i+1), YC_bnd[i,j,3]  = 'northwest' corner (j+1, i-1). Note: 'southwest', 'southeast', northwest', and 'northeast' do not correspond to geographic orientation but are used for convenience to describe the computational grid. See MITgcm dcoumentation for details.",
+      "comment": "Bounds array follows CF conventions. YC_bnds[i,j,0] = 'southwest' corner (j-1, i-1), YC_bnds[i,j,1] = 'southeast' corner (j-1, i+1), YC_bnds[i,j,2] = 'northeast' corner (j+1, i+1), YC_bnds[i,j,3]  = 'northwest' corner (j+1, i-1). Note: 'southwest', 'southeast', northwest', and 'northeast' do not correspond to geographic orientation but are used for convenience to describe the computational grid. See MITgcm dcoumentation for details.",
       "grid_dimension": "2D 3D",
       "coverage_content_type": "coordinate"
    },
