@@ -2,7 +2,7 @@
    {
     "name" : "dynamic sea surface height and model sea level anomaly",
     "fields" : "SSH, SSHIBC, SSHNOIBC, ETAN",
-    "comment": "SSH (dynamic sea surface height) = SSHNOIBC (dynamic sea surface without the inverse barometer correction) + SSHIBC (inverse barometer correction). The inverted barometer correction accounts for variations in sea suface height due to atmospheric pressure variations. Note: ETAN is model sea level anomaly and should not be compared with satellite altimetery products, see SSH and ETAN for more details.",
+    "comment": "SSH (dynamic sea surface height) = SSHNOIBC (dynamic sea surface without the inverse barometer correction) - SSHIBC (inverse barometer correction). The inverted barometer correction accounts for variations in sea surface height due to atmospheric pressure variations. Note: ETAN is model sea level anomaly and should not be compared with satellite altimetery products, see SSH and ETAN for more details.",
     "product": "native",
     "filename" : "SEA_SURFACE_HEIGHT",
     "dimension" : "2D"
