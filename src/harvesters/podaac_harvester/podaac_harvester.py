@@ -325,7 +325,7 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False):
                                 item_id = None
 
                             item, descendants_item = metadata_maker(config, time_s, link, time_s, on_aws, target_bucket,
-                                                                    local_fp, file_name, mod_time, descendants_docs, item_id)
+                                                                    local_fp, file_name, chk_time, descendants_docs, item_id)
 
                             meta.append(item)
                             meta.append(descendants_item)
@@ -366,8 +366,8 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False):
 
     if meta:
         # Update Solr with downloaded granule metadata entries
-        r = solr_update(config, solr_host, meta, r=True)
 
+        r = solr_update(config, solr_host, meta, r=True)
         if r.status_code == 200:
             print('Successfully created or updated Solr harvested documents')
         else:
@@ -433,15 +433,24 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False):
         # -----------------------------------------------------
         # Create Solr dataset field entries
         # -----------------------------------------------------
+        # Query for Solr field documents
+        fq = ['type_s:field', f'dataset_s:{dataset_name}']
+        field_query = solr_query(config, solr_host, fq)
+
         body = []
         for field in config['fields']:
             field_obj = {}
-            field_obj['type_s'] = 'field'
-            field_obj['dataset_s'] = dataset_name
-            field_obj['name_s'] = field['name']
-            field_obj['long_name_s'] = field['long_name']
-            field_obj['standard_name_s'] = field['standard_name']
-            field_obj['units_s'] = field['units']
+            field_obj['type_s'] = {'set': 'field'}
+            field_obj['dataset_s'] = {'set': dataset_name}
+            field_obj['name_s'] = {'set': field['name']}
+            field_obj['long_name_s'] = {'set': field['long_name']}
+            field_obj['standard_name_s'] = {'set': field['standard_name']}
+            field_obj['units_s'] = {'set': field['units']}
+
+            for solr_field in field_query:
+                if field['name'] == solr_field['name_s']:
+                    field_obj['id'] = {'set': solr_field['id']}
+
             body.append(field_obj)
 
         # Update Solr with dataset fields metadata
