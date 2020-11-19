@@ -922,7 +922,7 @@
       "name": "SSHIBC",
       "long_name": "The inverted barometer (IB) correction to sea surface height due to atmospheric pressure loading",
       "units": "m",
-      "comments_1": "Not an SSH itself, but a correction to model sea level anomaly (ETAN) required to account for the static part of sea surface displacement by atmosphere pressure loading: SSH = SSHNOIBC + SSHIBC.",
+      "comments_1": "Not an SSH itself, but a correction to model sea level anomaly (ETAN) required to account for the static part of sea surface displacement by atmosphere pressure loading: SSH = SSHNOIBC - SSHIBC.",
       "comments_2": "Note: Use SSH for model-data comparisons with altimetry data products that DO apply the IB correction and SSHNOIBC for comparisons with altimetry data products that do NOT apply the IB correction.",
       "GCMD_keywords" : "EARTH SCIENCE > OCEANS > SEA SURFACE TOPOGRAPHY > SEA SURFACE HEIGHT",
       "grid_dimension": "2D",

@@ -194,7 +194,7 @@
    {
       "name": "product_time_coverage_end",
       "type": "s",
-      "value": "2018-01-00T00:00:00"
+      "value": "2018-01-01T00:00:00"
    },
    {
       "name": "product_time_coverage_start",
