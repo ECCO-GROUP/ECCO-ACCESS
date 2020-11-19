@@ -178,9 +178,9 @@ def main(path=''):
         r = solr_update(config, solr_host, update_body, r=True)
 
         if r.status_code == 200:
-            print('Successfully updated Solr grid document')
+            print(f'Successfully updated {grid_name} Solr grid document')
         else:
-            print('Failed to update Solr grid document')
+            print(f'Failed to update Solr {grid_name} grid document')
 
 
 if __name__ == '__main__':
