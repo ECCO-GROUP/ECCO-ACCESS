@@ -235,6 +235,9 @@ def main(config_path='', output_path='', multiprocessing=False, user_cpus=1):
 
         print('\nUSING MULTIPROCESSING. LOW VERBOSITY FOR TRANSFORMATIONS.\n')
 
+        # for grid in grids:
+        print(f'Running transformations for {grids} grids\n')
+
         with Pool(processes=user_cpus) as pool:
             grid_years_list = pool.starmap(
                 multiprocess_transformation, multiprocess_tuples)
@@ -273,7 +276,8 @@ def main(config_path='', output_path='', multiprocessing=False, user_cpus=1):
                     else:
                         years_updated[grid] = [year]
             else:
-                print(f'No new transformations for {granule["date_s"]}')
+                print(
+                    f' - PID {os.getpid()} no new transformations for {granule["filename_s"]}')
 
     # Query Solr for dataset metadata
     fq = [f'dataset_s:{dataset_name}', 'type_s:dataset']
