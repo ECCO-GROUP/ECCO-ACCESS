@@ -167,7 +167,8 @@ def run_aggregation(output_dir, s3=None, config_path=''):
             print(f'No updated years to aggregate for {grid_name}')
             continue
 
-        print(f'\nAggregating years {min(years)} to {max(years)}\n')
+        print(
+            f'\nAggregating years {min(years)} to {max(years)} for {grid_name}\n')
 
         if grid_path[:5] == 's3://':
             source_bucket_name, key_name = split_s3_bucket_key(grid_path)
@@ -561,7 +562,7 @@ def run_aggregation(output_dir, s3=None, config_path=''):
     ]
 
     for grid in grids:
-        solr_years_updated = f'{grid_name}_years_updated_ss'
+        solr_years_updated = f'{grid["grid_name_s"]}_years_updated_ss'
         update_body[0][solr_years_updated] = {"set": []}
 
     r = solr_update(config, solr_host, update_body, r=True)
