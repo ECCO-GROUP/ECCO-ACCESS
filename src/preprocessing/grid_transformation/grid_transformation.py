@@ -378,7 +378,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
 
         # Always print regardless of verbosity
         print(
-            f' - PID {os.getpid()} saving {file_name} output file for grid {grid_name}')
+            f' - CPU id {os.getpid()} saving {file_name} output file for grid {grid_name}')
 
     # Query Solr for descendants entry by date
     query_fq = [f'dataset_s:{dataset_name}',
