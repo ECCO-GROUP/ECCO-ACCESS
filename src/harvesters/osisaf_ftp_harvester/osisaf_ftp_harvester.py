@@ -343,6 +343,23 @@ def osisaf_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False):
         else:
             print('Failed to create Solr harvested documents')
 
+    # Query for Solr failed harvest documents
+    fq = ['type_s:harvested',
+          f'dataset_s:{dataset_name}', f'harvest_success_b:false']
+    failed_harvesting = solr_query(config, solr_host, fq)
+
+    # Query for Solr successful harvest documents
+    fq = ['type_s:harvested',
+          f'dataset_s:{dataset_name}', f'harvest_success_b:true']
+    successful_harvesting = solr_query(config, solr_host, fq)
+
+    harvest_status = f'All harvested granules successful'
+
+    if not successful_harvesting:
+        harvest_status = f'No usable granules harvested (either all failed or no data collected)'
+    elif failed_harvesting:
+        harvest_status = f'{len(failed_harvesting)} harvested granules failed'
+
     overall_start = min(granule_dates) if granule_dates else None
     overall_end = max(granule_dates) if granule_dates else None
 
@@ -378,15 +395,12 @@ def osisaf_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False):
             ds_meta['start_date_dt'] = overall_start.strftime(
                 "%Y-%m-%dT%H:%M:%SZ")
             ds_meta['end_date_dt'] = overall_end.strftime("%Y-%m-%dT%H:%M:%SZ")
-        else:
-            ds_meta['status_s'] = 'error harvesting - no files found'
 
         # if no ds entry yet and no qualifying downloads, still create ds entry without download time
         if updating:
             ds_meta['last_download_dt'] = last_success_item['download_time_dt']
-            ds_meta['status_s'] = "harvested"
-        else:
-            ds_meta['status_s'] = "nodata"
+
+        ds_meta['harvest_status_s'] = harvest_status
 
         body = []
         body.append(ds_meta)
@@ -446,7 +460,7 @@ def osisaf_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False):
         update_doc['last_checked_dt'] = {"set": chk_time}
 
         if meta:
-            update_doc['status_s'] = {"set": "harvested"}
+            update_doc['harvest_status_s'] = {"set": harvest_status}
 
             if 'download_time_dt' in last_success_item.keys():
                 update_doc['last_download_dt'] = {
