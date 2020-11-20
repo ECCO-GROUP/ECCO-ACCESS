@@ -2,6 +2,7 @@ import os
 import sys
 import yaml
 import logging
+import argparse
 import importlib
 import numpy as np
 import tkinter as tk
@@ -14,6 +15,36 @@ from multiprocessing import cpu_count
 # Hardcoded output directory path for pipeline files
 # Leave blank to be prompted for an output directory
 output_dir = '/Users/kevinmarlis/Developer/JPL/pipeline_output/'
+
+
+def create_parser():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('--grids_to_solr', default=False, action='store_true',
+                        help='updates Solr with grids in grids_config')
+
+    parser.add_argument('--output_dir', default=False, action='store_true',
+                        help='runs prompt to select pipeline output directory')
+
+    parser.add_argument('--add_dataset', default=False, action='store_true',
+                        help='adds new dataset')
+
+    parser.add_argument('--single_processing', default=False, action='store_true',
+                        help='turns off the use of multiprocessing during transformation')
+
+    parser.add_argument('--multiprocesses', type=int, choices=range(1, cpu_count()+1),
+                        default=int(cpu_count()/2), metavar=f'[1, {cpu_count()}]',
+                        help=f'sets the number of multiprocesses used during transformation with a \
+                            system max of {cpu_count()} with default set to half of system max')
+
+    parser.add_argument('--verify_harvester', default=False, action='store_true',
+                        help='verifies each Solr harvester entry points to a valid file')
+
+    parser.add_argument('--wipe_transformations', default=False, action='store_true',
+                        help='deletes transformations with version number different than what is \
+                            currently in transformation_config')
+
+    return parser
 
 
 def print_log(log_path):
@@ -125,7 +156,7 @@ def run_harvester(datasets, path_to_harvesters, output_dir):
         print('=========================================================')
 
 
-def run_transformation(datasets, path_to_preprocessing, output_dir, multiprocessing, user_cpus):
+def run_transformation(datasets, path_to_preprocessing, output_dir, multiprocessing, user_cpus, wipe):
     print('\n=========================================================')
     print(
         '=============== \033[36mRunning transformations\033[0m =================')
@@ -152,8 +183,8 @@ def run_transformation(datasets, path_to_preprocessing, output_dir, multiprocess
             except:
                 ret_import = importlib.import_module(transformer)
 
-            ret_import.main(config_path=config_path,
-                            output_path=output_dir, multiprocessing=multiprocessing, user_cpus=user_cpus)
+            ret_import.main(config_path=config_path, output_path=output_dir,
+                            multiprocessing=multiprocessing, user_cpus=user_cpus, wipe=wipe)
             sys.path.remove(str(path_to_code))
 
             trans_logger.info(f'Transformation successful')
@@ -203,124 +234,88 @@ def run_aggregation(datasets, path_to_preprocessing, output_dir):
 
 
 if __name__ == '__main__':
+    parser = create_parser()
+    args = parser.parse_args()
+
+    print('\n=================================================')
+    print('========== ECCO PREPROCESSING PIPELINE ==========')
+    print('=================================================')
+
     # path to harvester and preprocessing folders
-    path_to_harvesters = Path(
-        f'{Path(__file__).resolve().parents[1]}/harvesters')
-    path_to_preprocessing = Path(
-        f'{Path(__file__).resolve().parents[1]}/preprocessing')
-    path_to_grids = Path(
-        f'{Path(__file__).resolve().parents[2]}/grids_to_solr')
-    path_to_datasets = Path(f'{Path(__file__).resolve().parents[2]}/datasets')
+    pipeline_path = Path(__file__).resolve()
+
+    path_to_harvesters = Path(f'{pipeline_path.parents[1]}/harvesters')
+    path_to_preprocessing = Path(f'{pipeline_path.parents[1]}/preprocessing')
+    path_to_grids = Path(f'{pipeline_path.parents[2]}/grids_to_solr')
+    path_to_datasets = Path(f'{pipeline_path.parents[2]}/datasets')
 
     # ------------------- Grids to Solr -------------------
-    while True:
-        run_grids = input(
-            '\nUpdate Solr with local grid files? (Y/N): ').upper()
-        if run_grids not in ['Y', 'N']:
-            print(
-                f'Invalid response, "{run_grids}", please enter a valid response')
-        elif run_grids == 'N':
-            break
-        else:
-            try:
-                print(f'\n\033[93mRunning grids_to_solr\033[0m')
-                print('=========================================================')
-                grids_to_solr = 'grids_to_solr'
-                sys.path.insert(1, str(path_to_grids))
-                try:
-                    ret_import = importlib.reload(
-                        ret_import                  # pylint: disable=used-before-assignment
-                    )
-                except:
-                    ret_import = importlib.import_module(grids_to_solr)
-                ret_import.main(path=str(path_to_grids))
-                sys.path.remove(str(path_to_grids))
-                print('\033[92mgrids_to_solr successful\033[0m')
-            except Exception as e:
-                print(e)
-                sys.path.remove(str(path_to_grids))
-                print('\033[91mgrids_to_solr failed\033[0m')
+    if args.grids_to_solr:
+        try:
+            print(f'\n\033[93mRunning grids_to_solr\033[0m')
             print('=========================================================')
-            break
+            grids_to_solr = 'grids_to_solr'
+            sys.path.insert(1, str(path_to_grids))
+            try:
+                ret_import = importlib.reload(
+                    ret_import                  # pylint: disable=used-before-assignment
+                )
+            except:
+                ret_import = importlib.import_module(grids_to_solr)
+            ret_import.main(path=str(path_to_grids))
+            sys.path.remove(str(path_to_grids))
+            print('\033[92mgrids_to_solr successful\033[0m')
+        except Exception as e:
+            print(e)
+            sys.path.remove(str(path_to_grids))
+            print('\033[91mgrids_to_solr failed\033[0m')
+        print('=========================================================')
 
     # ------------------- Output directory -------------------
-    while True:
-        dir_response = input(
-            '\nUse hardcoded output directory? (Y/N): ').upper()
-        if dir_response not in ['Y', 'N']:
-            print(
-                f'Invalid response, "{dir_response}", please enter a valid response')
-        else:
-            if not output_dir or dir_response == 'N':
-                print('\nPlease choose your output directory')
+    if args.output_dir or not output_dir:
+        print('\nPlease choose your output directory')
 
-                root = tk.Tk()
-                root.attributes('-topmost', True)
-                root.withdraw()
-                output_dir = f'{filedialog.askdirectory()}/'
+        root = tk.Tk()
+        root.attributes('-topmost', True)
+        root.withdraw()
+        output_dir = f'{filedialog.askdirectory()}/'
 
-                if output_dir == '/':
-                    print('No output directory given. Exiting.')
-                    sys.exit()
-            else:
-                if not os.path.exists(output_dir):
-                    print(f'{output_dir} is an invalid output directory. Exiting.')
-                    sys.exit()
-            break
-    print(f'Output direcory selected as {output_dir}')
+        if output_dir == '/':
+            print('No output directory given. Exiting.')
+            sys.exit()
+    else:
+        if not os.path.exists(output_dir):
+            print(f'{output_dir} is an invalid output directory. Exiting.')
+            sys.exit()
+    print(f'\nUsing output directory: {output_dir}')
 
-    # ------------------- Add new dataset -------------------
-    while True:
-        add_dataset = input('\nAdd new dataset? (Y/N): ').upper()
-        if add_dataset not in ['Y', 'N']:
-            print(
-                f'Invalid response, "{add_dataset}", please enter a valid response')
-        elif add_dataset == 'N':
-            break
-        else:
+   # ------------------- Add new dataset -------------------
+    if args.add_dataset:
+        try:
+            path_to_tools = Path(__file__).resolve().parents[0]
+            sys.path.insert(1, str(path_to_tools))
             try:
-                path_to_tools = Path(__file__).resolve().parents[0]
-                sys.path.insert(1, str(path_to_tools))
-                try:
-                    ret_import = importlib.reload(
-                        ret_import                      # pylint: disable=used-before-assignment
-                    )
-                except:
-                    ret_import = importlib.import_module('create_directories')
-                ret_import.main()
-                sys.path.remove(str(path_to_tools))
-                print('\033[92mcreate_directories successful\033[0m')
-            except Exception as e:
-                sys.path.remove(str(path_to_tools))
-                print('\033[91mcreate_directories failed\033[0m')
-            print('=========================================================')
-            break
+                ret_import = importlib.reload(
+                    ret_import                      # pylint: disable=used-before-assignment
+                )
+            except:
+                ret_import = importlib.import_module('create_directories')
+            ret_import.main()
+            sys.path.remove(str(path_to_tools))
+            print('\033[92mcreate_directories successful\033[0m')
+        except Exception as e:
+            sys.path.remove(str(path_to_tools))
+            print('\033[91mcreate_directories failed\033[0m')
+        print('=========================================================')
 
     # ------------------- Multiprocessing -------------------
-    multiprocessing = False
-    user_cpus = 1
-    while True:
-        mp_input = input('\nUse multiprocessing? (Y/N): ').upper()
-        if mp_input not in ['Y', 'N']:
-            print(
-                f'Invalid response, "{mp_input}", please enter a valid response')
-        elif mp_input == 'N':
-            break
-        else:
-            while True:
-                user_cpus = int(
-                    input(f'\nEnter number of parallel processes (max = {cpu_count()}): '))
-                if user_cpus > cpu_count():
-                    print(
-                        f'Invalid response, "{user_cpus}", please enter a valid response')
-                else:
-                    multiprocessing = True
-                    break
-        if multiprocessing:
-            break
+    multiprocessing = not args.single_processing
+    user_cpus = args.multiprocesses
 
-    datasets = os.listdir(path_to_datasets)
-    datasets = [ds for ds in datasets if ds != '.DS_Store']
+    if multiprocessing:
+        print(f'Using {user_cpus} processes for multiprocess transformations')
+    else:
+        print('Using single process transformations')
 
     # ------------------- Run pipeline -------------------
     while True:
@@ -355,72 +350,102 @@ if __name__ == '__main__':
     # Setup console handler to print to console
     ch = logging.StreamHandler()
     ch.setLevel(logging.ERROR)
-    ch_formatter = logging.Formatter('%(message)s')
+    ch_formatter = logging.Formatter(
+        "'%(filename)s':'%(lineno)d,  %(message)s'")
     ch.setFormatter(ch_formatter)
     logger.addHandler(ch)
 
+    datasets = os.listdir(path_to_datasets)
+    datasets = [ds for ds in datasets if ds != '.DS_Store']
+
+    wipe = args.wipe_transformations
+
+    # Run all
     if chosen_option == '1':
         for ds in datasets:
             run_harvester([ds], path_to_harvesters, output_dir)
             run_transformation([ds], path_to_preprocessing,
-                               output_dir, multiprocessing, user_cpus)
+                               output_dir, multiprocessing, user_cpus, wipe)
             run_aggregation([ds], path_to_preprocessing, output_dir)
+
+    # Run harvester
     elif chosen_option == '2':
         run_harvester(datasets, path_to_harvesters, output_dir)
+
+    # Run up through transformation
     elif chosen_option == '3':
         for ds in datasets:
             run_harvester([ds], path_to_harvesters, output_dir)
             run_transformation([ds], path_to_preprocessing,
-                               output_dir, multiprocessing, user_cpus)
+                               output_dir, multiprocessing, user_cpus, wipe)
+
+    # Manually enter dataset and pipeline step(s)
     elif chosen_option == '4':
+        ds_dict = {i: ds for i, ds in enumerate(datasets, start=1)}
         while True:
-            wanted_ds = input('\nEnter wanted dataset: ')
-            if wanted_ds not in datasets:
+            print(f'\nAvailable datasets:\n')
+            for i, dataset in ds_dict.items():
+                print(f'{i}) {dataset}')
+            ds_index = int(input('\nEnter dataset number: '))
+
+            if ds_index not in range(1, len(datasets)+1):
                 print(
-                    f'Invalid dataset, "{wanted_ds}", please enter a valid dataset')
+                    f'Invalid dataset, "{ds_index}", please enter a valid selection')
             else:
                 break
+
+        wanted_ds = ds_dict[ds_index]
+        print(f'\nUsing {wanted_ds} dataset')
+
         while True:
+            steps = ['harvest', 'transform', 'aggregate',
+                     'harvest and transform', 'transform and aggregate', 'all']
+            steps_dict = {i: step for i, step in enumerate(steps, start=1)}
             valid_steps = True
-            wanted_steps = input(
-                '\nEnter wanted pipeline steps: ').lower().split()
-            for step in wanted_steps:
-                if step not in ['harvest', 'transform', 'aggregate', 'all']:
-                    print(
-                        f'Invalid step, "{step}", please enter a valid pipeline step')
-                    valid_steps = False
-            if valid_steps:
+            print(f'\nAvailable steps:\n')
+            for i, step in steps_dict.items():
+                print(f'{i}) {step}')
+            steps_index = int(input('\nEnter pipeline step(s) number: '))
+
+            if steps_index not in range(1, len(steps)+1):
+                print(
+                    f'Invalid step(s), "{steps_index}", please enter a valid selection')
+            else:
                 break
-        for step in wanted_steps:
-            if step == 'harvest':
-                run_harvester([wanted_ds], path_to_harvesters, output_dir)
-            elif step == 'transform':
-                run_transformation(
-                    [wanted_ds], path_to_preprocessing, output_dir, multiprocessing, user_cpus)
-            elif step == 'aggregate':
-                run_aggregation([wanted_ds], path_to_preprocessing, output_dir)
-            elif step == 'all':
-                run_harvester([wanted_ds], path_to_harvesters, output_dir)
-                run_transformation(
-                    [wanted_ds], path_to_preprocessing, output_dir, multiprocessing, user_cpus)
-                run_aggregation([wanted_ds], path_to_preprocessing, output_dir)
+
+        wanted_steps = steps_dict[steps_index]
+
+        if 'harvest' in wanted_steps:
+            run_harvester([wanted_ds], path_to_harvesters, output_dir)
+        if 'transform' in wanted_steps:
+            run_transformation([wanted_ds], path_to_preprocessing,
+                               output_dir, multiprocessing, user_cpus, wipe)
+        if 'aggregate' in wanted_steps:
+            run_aggregation([wanted_ds], path_to_preprocessing, output_dir)
+        if wanted_steps == 'all':
+            run_harvester([wanted_ds], path_to_harvesters, output_dir)
+            run_transformation([wanted_ds], path_to_preprocessing,
+                               output_dir, multiprocessing, user_cpus, wipe)
+            run_aggregation([wanted_ds], path_to_preprocessing, output_dir)
+
+    # Yes/no for each dataset
     elif chosen_option == '5':
         for ds in datasets:
             while True:
                 yes_no = input(f'\nRun pipeline for {ds}? (Y/N): ').upper()
-                if (yes_no != 'E') and (yes_no != 'N') and (yes_no != 'Y'):
+                if yes_no not in ['Y', 'N', 'E']:
                     print(
-                        f'Unknown option entered, "{yes_no}", please enter a valid option'
-                    )
+                        f'Unknown option entered, "{yes_no}", please enter a valid option')
                 else:
                     break
             if yes_no == 'Y':
                 run_harvester([ds], path_to_harvesters, output_dir)
                 run_transformation([ds], path_to_preprocessing,
-                                   output_dir, multiprocessing, user_cpus)
+                                   output_dir, multiprocessing, user_cpus, wipe)
                 run_aggregation([ds], path_to_preprocessing, output_dir)
             elif yes_no == 'E':
                 break
             else:  # yes_no == 'N'
                 continue
+
     print_log(logger_path)
