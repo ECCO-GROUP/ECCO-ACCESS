@@ -81,7 +81,7 @@ def get_remaining_transformations(config, granule_file_path, grid_transformation
                 # 3. compare checksum of harvested file (currently in solr) and checksum
                 #    of the harvested file that was previously transformed (recorded in transformation entry)
                 if 'transformation_version_f' in transformation.keys() and \
-                    transformation['transformation_version_f'] == config['version'] and \
+                        transformation['transformation_version_f'] == config['version'] and \
                         origin_checksum == harvested_checksum:
 
                     # all tests passed, we do not need to redo the transformation
@@ -102,6 +102,27 @@ def get_remaining_transformations(config, granule_file_path, grid_transformation
         grid_field_dict[grid].append(field)
 
     return dict(grid_field_dict)
+
+
+def delete_mismatch_transformations(config, grid_transformation):
+    dataset_name = config['ds_name']
+    solr_host = config['solr_host_local']
+    solr_collection_name = config['solr_collection_name']
+    config_version = config['version']
+
+    # Query for existing transformations
+    fq = [f'dataset_s:{dataset_name}', 'type_s:transformation']
+    transformations = grid_transformation.solr_query(config, solr_host, fq)
+
+    for transformation in transformations:
+        if transformation['transformation_version_f'] != config_version:
+            # Remove file from disk
+            if os.path.exists(transformation['transformation_file_path_s']):
+                os.remove(transformation['transformation_file_path_s'])
+
+            # Remove transformation entry from Solr
+            url = f'{solr_host}{solr_collection_name}/update?commit=true'
+            requests.post(url, json={'delete': [transformation['id']]})
 
 
 def multiprocess_transformation(granule, config_path, output_path):
@@ -130,11 +151,12 @@ def multiprocess_transformation(granule, config_path, output_path):
 
         return (grids_updated, year)
     else:
-        print(f'No new transformations for {granule["date_s"]}')
+        print(
+            f' - CPU id {os.getpid()} no new transformations for {granule["filename_s"]}')
         return ('', '')
 
 
-def main(config_path='', output_path='', multiprocessing=False, user_cpus=1):
+def main(config_path='', output_path='', multiprocessing=False, user_cpus=1, wipe=False):
     import grid_transformation
     grid_transformation = importlib.reload(grid_transformation)
 
@@ -154,6 +176,11 @@ def main(config_path='', output_path='', multiprocessing=False, user_cpus=1):
 
     if not os.path.exists(output_path):
         os.makedirs(output_path)
+
+    if wipe:
+        print(
+            'Removing transformations with out of sync version numbers from Solr and disk')
+        delete_mismatch_transformations(config, grid_transformation)
 
     # Get all harvested granules for this dataset
     fq = [f'dataset_s:{dataset_name}', 'type_s:harvested']
@@ -277,16 +304,37 @@ def main(config_path='', output_path='', multiprocessing=False, user_cpus=1):
                         years_updated[grid] = [year]
             else:
                 print(
-                    f' - PID {os.getpid()} no new transformations for {granule["filename_s"]}')
+                    f' - CPU id {os.getpid()} no new transformations for {granule["filename_s"]}')
 
     # Query Solr for dataset metadata
     fq = [f'dataset_s:{dataset_name}', 'type_s:dataset']
     dataset_metadata = grid_transformation.solr_query(config, solr_host, fq)[0]
 
+    # Query Solr for successful transformation documents
+    fq = [f'dataset_s:{dataset_name}',
+          'type_s:transformation', 'success_b:true']
+    successful_transformations = grid_transformation.solr_query(
+        config, solr_host, fq)
+
+    # Query Solr for failed transformation documents
+    fq = [f'dataset_s:{dataset_name}',
+          'type_s:transformation', 'success_b:false']
+    failed_transformations = grid_transformation.solr_query(
+        config, solr_host, fq)
+
+    transformation_status = f'All transformations successful'
+
+    if not successful_transformations and not failed_transformations:
+        transformation_status = f'No transformations performed'
+    elif not successful_transformations:
+        transformation_status = f'No successful transformations'
+    elif failed_transformations:
+        transformation_status = f'{len(failed_transformations)} transformations failed'
+
     # Update Solr dataset entry years_updated list and status to transformed
     update_body = [{
         "id": dataset_metadata['id'],
-        "status_s": {"set": 'transformed'},
+        "transformation_status_s": {"set": transformation_status},
     }]
 
     # Combine Solr dataset entry years_updated list with transformation years_updated
