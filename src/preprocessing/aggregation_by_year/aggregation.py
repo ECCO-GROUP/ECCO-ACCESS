@@ -552,12 +552,33 @@ def run_aggregation(output_dir, s3=None, config_path=''):
                     resp_out = json.dumps(json_output, indent=4)
                     f.write(resp_out)
 
+    # Query Solr for successful aggregation documents
+    fq = [f'dataset_s:{dataset_name}',
+          'type_s:aggregation', 'aggregation_success_b:true']
+    successful_aggregations = solr_query(
+        config, solr_host, fq)
+
+    # Query Solr for failed aggregation documents
+    fq = [f'dataset_s:{dataset_name}',
+          'type_s:aggregation', 'aggregation_success_b:false']
+    failed_aggregations = solr_query(
+        config, solr_host, fq)
+
+    aggregation_status = f'All aggregations successful'
+
+    if not successful_aggregations and not failed_aggregations:
+        aggregation_status = f'No aggregations performed'
+    elif not successful_aggregations:
+        aggregation_status = f'No successful aggregations'
+    elif failed_aggregations:
+        aggregation_status = f'{len(failed_aggregations)} aggregations failed'
+
     # Update Solr dataset entry status and years_updated to empty
     update_body = [
         {
             "id": dataset_metadata['id'],
             "aggregation_version_s": {"set": aggregation_version},
-            "status_s": {"set": 'aggregated'}
+            "aggregation_status_s": {"set": aggregation_status}
         }
     ]
 
