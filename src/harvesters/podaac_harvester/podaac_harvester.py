@@ -155,6 +155,67 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False):
     aggregated = config['aggregated']
     start_time = config['start']
     end_time = config['end']
+    solr_collection_name = config['solr_collection_name']
+
+    # Query for existing harvested docs
+    fq = ['type_s:harvested', f'dataset_s:{dataset_name}']
+    solr_harvested_docs = solr_query(config, solr_host, fq)
+
+    # year_range = list(range(start_time[:4], end_time[:4]))
+    years_removed = set()
+    update_years = []
+
+    # if solr_harvested_docs:
+        # for doc in solr_harvested_docs:
+        #     doc_date = doc['date_s'].replace('-', '')
+        #     if doc_date < start_time or doc_date > end_time:
+        #         # Remove harvested entry from Solr
+        #         url = f'{solr_host}{solr_collection_name}/update?commit=true'
+        #         requests.post(url, json={'delete': [doc['id']]})
+
+        #         # Remove transformation entries from Solr
+        #         # Query for transformations from doc's date
+        #         fq = ['type_s:transformation',
+        #               f'dataset_s:{dataset_name}', f'date_s:{doc["date_s"][:10]}*']
+        #         transformation_docs = solr_query(config, solr_host, fq)
+        #         for transformation_doc in transformation_docs:
+        #             print(transformation_doc['id'])
+        #             requests.post(
+        #                 url, json={'delete': [transformation_doc['id']]})
+
+        #         # Remove aggregation entries from Solr
+        #         year = doc['date_s'][:4]
+        #         fq = ['type_s:aggregation',
+        #               f'dataset_s:{dataset_name}', f'year_s:{year}']
+        #         aggregation_docs = solr_query(config, solr_host, fq)
+        #         for aggregation_doc in aggregation_docs:
+        #             requests.post(
+        #                 url, json={'delete': [aggregation_doc['id']]})
+
+        #         # Remove descendants entries from Solr
+        #         fq = ['type_s:descendants',
+        #               f'dataset_s:{dataset_name}', f'date_s:{doc["date_s"][:10]}*']
+        #         descendant_docs = solr_query(config, solr_host, fq)
+        #         for descendant_doc in descendant_docs:
+        #             requests.post(url, json={'delete': [descendant_doc['id']]})
+
+        #         years_removed.add(year)
+
+        # for year in years_removed:
+        #     fq =['type_s:harvested', f'dataset_s:{dataset_name}', f'date_s:{year}*']
+        #     results = solr_query(config, solr_host, fq)
+
+        #     if results:
+        #         update_years.append(year)
+
+        # fq =['type_s:dataset', f'dataset_s:{dataset_name}']
+        # dataset_metadata = solr_query(config, solr_host, fq)
+
+        # fq =['type_s:grid']
+        # grids_metadata = solr_query(config, solr_host, fq)
+
+        # for grid in grids_metadata:
+        #     grid_name = grid['name_s']
 
     if not on_aws:
         print(f'Downloading {dataset_name} files to {target_dir}\n')
@@ -302,6 +363,12 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False):
                         # Break up into granules
                         print(
                             f' - Extracting individual data granules from aggregated data file')
+
+                        for f in os.listdir(f'{target_dir}{date_start_str[:4]}/'):
+                            if str(f) != str(newfile):
+                                os.remove(
+                                    f'{target_dir}{date_start_str[:4]}/{f}')
+
                         ds = xr.open_dataset(local_fp)
 
                         ds_times = [time for time in np.datetime_as_string(
@@ -373,6 +440,23 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False):
         else:
             print('Failed to create Solr harvested documents')
 
+    # Query for Solr failed harvest documents
+    fq = ['type_s:harvested',
+          f'dataset_s:{dataset_name}', f'harvest_success_b:false']
+    failed_harvesting = solr_query(config, solr_host, fq)
+
+    # Query for Solr successful harvest documents
+    fq = ['type_s:harvested',
+          f'dataset_s:{dataset_name}', f'harvest_success_b:true']
+    successful_harvesting = solr_query(config, solr_host, fq)
+
+    harvest_status = f'All harvested granules successful'
+
+    if not successful_harvesting:
+        harvest_status = f'No usable granules harvested (either all failed or no data collected)'
+    elif failed_harvesting:
+        harvest_status = f'{len(failed_harvesting)} harvested granules failed'
+
     overall_start = min(start) if len(start) > 0 else None
     overall_end = max(end) if len(end) > 0 else None
 
@@ -408,16 +492,13 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False):
             ds_meta['start_date_dt'] = overall_start.strftime(
                 "%Y-%m-%dT%H:%M:%SZ")
             ds_meta['end_date_dt'] = overall_end.strftime("%Y-%m-%dT%H:%M:%SZ")
-        else:
-            ds_meta['status_s'] = 'error harvesting - no files found'
 
         # if no ds entry yet and no qualifying downloads, still create ds entry without download time
         if updating:
             if last_success_item:
                 ds_meta['last_download_dt'] = last_success_item['download_time_dt']
-            ds_meta['status_s'] = "harvested"
-        else:
-            ds_meta['status_s'] = "nodata"
+
+        ds_meta['harvest_status_s'] = harvest_status
 
         body = []
         body.append(ds_meta)
@@ -477,7 +558,7 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False):
         update_doc['last_checked_dt'] = {"set": chk_time}
 
         if meta:
-            update_doc['status_s'] = {"set": "harvested"}
+            update_doc['harvest_status_s'] = {"set": harvest_status}
 
             if 'download_time_dt' in last_success_item.keys():
                 update_doc['last_download_dt'] = {
