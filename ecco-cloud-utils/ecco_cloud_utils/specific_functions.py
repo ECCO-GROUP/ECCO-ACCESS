@@ -31,6 +31,6 @@ def avhrr_sst_kelvin_to_celsius(da, field_name):
 
 def seaice_concentration_to_fraction(da, field_name):
     if field_name == 'ice_conc':
-        da.attrs['units'] = '%'
+        da.attrs['units'] = '1'
         da.values /= 100.
     return da

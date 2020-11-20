@@ -202,16 +202,16 @@ def apply_podaac_metadata(xrds, podaac_metadata):
 
 
 #%%
-def get_coordinate_attribute_to_data_vars(G):
-    coord_attr = dict()
+#def get_coordinate_attribute_to_data_vars(G):
+#    coord_attr = dict()#
 
-    dvs = list(G.data_vars)
-    for dv in dvs:
-        coord_attr[dv] = ' '.join([str(elem) for elem in G[dv].coords])
+    # dvs = list(G.data_vars)
+    # for dv in dvs:
+    #     dv_coords[dv] = list(G[dv].coords) #' '.join([str(elem) for elem in G[dv].coords])
 
-    coord_G = ' '.join([str(elem) for elem in G.coords])
+    # coord_G = ' '.join([str(elem) for elem in G.coords])
 
-    return coord_attr, coord_G
+    # return coord_attr, coord_G
 
 
 def sort_attrs(attrs):
@@ -634,7 +634,7 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
 
     elif output_freq_code == 'SNAPSHOT':
         mds_diags_root_dir = diags_root / 'diags_inst'
-        period_suffix = 'inst'
+        period_suffix = 'day_inst'
         dataset_description_head = 'This dataset contains instantaneous '
 
 
@@ -755,12 +755,17 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
 
         if 'AVG' in output_freq_code:
             tb, ct = ecco.make_time_bounds_from_ds64(np.datetime64(times[0]),output_freq_code)
+
             record_start_time = tb[0]
             record_end_time = tb[1]
-        else:
-            record_start_time = np.datetime64(times)
+            print('cur_ts, i, tb ', str(cur_ts).zfill(10), str(cur_ts_i).zfill(4), tb)
 
-        print('cur_ts, i, tb ', str(cur_ts).zfill(10), str(cur_ts_i).zfill(4), tb)
+        else:
+            print(times)
+            print(type(times[0]))
+
+            record_start_time = np.datetime64(times[0])
+            #sys.exit()
 
 
         # loop through variables to load
@@ -857,9 +862,6 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
 
                     # --- end 2D or 3D
 
-                    # ADD TIME STEP COORDINATE
-                    print('\n... assigning time step', np.int32(cur_ts))
-                    F_DA=F_DA.assign_coords({"time_step": (("time"), [np.int32(cur_ts)])})
 
                     print('... assigning name', var)
                     # assign name to data array
@@ -894,7 +896,13 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
                                                      grid_vars_to_coords = False,\
                                                      output_freq_code=output_freq_code,\
                                                      model_time_steps_to_load=cur_ts,
-                                                     less_output = True)
+                                                     less_output = False)
+
+
+                    for d in list(F_DS.dims):
+                        print(d);
+                        print(d, F_DS[d].attrs)
+                    #sys.exit()
 
                     vars_to_drop = set(F_DS.data_vars).difference(set([var]))
                     F_DS.drop_vars(vars_to_drop)
@@ -943,6 +951,11 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
                             sys.exit()
 
                 ############## end latlon vs. native load
+
+                # ADD TIME STEP COORDINATE
+                print('\n... assigning time step', np.int32(cur_ts))
+                F_DS[data_var] = F_DS[data_var].assign_coords({"time_step": (("time"), [np.int32(cur_ts)])})
+
 
                 # Possibly rename variable if indicated
                 if 'variable_rename' in grouping.keys():
@@ -1060,23 +1073,37 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
             G.attrs['date_issued'] = current_time
 
             # add coordinate attributes to the variables
-            coord_attrs, coord_G=  get_coordinate_attribute_to_data_vars(G)
-            for coord in coord_attrs.keys():
+            #coord_attrs, coord_G=  get_coordinate_attribute_to_data_vars(G)
+            #print(coord_G)
+            dv_coordinate_attrs = dict()
+
+            for dv in list(G.data_vars):
+                dv_coords_orig = set(list(G[dv].coords))
+
+                print(dv, dv_coords_orig)
+
                 # REMOVE TIME STEP FROM LIST OF COORDINATES (PODAAC REQUEST)
-                coord_attrs[coord] = coord_attrs[coord].split('time_step')[0].strip()
+                #coord_attrs[coord] = coord_attrs[coord].split('time_step')[0].strip()
+                #data_var_coorcoord_attrs[coord].split()
+                set_intersect = dv_coords_orig.intersection(set(['XC','YC','XG','YG','Z','Zp1','Zu','Zl','time'])) #
+
+                dv_coordinate_attrs[dv] = " ".join(set_intersect)
+
+                print(dv, dv_coordinate_attrs[dv])
 
             print('\n... creating variable encodings')
             # PROVIDE SPECIFIC ENCODING DIRECTIVES FOR EACH DATA VAR
             dv_encoding = dict()
             for dv in G.data_vars:
                 dv_encoding[dv] =  {'zlib':True, \
-                                    'complevel':5,\
-                                    'shuffle':True,\
+                                    #'complevel':5,\
+                                    #'shuffle':True,\
                                     '_FillValue':netcdf_fill_value}
 
                 # overwrite default coordinats attribute (PODAAC REQUEST)
-                G[dv].encoding['coordinates'] = coord_attrs[dv]
-
+                G[dv].encoding['coordinates'] = dv_coordinate_attrs[dv]
+                #print(G[dv].encoding)
+                #dv_encoding[dv]['coordinates'] = dv_coordinate_attrs[dv]
 
             # PROVIDE SPECIFIC ENCODING DIRECTIVES FOR EACH COORDINATE
             print('\n... creating coordinate encodings')
@@ -1086,8 +1113,13 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
                 # default encoding: no fill value, float32
                 coord_encoding[coord] = {'_FillValue':None, 'dtype':'float32'}
 
+                if (G[coord].values.dtype == np.int32) or \
+                   (G[coord].values.dtype == np.int64) :
+                    coord_encoding[coord]['dtype'] ='int32'
+
                 if coord == 'time' or coord == 'time_bnds':
                     coord_encoding[coord]['dtype'] ='int32'
+
                     if 'units' in G[coord].attrs:
                         # apply units as encoding for time
                         coord_encoding[coord]['units'] = G[coord].attrs['units']
@@ -1101,6 +1133,7 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
             # MERGE ENCODINGS for coordinates and variables
             encoding = {**dv_encoding, **coord_encoding}
 
+            #pprint(encoding)
 
             # MERGE GCMD KEYWORDS
             print('\n... merging GCMD keywords')
@@ -1116,7 +1149,6 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
 
             print(gcmd_keyword_str)
             G.attrs['keywords'] = gcmd_keyword_str
-
 
             ## ADD FINISHING TOUCHES
 
@@ -1158,6 +1190,8 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
                 G.attrs['time_coverage_duration'] = 'P0S'
                 G.attrs['time_coverage_resolution'] = 'P0S'
 
+                G.time.attrs.pop('bounds')
+
                 # convert from oroginal
                 #   '1992-01-16T12:00:00.000000000'
                 # to new format
@@ -1198,7 +1232,7 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
 
             # apply podaac metadata based on filename
             print('\n... applying PODAAC metadata')
-            pprint(podaac_metadata)
+            #pprint(podaac_metadata)
             G = apply_podaac_metadata(G, podaac_metadata)
 
             # sort comments alphabetically
@@ -1211,8 +1245,27 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
 
             # SAVE
             print('\n... saving to netcdf ', netcdf_output_filename)
-            G.to_netcdf(netcdf_output_filename, encoding=encoding)
+            G.load()
+            #G = G.drop(['i_g','j_g'])
+            G.to_netcdf(netcdf_output_filename)#, encoding=encoding)
             G.close()
+            #pprint(encoding)
+
+            # tmp = G['THETA']
+            # tmp.to_netcdf('~/tmp/THETA_with_Time.nc')#,encoding=encoding)
+
+            # tmp.encoding['coordinates'] = 'Z YC XC'
+            # tmp[0].to_netcdf('~/tmp/THETA_without_Time.nc')
+            # #print('here')
+
+            # tmp.encoding['coordinates'] = 'YC XC'
+            # tmp[0,0].to_netcdf('~/tmp/THETA_k0_without_Time.nc')
+            # #print('here')
+
+            # tmp.encoding['coordinates'] = 'YC XC'
+            # tmp[:,0].to_netcdf('~/tmp/THETA_k0_with_Time.nc')
+            # #print('here')
+            # G.close()
 
     return G, ecco_grid
 
@@ -1221,7 +1274,7 @@ if __name__ == "__main__":
 
 
     mapping_factors_dir = Path('/home/ifenty/tmp/ecco-v4-podaac-mapping-factors')
-    output_dir_base = Path('/home/ifenty/tmp/v4r4_nc_output_20201110c_native')
+    output_dir_base = Path('/home/ifenty/tmp/v4r4_nc_output_2020115_native')
     diags_root = Path('/home/ifenty/ian1/ifenty/ECCOv4/binary_output/diags_all')
     ## METADATA
     metadata_json_dir = Path('/home/ifenty/git_repos_others/ECCO-GROUP/ECCO-ACCESS/metadata/ECCOv4r4_metadata_json')
@@ -1240,7 +1293,7 @@ if __name__ == "__main__":
 
 
     #%%
-    num_jobs = 3
+    num_jobs = 1
     job_id = 0
     grouping_to_process='by_job'
     time_steps_to_process = 'by_job'
@@ -1256,7 +1309,12 @@ if __name__ == "__main__":
 
     product_type = 'native'
     output_freq_codes = ['AVG_DAY', 'AVG_MON']
+    output_freq_codes = ['AVG_MON']
+    output_freq_codes = ['SNAPSHOT']
 
+
+    # obp, TS, SSH, sea ice and snow, sea ice velocity,
+    snapshot_groupings = [0, 1, 15, 7, 8]
     debug_mode=False
 
     for output_freq_code in output_freq_codes:
@@ -1268,7 +1326,7 @@ if __name__ == "__main__":
 
         GS = []
         G = []
-        for grouping_to_process in list(range(20)):
+        for grouping_to_process in snapshot_groupings: #list(range(1)):
            G, ecco_grid =  generate_netcdfs(output_freq_code, job_id, num_jobs,
                              product_type,
                              mapping_factors_dir,
@@ -1283,4 +1341,4 @@ if __name__ == "__main__":
                              grouping_to_process,
                              time_steps_to_process,
                              debug_mode)
-           #GS.append(G)
+           GS.append(G)
