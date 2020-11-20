@@ -230,7 +230,8 @@ def generalized_transform_to_model_grid_solr(data_field_info, record_date, model
                                   data_model_projection, data_DA.values)
 
     else:
-        print('file loaded but empty')
+        print(
+            f' - CPU id {os.getpid()} empty granule for {record_file_name} (no data to transform to grid {model_grid_name})')
         record_notes = record_notes + ' -- empty record -- '
 
     # update time values
