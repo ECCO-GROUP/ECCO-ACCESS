@@ -3,7 +3,7 @@
 # =====================================================
 # PODAAC explicitly expects this date format
 start: "20060101T00:00:00Z" # yyyymmddThh:mm:ssZ
-end: "20060606T00:00:00Z" # yyyymmddThh:mm:ssZ
+end: "20060301T00:00:00Z" # yyyymmddThh:mm:ssZ
 user: anonymous # does not change
 host: https://podaac.jpl.nasa.gov/ws/search/granule/?format=atom&pretty=false&itemsPerPage=300000 # does not change
 date_regex: "%Y-%m-%dT%H:%M:%SZ" # does not change
