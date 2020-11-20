@@ -3,6 +3,7 @@ import sys
 import yaml
 import logging
 import argparse
+import requests
 import importlib
 import numpy as np
 import tkinter as tk
@@ -37,14 +38,53 @@ def create_parser():
                         help=f'sets the number of multiprocesses used during transformation with a \
                             system max of {cpu_count()} with default set to half of system max')
 
-    parser.add_argument('--verify_harvester', default=False, action='store_true',
-                        help='verifies each Solr harvester entry points to a valid file')
+    parser.add_argument('--clean_solr', default=False, nargs='*',
+                        help='verifies each Solr harvester entry points to a valid file. if no args given, defaults to \
+                            hard coded Solr address. Otherwise takes two args: Solr host url and collection name')
 
     parser.add_argument('--wipe_transformations', default=False, action='store_true',
                         help='deletes transformations with version number different than what is \
                             currently in transformation_config')
 
     return parser
+
+
+def clean_solr_granules(args=[]):
+    solr_host = 'http://localhost:8983/solr/'
+    solr_collection_name = 'ecco_datasets'
+
+    if args:
+        solr_host = args[0]
+        solr_collection_name = args[1]
+
+    try:
+        response = requests.get(
+            f'{solr_host}{solr_collection_name}/select?fq=type_s%3Aharvested&q=*%3A*')
+
+        if response.status_code == 200:
+            docs_to_remove = []
+            harvested_docs = response.json()['response']['docs']
+
+            for doc in harvested_docs:
+                file_path = doc['pre_transformation_file_path_s']
+                if os.path.exists(file_path):
+                    continue
+                else:
+                    docs_to_remove.append(doc['id'])
+
+            url = f'{solr_host}{solr_collection_name}/update?commit=true'
+            requests.post(url, json={'delete': docs_to_remove})
+
+            print('Succesfully removed entries from Solr')
+
+        else:
+            print('Solr not online or collection does not exist')
+            sys.exit()
+
+    except Exception as e:
+        print(e)
+        print('Bad Solr URL')
+        sys.exit()
 
 
 def print_log(log_path):
@@ -248,6 +288,10 @@ if __name__ == '__main__':
     path_to_preprocessing = Path(f'{pipeline_path.parents[1]}/preprocessing')
     path_to_grids = Path(f'{pipeline_path.parents[2]}/grids_to_solr')
     path_to_datasets = Path(f'{pipeline_path.parents[2]}/datasets')
+
+    # ------------------- Clean Solr -------------------
+    if isinstance(args.clean_solr, list) and len(args.clean_solr) in [0, 2]:
+        clean_solr_granules(args=args.clean_solr)
 
     # ------------------- Grids to Solr -------------------
     if args.grids_to_solr:
