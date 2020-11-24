@@ -13,7 +13,7 @@ date_regex: "%Y-%m-%dT%H:%M:%SZ" # does not change
 # =====================================================
 ds_name: "seaice_SSMIS_OSI-401-b" # Name for dataset
 harvester_type: "osisaf_ftp"
-ddir: "archive/ice/conc/" #ex: pub/DATASETS/NOAA/G10016/
+ddir: "archive/ice/conc/" #ex: archive/ice/conc/
 filename_filter: "polstere-100_multi" # string to match for filenames to download
 aggregated: false # if data is available aggregated
 data_time_scale: "daily" # daily or monthly
