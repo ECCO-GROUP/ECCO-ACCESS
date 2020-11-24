@@ -265,10 +265,11 @@ def osisaf_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False):
 
                     # If updating, download file if necessary
                     if updating:
-                        local_fp = f'{folder}{dataset_name}_granule.nc' if on_aws else f'{target_dir}{date[:4]}/{newfile}'
+                        year = date[:4]
+                        local_fp = f'{folder}{dataset_name}_granule.nc' if on_aws else f'{target_dir}{year}/{newfile}'
 
-                        if not os.path.exists(f'{target_dir}{date[:4]}/'):
-                            os.makedirs(f'{target_dir}{date[:4]}/')
+                        if not os.path.exists(f'{target_dir}{year}/'):
+                            os.makedirs(f'{target_dir}{year}/')
 
                         # If file doesn't exist locally, download it
                         if not os.path.exists(local_fp):
