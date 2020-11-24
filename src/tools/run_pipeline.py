@@ -449,13 +449,16 @@ if __name__ == '__main__':
             print(f'\nAvailable steps:\n')
             for i, step in steps_dict.items():
                 print(f'{i}) {step}')
-            steps_index = int(input('\nEnter pipeline step(s) number: '))
-
-            if steps_index not in range(1, len(steps)+1):
+            try:
+                steps_index = int(input('\nEnter pipeline step(s) number: '))
+                if steps_index not in range(1, len(steps)+1):
+                    print(
+                        f'Invalid step(s), "{steps_index}", please enter a valid selection')
+                else:
+                    break
+            except:
                 print(
-                    f'Invalid step(s), "{steps_index}", please enter a valid selection')
-            else:
-                break
+                    f'Invalid step(s), please enter a valid selection')
 
         wanted_steps = steps_dict[steps_index]
 
