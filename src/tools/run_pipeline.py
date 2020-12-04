@@ -430,37 +430,33 @@ if __name__ == '__main__':
             print(f'\nAvailable datasets:\n')
             for i, dataset in ds_dict.items():
                 print(f'{i}) {dataset}')
-            ds_index = int(input('\nEnter dataset number: '))
+            ds_index = input('\nEnter dataset number: ')
 
-            if ds_index not in range(1, len(datasets)+1):
+            if not ds_index.isdigit() or int(ds_index) not in range(1, len(datasets)+1):
                 print(
                     f'Invalid dataset, "{ds_index}", please enter a valid selection')
             else:
                 break
 
-        wanted_ds = ds_dict[ds_index]
+        wanted_ds = ds_dict[int(ds_index)]
         print(f'\nUsing {wanted_ds} dataset')
 
+        steps = ['harvest', 'transform', 'aggregate',
+                 'harvest and transform', 'transform and aggregate', 'all']
+        steps_dict = {i: step for i, step in enumerate(steps, start=1)}
         while True:
-            steps = ['harvest', 'transform', 'aggregate',
-                     'harvest and transform', 'transform and aggregate', 'all']
-            steps_dict = {i: step for i, step in enumerate(steps, start=1)}
-            valid_steps = True
             print(f'\nAvailable steps:\n')
             for i, step in steps_dict.items():
                 print(f'{i}) {step}')
-            try:
-                steps_index = int(input('\nEnter pipeline step(s) number: '))
-                if steps_index not in range(1, len(steps)+1):
-                    print(
-                        f'Invalid step(s), "{steps_index}", please enter a valid selection')
-                else:
-                    break
-            except:
-                print(
-                    f'Invalid step(s), please enter a valid selection')
+            steps_index = input('\nEnter pipeline step(s) number: ')
 
-        wanted_steps = steps_dict[steps_index]
+            if not steps_index.isdigit() or int(steps_index) not in range(1, len(steps)+1):
+                print(
+                    f'Invalid step(s), "{steps_index}", please enter a valid selection')
+            else:
+                break
+
+        wanted_steps = steps_dict[int(steps_index)]
 
         if 'harvest' in wanted_steps:
             run_harvester([wanted_ds], path_to_harvesters, output_dir)
