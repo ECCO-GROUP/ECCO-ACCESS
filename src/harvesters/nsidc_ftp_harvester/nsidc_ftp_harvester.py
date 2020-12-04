@@ -76,7 +76,7 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False):
     """
     Pulls data files for NSIDC FTP id and date range given in harvester_config.yaml.
     If not on_aws, saves locally, else saves to s3 bucket.
-    Creates (or updates) Solr entries for dataset, harvested granule, fields, 
+    Creates (or updates) Solr entries for dataset, harvested granule, fields,
     and descendants.
     """
 
@@ -174,20 +174,21 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False):
     # =====================================================
     # NSIDC loop
     # =====================================================
-    for year in years:
+    # Iterate through hemispheres given in config
+    for region in config['regions']:
+        hemi = 'nh' if region == 'north' else 'sh'
 
-        # Iterate through hemispheres given in config
-        for region in config['regions']:
-
-            hemi = 'nh' if region == 'north' else 'sh'
+        for year in years:
 
             ftp_dir = f'{ddir}{region}/{data_time_scale}/{year}/'
+
             try:
                 files = []
                 ftp.dir(ftp_dir, files.append)
 
-                # Extract file names from FTP directory
+                # Ignore first two FTP entries as they aren't related to data
                 files = files[2:]
+                # Extract file names from FTP directory
                 files = [e.split()[-1] for e in files]
 
                 if not files:
@@ -203,11 +204,13 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False):
 
                     url = f'{ftp_dir}{newfile}'
 
+                    # Extract the date from the filename
                     date = getdate(config['regex'], newfile)
                     date_time = datetime.strptime(date, "%Y%m%d")
                     new_date_format = f'{date[:4]}-{date[4:6]}-{date[6:]}T00:00:00Z'
 
                     # Ignore granules with start time less than wanted start time
+                    # List of files contains ALL files on FTP dir from that year
                     if (start_time_dt > date_time) or (end_time_dt < date_time):
                         continue
 
