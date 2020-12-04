@@ -236,21 +236,21 @@ def main(config_path='', output_path='', multiprocessing=False, user_cpus=1, wip
                         data_for_factors.append(granule)
                         break
 
-            # Actually perform transformation on chosen granule(s)
-            # This will generate factors and avoid redundant calculations when using multiprocessing
-            for granule in data_for_factors:
-                file_path = granule['pre_transformation_file_path_s']
+        # Actually perform transformation on chosen granule(s)
+        # This will generate factors and avoid redundant calculations when using multiprocessing
+        for granule in data_for_factors:
+            file_path = granule['pre_transformation_file_path_s']
 
-                # Get transformations to be completed for this file
-                remaining_transformations = get_remaining_transformations(
-                    config, file_path, grid_transformation)
+            # Get transformations to be completed for this file
+            remaining_transformations = get_remaining_transformations(
+                config, file_path, grid_transformation)
 
-                grids_updated, year = grid_transformation.run_locally_wrapper(
-                    file_path, remaining_transformations, output_path, config_path=config_path, verbose=True)
+            grids_updated, year = grid_transformation.run_locally_wrapper(
+                file_path, remaining_transformations, output_path, config_path=config_path, verbose=True)
 
-                for grid in grids_updated:
-                    if year not in years_updated[grid]:
-                        years_updated[grid].append(year)
+            for grid in grids_updated:
+                if year not in years_updated[grid]:
+                    years_updated[grid].append(year)
         # END PRE GENERATE FACTORS TO ACCOMODATE MULTIPROCESSING
 
         # BEGIN MULTIPROCESSING
