@@ -11,12 +11,12 @@ import xarray as xr
 import pyresample as pr
 from pathlib import Path
 from datetime import datetime
+from collections import namedtuple
 
 np.warnings.filterwarnings('ignore')
 
+
 # Creates checksum from filename
-
-
 def md5(fname):
     hash_md5 = hashlib.md5()
     with open(fname, 'rb') as f:
@@ -138,7 +138,6 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
 
         grid_path = grid_metadata['grid_path_s']
         grid_type = grid_metadata['grid_type_s']
-        grid_dir = grid_path.rsplit('/', 2)[0] + '/'
 
         # =====================================================
         # Load grid
@@ -310,14 +309,11 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
         # =====================================================
         # Run transformation
         # =====================================================
-
-        verboseprint(
-            f' - Running transformations for {file_name}')
+        verboseprint(f' - Running transformations for {file_name}')
 
         # Returns list of transformed DAs, one for each field in fields
-
-        field_DAs = run_in_any_env(
-            model_grid, grid_name, grid_type, fields, factors, ds, date, dataset_metadata, config, verbose=verbose)
+        field_DAs = run_in_any_env(model_grid, grid_name, grid_type,
+                                   fields, factors, ds, date, dataset_metadata, config, verbose)
 
         # =====================================================
         # Save the output in netCDF format
@@ -480,7 +476,6 @@ def run_using_aws(s3, filename):
     grid_dir = grid_path.rsplit('/', 2)[0] + '/'
 
     print(f'======Loading {grid_name} model grid=======')
-    dt = np.dtype('>f')
 
     model_grid = xr.open_dataset(grid_path).reset_coords()
 
@@ -762,7 +757,7 @@ def run_using_aws(s3, filename):
             f'Failed to update Solr with descendants information for {dataset_name} on {date}')
 
 
-def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors, ds, record_date, dataset_metadata, config, verbose=True):
+def run_in_any_env(model_grid, grid_name, grid_type, fields, factors, ds, record_date, dataset_metadata, config, verbose=True):
     verboseprint = print if verbose else lambda *a, **k: None
     # =====================================================
     # Code to import ecco utils locally...
@@ -801,19 +796,23 @@ def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors
                 ds = callable_func(ds)
             except Exception as e:
                 logger.error(f'Pre-transformation {func_to_run} failed: {e}')
-                # print(e)
-                # print(f'Pre-transformation {func_to_run} failed.')
                 return []
 
     # fields is a list of dictionaries
     for data_field_info in fields:
+        field_name = data_field_info['name_s']
+        standard_name = data_field_info['standard_name_s']
+        long_name = data_field_info['long_name_s']
+        units = data_field_info['units_s']
+
         verboseprint(
-            f'    - Transforming {record_file_name} for field {data_field_info["name_s"]}')
+            f'    - Transforming {record_file_name} for field {field_name}')
+
         try:
-            field_DA = ea.generalized_transform_to_model_grid_solr(data_field_info, record_date, model_grid, model_grid_type,
+            field_DA = ea.generalized_transform_to_model_grid_solr(data_field_info, record_date, model_grid, grid_type,
                                                                    array_precision, record_file_name, original_dataset_metadata,
                                                                    extra_information, ds, factors, time_zone_included_with_time,
-                                                                   model_grid_name)
+                                                                   grid_name)
             success = True
 
             if post_transformations:
@@ -821,15 +820,13 @@ def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors
                     callable_func = getattr(ea, func_to_run)
 
                     try:
-                        field_DA = callable_func(
-                            field_DA, data_field_info['name_s'])
+                        field_DA = callable_func(field_DA, field_name)
                     except Exception as e:
                         logger.error(
                             f'Post-transformation {func_to_run} failed: {e}')
-                        # print(e)
-                        # print(f'Post-transformation {func_to_run} failed.')
-                        field_DA = ea.make_empty_record(data_field_info['standard_name_s'], data_field_info['long_name_s'],
-                                                        data_field_info['units_s'], record_date, model_grid, model_grid_type, array_precision)
+                        field_DA = ea.make_empty_record(standard_name, long_name, units,
+                                                        record_date, model_grid,
+                                                        grid_type, array_precision)
                         success = False
                         break
 
@@ -838,8 +835,9 @@ def run_in_any_env(model_grid, model_grid_name, model_grid_type, fields, factors
 
         except Exception as e:
             logger.error(f'Transformation failed: {e}')
-            field_DA = ea.make_empty_record(data_field_info['standard_name_s'], data_field_info['long_name_s'], data_field_info['units_s'],
-                                            record_date, model_grid, model_grid_type, array_precision)
+            field_DA = ea.make_empty_record(standard_name, long_name, units,
+                                            record_date, model_grid,
+                                            grid_type, array_precision)
             success = False
 
         field_DAs.append((field_DA, success))
