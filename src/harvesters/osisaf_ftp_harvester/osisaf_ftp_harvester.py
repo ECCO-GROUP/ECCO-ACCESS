@@ -374,7 +374,7 @@ def osisaf_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False):
           f'harvest_success_b:true']
     successful_harvesting = solr_query(config, solr_host, fq)
 
-    harvest_status = f'All harvested granules successful'
+    harvest_status = f'All granules successfully harvested'
 
     if not successful_harvesting:
         harvest_status = f'No usable granules harvested (either all failed or no data collected)'
