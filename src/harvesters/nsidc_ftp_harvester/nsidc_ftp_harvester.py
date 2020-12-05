@@ -221,15 +221,14 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False):
                     item = {}
                     item['type_s'] = 'harvested'
                     item['date_s'] = new_date_format
-                    item['dataset_s'] = config['ds_name']
+                    item['dataset_s'] = dataset_name
                     item['hemisphere_s'] = hemi
+                    item['filename_s'] = newfile
                     item['source_s'] = f'ftp://{host}/{url}'
 
                     # descendants metadta setup to be populated for each granule
                     descendants_item = {}
                     descendants_item['type_s'] = 'descendants'
-
-                    # Create or modify descendants entry in Solr
                     descendants_item['dataset_s'] = item['dataset_s']
                     descendants_item['date_s'] = item["date_s"]
                     descendants_item['hemisphere_s'] = hemi
@@ -256,7 +255,7 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False):
                     # If updating, download file if necessary
                     if updating:
                         year = date[:4]
-                        local_fp = f'{folder}{config["ds_name"]}_granule.nc' if on_aws else f'{target_dir}{year}/{newfile}'
+                        local_fp = f'{folder}{dataset_name}_granule.nc' if on_aws else f'{target_dir}{year}/{newfile}'
 
                         if not os.path.exists(f'{target_dir}{year}/'):
                             os.makedirs(f'{target_dir}{year}/')
@@ -264,25 +263,31 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False):
                         # If file doesn't exist locally, download it
                         if not os.path.exists(local_fp):
                             print(f' - Downloading {newfile} to {local_fp}')
-                            with open(local_fp, 'wb') as f:
-                                ftp.retrbinary('RETR '+url, f.write)
+                            try:
+                                with open(local_fp, 'wb') as f:
+                                    ftp.retrbinary('RETR '+url, f.write)
+                            except:
+                                os.unlink(local_fp)
 
                         # If file exists, but is out of date, download it
                         elif datetime.fromtimestamp(os.path.getmtime(local_fp)) <= mod_date_time:
                             print(
                                 f' - Updating {newfile} and downloading to {local_fp}')
-                            with open(local_fp, 'wb') as f:
-                                ftp.retrbinary('RETR '+url, f.write)
+                            try:
+                                with open(local_fp, 'wb') as f:
+                                    ftp.retrbinary('RETR '+url, f.write)
+                            except:
+                                os.unlink(local_fp)
 
                         else:
                             print(
                                 f' - {newfile} already downloaded and up to date')
 
+                        if newfile in docs.keys():
+                            item['id'] = docs[newfile]['id']
+
                         # Create checksum for file
                         item['checksum_s'] = md5(local_fp)
-
-                        output_filename = f'{dataset_name}/{newfile}' if on_aws else newfile
-
                         item['pre_transformation_file_path_s'] = local_fp
 
                         # =====================================================
@@ -291,6 +296,7 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False):
 
                         if on_aws:
                             aws_upload = True
+                            output_filename = f'{dataset_name}/{newfile}' if on_aws else newfile
                             print("=========uploading file to s3=========")
                             target_bucket.upload_file(
                                 local_fp, output_filename)
@@ -298,7 +304,6 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False):
                             print("======uploading file to s3 DONE=======")
 
                         item['harvest_success_b'] = True
-                        item['filename_s'] = newfile
                         item['file_size_l'] = os.path.getsize(local_fp)
 
                     else:
@@ -306,7 +311,7 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False):
                             f' - {newfile} already downloaded and up to date')
 
                 except Exception as e:
-                    print(e)
+                    print(f'    - {e}')
                     if updating:
                         if aws_upload:
                             print("======aws upload unsuccessful=======")
@@ -316,7 +321,6 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False):
                             print(f'    - {newfile} failed to download')
 
                         item['harvest_success_b'] = False
-                        item['filename'] = ''
                         item['pre_transformation_file_path_s'] = ''
                         item['file_size_l'] = 0
 
@@ -338,7 +342,8 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False):
                     entries_for_solr.append(item)
                     entries_for_solr.append(descendants_item)
 
-                    last_success_item = item
+                    if item['harvest_success_b']:
+                        last_success_item = item
 
     print(f'\nDownloading {dataset_name} complete\n')
 
