@@ -1246,26 +1246,9 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
             # SAVE
             print('\n... saving to netcdf ', netcdf_output_filename)
             G.load()
-            #G = G.drop(['i_g','j_g'])
-            G.to_netcdf(netcdf_output_filename)#, encoding=encoding)
+
+            G.to_netcdf(netcdf_output_filename, encoding=encoding)
             G.close()
-            #pprint(encoding)
-
-            # tmp = G['THETA']
-            # tmp.to_netcdf('~/tmp/THETA_with_Time.nc')#,encoding=encoding)
-
-            # tmp.encoding['coordinates'] = 'Z YC XC'
-            # tmp[0].to_netcdf('~/tmp/THETA_without_Time.nc')
-            # #print('here')
-
-            # tmp.encoding['coordinates'] = 'YC XC'
-            # tmp[0,0].to_netcdf('~/tmp/THETA_k0_without_Time.nc')
-            # #print('here')
-
-            # tmp.encoding['coordinates'] = 'YC XC'
-            # tmp[:,0].to_netcdf('~/tmp/THETA_k0_with_Time.nc')
-            # #print('here')
-            # G.close()
 
     return G, ecco_grid
 
@@ -1274,7 +1257,9 @@ if __name__ == "__main__":
 
 
     mapping_factors_dir = Path('/home/ifenty/tmp/ecco-v4-podaac-mapping-factors')
-    output_dir_base = Path('/home/ifenty/tmp/v4r4_nc_output_2020115_native')
+    output_dir_base = Path('/home/ifenty/tmp/v4r4_nc_output_2020116_native')
+
+
     diags_root = Path('/home/ifenty/ian1/ifenty/ECCOv4/binary_output/diags_all')
     ## METADATA
     metadata_json_dir = Path('/home/ifenty/git_repos_others/ECCO-GROUP/ECCO-ACCESS/metadata/ECCOv4r4_metadata_json')
