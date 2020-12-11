@@ -15,7 +15,7 @@ from multiprocessing import cpu_count
 
 # Hardcoded output directory path for pipeline files
 # Leave blank to be prompted for an output directory
-output_dir = '/Users/kevinmarlis/Developer/JPL/pipeline_output/'
+output_dir = 'C:/Users/dunca/Documents/JPL/Code/pipeline_output/'
 
 
 def create_parser():

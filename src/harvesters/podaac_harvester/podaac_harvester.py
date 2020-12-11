@@ -213,7 +213,7 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False):
                 item['dataset_s'] = dataset_name
                 item['filename_s'] = newfile
                 item['source_s'] = link
-                item['modified_time_dt'] = mod_date_time
+                item['modified_time_dt'] = mod_date_time.strftime(time_format)
 
                 descendants_item = {}
                 descendants_item['type_s'] = 'descendants'

@@ -12,6 +12,7 @@ import pyresample as pr
 from pathlib import Path
 from datetime import datetime
 from collections import namedtuple
+from netCDF4 import default_fillvals  # pylint: disable=no-name-in-module
 
 np.warnings.filterwarnings('ignore')
 
@@ -80,6 +81,20 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
 
     with open(config_path, "r") as stream:
         config = yaml.load(stream, yaml.Loader)
+
+    # Define precision of output files, float32 is standard
+    array_precision = getattr(np, config['array_precision'])
+
+    # Define fill values for binary and netcdf
+    if array_precision == np.float32:
+        binary_dtype = '>f4'
+        netcdf_fill_value = default_fillvals['f4']
+
+    elif array_precision == np.float64:
+        binary_dtype = '>f8'
+        netcdf_fill_value = default_fillvals['f8']
+
+    fill_values = {'binary': -9999, 'netcdf': netcdf_fill_value}
 
     # =====================================================
     # Code to import ecco utils locally...
@@ -311,16 +326,16 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
         # =====================================================
         verboseprint(f' - Running transformations for {file_name}')
 
-        # Returns list of transformed DAs, one for each field in fields
-        field_DAs = run_in_any_env(model_grid, grid_name, grid_type,
-                                   fields, factors, ds, date, dataset_metadata, config, verbose)
+        # Returns list of transformed DSs, one for each field in fields
+        field_DSs = run_in_any_env(model_grid, grid_name, grid_type,
+                                   fields, factors, ds, date, dataset_metadata, config, fill_values, verbose=verbose)
 
         # =====================================================
         # Save the output in netCDF format
         # =====================================================
 
         # Save each transformed granule for the current field
-        for field, (field_DA, success) in zip(fields, field_DAs):
+        for field, (field_DS, success) in zip(fields, field_DSs):
             field_name = field["name_s"]
 
             # Change .bz2 file extension to .nc
@@ -334,10 +349,12 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
             if not os.path.exists(output_path):
                 os.makedirs(output_path)
 
-            field_DS = field_DA.to_dataset()
-
-            field_DS.to_netcdf(output_path + output_filename)
-            field_DS.close()
+            # save field_DS
+            ea.save_to_disk(field_DS,
+                            output_filename,
+                            fill_values['binary'], fill_values['netcdf'],
+                            Path(output_path), Path(output_path),
+                            binary_dtype, grid_type, save_binary=False)
 
             # Query Solr for transformation entry
             query_fq = [f'dataset_s:{dataset_name}', 'type_s:transformation', f'grid_name_s:{grid_name}',
@@ -358,7 +375,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
                     "transformation_completed_dt": {"set": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")},
                     "transformation_in_progress_b": {"set": False},
                     "success_b": {"set": success},
-                    "transformation_checksum_s": {"set": md5(transformed_location)},
+                    "transformation_checksum_s": {"set": md5(transformed_location + '.nc')},
                     "transformation_version_f": {"set": transformation_version}
                 }
             ]
@@ -757,7 +774,7 @@ def run_using_aws(s3, filename):
             f'Failed to update Solr with descendants information for {dataset_name} on {date}')
 
 
-def run_in_any_env(model_grid, grid_name, grid_type, fields, factors, ds, record_date, dataset_metadata, config, verbose=True):
+def run_in_any_env(model_grid, grid_name, grid_type, fields, factors, ds, record_date, dataset_metadata, config, fill_values, verbose=True):
     verboseprint = print if verbose else lambda *a, **k: None
     # =====================================================
     # Code to import ecco utils locally...
@@ -781,7 +798,7 @@ def run_in_any_env(model_grid, grid_name, grid_type, fields, factors, ds, record
     extra_information = config['extra_information']
     time_zone_included_with_time = config['time_zone_included_with_time']
 
-    field_DAs = []
+    field_DSs = []
 
     original_dataset_metadata = {
         key: dataset_metadata[key] for key in dataset_metadata.keys() if 'original' in key}
@@ -840,6 +857,40 @@ def run_in_any_env(model_grid, grid_name, grid_type, fields, factors, ds, record
                                             grid_type, array_precision)
             success = False
 
-        field_DAs.append((field_DA, success))
+        field_DA.values = \
+                np.where(np.isnan(field_DA.values),
+                        fill_values['netcdf'], field_DA.values)
 
-    return field_DAs
+        # make datasets and time_bnds stuff and ''metadata stuff''
+        field_DS = field_DA.to_dataset()
+
+        ds_meta = {}
+
+        # Metadata stuff
+        if 'title' in model_grid:
+            ds_meta['interpolated_grid'] = model_grid.title
+        else:
+            ds_meta['interpolated_grid'] = model_grid.name
+        ds_meta['model_grid_type'] = grid_type
+        ds_meta['original_dataset_title'] = original_dataset_metadata['original_dataset_title_s']
+        ds_meta['original_dataset_short_name'] = original_dataset_metadata['original_dataset_short_name_s']
+        ds_meta['original_dataset_url'] = original_dataset_metadata['original_dataset_url_s']
+        ds_meta['original_dataset_reference'] = original_dataset_metadata['original_dataset_reference_s']
+        ds_meta['original_dataset_doi'] = original_dataset_metadata['original_dataset_doi_s']
+        ds_meta['interpolated_grid_id'] = grid_name
+        field_DS = field_DS.assign_attrs(ds_meta)
+
+        # time_bnds stuff
+        # add time_bnds coordinate
+        # [start_time, end_time] dimensions
+        # field_DS = field_DS.expand_dims({'nv':2}, axis=1)
+        time_bnds = np.array([field_DS.time_start, field_DS.time_end], dtype='datetime64')  
+        time_bnds = time_bnds.T
+        field_DS = field_DS.assign_coords(
+            {'time_bnds': (['time','nv'], time_bnds)})
+
+        field_DS.time.attrs.update(bounds='time_bnds')
+
+        field_DSs.append((field_DS, success))
+
+    return field_DSs
