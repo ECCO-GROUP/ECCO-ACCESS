@@ -195,19 +195,13 @@ def generalized_transform_to_model_grid_solr(data_field_info, record_date, model
     # add some metadata to the newly formed data array object
     data_DA.attrs['original_filename'] = record_file_name
     data_DA.attrs['original_field_name'] = data_field
-    data_DA.attrs['interplation_parameters'] = 'bin averaging'
-    data_DA.attrs['interplation_code'] = 'pyresample'
+    data_DA.attrs['interpolation_parameters'] = 'bin averaging'
+    data_DA.attrs['interpolation_code'] = 'pyresample'
     data_DA.attrs['interpolation_date'] = \
         str(np.datetime64(datetime.now(), 'D'))
 
     data_DA.time.attrs['long_name'] = 'center time of averaging period'
 
-    data_DA.attrs['original_dataset_title'] = original_dataset_metadata['original_dataset_title_s']
-    data_DA.attrs['original_dataset_short_name'] = original_dataset_metadata['original_dataset_short_name_s']
-    data_DA.attrs['original_dataset_url'] = original_dataset_metadata['original_dataset_url_s']
-    data_DA.attrs['original_dataset_reference'] = original_dataset_metadata['original_dataset_reference_s']
-    data_DA.attrs['original_dataset_doi'] = original_dataset_metadata['original_dataset_doi_s']
-    data_DA.attrs['interpolated_grid_id'] = model_grid_name
     data_DA.name = f'{data_field}_interpolated_to_{model_grid_name}'
 
     if 'transpose' in extra_information:
@@ -313,8 +307,8 @@ def generalized_transform_to_model_grid(source_indices_within_target_radius_i,
     # add some metadata to the newly formed data array object
     data_DA.attrs['original_filename'] = record_filepath.name
     data_DA.attrs['original_field_name'] = data_field
-    data_DA.attrs['interplation_parameters'] = 'bin averaging'
-    data_DA.attrs['interplation_code'] = 'pyresample'
+    data_DA.attrs['interpolation_parameters'] = 'bin averaging'
+    data_DA.attrs['interpolation_code'] = 'pyresample'
     data_DA.attrs['interpolation_date'] = \
         str(np.datetime64(datetime.now(), 'D'))
 
@@ -577,6 +571,8 @@ def generalized_aggregate_and_save(DA_year_merged,
 
                 tb, ct = ea.make_time_bounds_from_ds64(cur_mon_year, 'AVG_MON')
 
+                # print('mon_DA', mon_DA)
+
                 mon_DA = mon_DA.assign_coords({'time': ct})
                 mon_DA = mon_DA.expand_dims('time', axis=0)
                 mon_DA.attrs['time_coverage_duration'] = 'P1M'
@@ -623,6 +619,10 @@ def generalized_aggregate_and_save(DA_year_merged,
         #######################################################
         ## BEGIN SAVE TO DISK                                ##
 
+        DA_year_merged.values = \
+                np.where(np.isnan(DA_year_merged.values),
+                        fill_values['netcdf'], DA_year_merged.values)
+
         ea.save_to_disk(DA_year_merged,
                         filenames['shortest'],
                         fill_values['binary'], fill_values['netcdf'],
@@ -631,6 +631,11 @@ def generalized_aggregate_and_save(DA_year_merged,
                         save_netcdf=save_netcdf)
 
         if do_monthly_aggregation:
+
+            mon_DA_year_merged.values = \
+                    np.where(np.isnan(mon_DA_year_merged.values),
+                            fill_values['netcdf'], mon_DA_year_merged.values)
+
             ea.save_to_disk(mon_DA_year_merged,
                             filenames['monthly'],
                             fill_values['binary'], fill_values['netcdf'],

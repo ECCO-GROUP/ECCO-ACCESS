@@ -101,11 +101,6 @@ def make_empty_record(standard_name, long_name, units,
 
     # add some metadata
     data_DA.attrs = []
-    if 'title' in model_grid:
-        data_DA.attrs['interpolated_grid'] = model_grid.title
-    else:
-        data_DA.attrs['interpolated_grid'] = model_grid.name
-    data_DA.attrs['model_grid_type'] = model_grid_type
     data_DA.attrs['long_name'] = long_name
     data_DA.attrs['standard_name'] = standard_name
     data_DA.attrs['units'] = units
@@ -117,7 +112,7 @@ def make_empty_record(standard_name, long_name, units,
 # %%
 
 
-def save_to_disk(data_DA,
+def save_to_disk(data,
                  output_filename,
                  binary_fill_value, netcdf_fill_value,
                  netcdf_output_dir, binary_output_dir, binary_output_dtype,
@@ -134,8 +129,8 @@ def save_to_disk(data_DA,
         binary_output_filename = binary_output_dir / output_filename
 
         # replace nans with the binary fill value (something like -9999)
-        tmp_fields = np.where(np.isnan(data_DA.values),
-                              binary_fill_value, data_DA.values)
+        tmp_fields = np.where(np.isnan(data.values),
+                              binary_fill_value, data.values)
 
         # SAVE FLAT BINARY
         # loop through each record of the year, save binary fields one at a time
@@ -143,7 +138,7 @@ def save_to_disk(data_DA,
         fd1 = open(str(binary_output_filename), 'wb')
         fd1 = open(str(binary_output_filename), 'ab')
 
-        for i in range(len(data_DA.time)):
+        for i in range(len(data.time)):
             # print('saving binary record: ', str(i))
 
             # if we have an llc grid, then we have to reform to compact
@@ -182,17 +177,20 @@ def save_to_disk(data_DA,
         # replace the binary fill value (-9999) with the netcdf fill value
         # which is much more interesting
 
-        # replace nans with the binary fill value (something like -9999)
-        data_DA.values = \
-            np.where(np.isnan(data_DA.values),
-                     netcdf_fill_value, data_DA.values)
+        # replace nans with the binary fill value (something like -9999) if
+        # the xarray object sent in a datarray that hasnt been checked
+        try:
+            data.values = \
+                np.where(np.isnan(data.values),
+                        netcdf_fill_value, data.values)
+            data_DS = data.to_dataset()
+        except:
+            data_DS = data
 
         encoding_each = {'zlib': True,
-                         'complevel': 5,
-                         'shuffle': True,
-                         '_FillValue': netcdf_fill_value}
-
-        data_DS = data_DA.to_dataset()
+                        'complevel': 5,
+                        'shuffle': True,
+                        '_FillValue': netcdf_fill_value}
 
         coord_encoding = {}
         for coord in data_DS.coords:
