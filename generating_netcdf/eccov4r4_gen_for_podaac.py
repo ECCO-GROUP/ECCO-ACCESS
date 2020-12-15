@@ -1096,8 +1096,8 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
             dv_encoding = dict()
             for dv in G.data_vars:
                 dv_encoding[dv] =  {'zlib':True, \
-                                    #'complevel':5,\
-                                    #'shuffle':True,\
+                                    'complevel':5,\
+                                    'shuffle':True,\
                                     '_FillValue':netcdf_fill_value}
 
                 # overwrite default coordinats attribute (PODAAC REQUEST)
@@ -1257,8 +1257,7 @@ if __name__ == "__main__":
 
 
     mapping_factors_dir = Path('/home/ifenty/tmp/ecco-v4-podaac-mapping-factors')
-    output_dir_base = Path('/home/ifenty/tmp/v4r4_nc_output_2020116_native')
-
+    output_dir_base = Path('/home/ifenty/tmp/v4r4_nc_output_20201208b_native')
 
     diags_root = Path('/home/ifenty/ian1/ifenty/ECCOv4/binary_output/diags_all')
     ## METADATA
@@ -1284,6 +1283,28 @@ if __name__ == "__main__":
     time_steps_to_process = 'by_job'
 
 
+#    0 dynamic sea surface height and model sea level anomaly
+# 	 1 ocean bottom pressure and model ocean bottom pressure anomaly
+# 	 2 ocean and sea-ice surface freshwater fluxes
+# 	 3 ocean and sea-ice surface heat fluxes
+# 	 4 atmosphere surface temperature, humidity, wind, and pressure
+# 	 5 ocean mixed layer depth
+# 	 6 ocean and sea-ice surface stress
+# 	 7 sea-ice and snow concentration and thickness
+# 	 8 sea-ice velocity
+# 	 9 sea-ice and snow horizontal volume fluxes
+# 	 10 Gent-McWilliams ocean bolus transport streamfunction
+# 	 11 ocean three-dimensional volume fluxes
+# 	 12 ocean three-dimensional potential temperature fluxes
+# 	 13 ocean three-dimensional salinity fluxes
+# 	 14 sea-ice salt plume fluxes
+# 	 15 ocean potential temperature and salinity
+# 	 16 ocean density, stratification, and hydrostatic pressure
+# 	 17 ocean velocity
+# 	 18 Gent-McWilliams ocean bolus velocity
+# 	 19 ocean three-dimensional momentum tendency
+
+
     print (sys.argv)
     if len(sys.argv) > 1:
         num_jobs = int(sys.argv[1])
@@ -1293,13 +1314,23 @@ if __name__ == "__main__":
         grouping_to_process = int(sys.argv[3])
 
     product_type = 'native'
-    output_freq_codes = ['AVG_DAY', 'AVG_MON']
-    output_freq_codes = ['AVG_MON']
+    #output_freq_codes = ['AVG_DAY', 'AVG_MON']
+
+    #output_freq_codes = ['AVG_DAY']
+
+    #output_freq_codes = ['AVG_MON']
     output_freq_codes = ['SNAPSHOT']
 
 
     # obp, TS, SSH, sea ice and snow, sea ice velocity,
     snapshot_groupings = [0, 1, 15, 7, 8]
+
+    # test gropuings
+    #avg_groupings = [8, 9, 0, 10, 11, 12, 13, 19, 14]
+
+    #groupings = avg_groupings
+    groupings = snapshot_groupings
+
     debug_mode=False
 
     for output_freq_code in output_freq_codes:
@@ -1311,7 +1342,7 @@ if __name__ == "__main__":
 
         GS = []
         G = []
-        for grouping_to_process in snapshot_groupings: #list(range(1)):
+        for grouping_to_process in groupings: #list(range(1)):
            G, ecco_grid =  generate_netcdfs(output_freq_code, job_id, num_jobs,
                              product_type,
                              mapping_factors_dir,
@@ -1327,3 +1358,7 @@ if __name__ == "__main__":
                              time_steps_to_process,
                              debug_mode)
            GS.append(G)
+
+
+    #%%
+
