@@ -7,8 +7,10 @@ import sys
 import json
 import numpy as np
 from importlib import reload
+
 sys.path.append('/home/ifenty/ECCOv4-py')
 import ecco_v4_py as ecco
+
 sys.path.append('/home/ifenty/git_repos_others/ECCO-GROUP/ECCO-ACCESS/ecco-cloud-utils')
 import ecco_cloud_utils as ea
 from pathlib import Path
@@ -138,7 +140,6 @@ def find_podaac_metadata(podaac_dataset_table, filename):
     else:
         raise Exception("Error: filename may not conform to ECCO V4r4 convention.")
 
-    print (head, tail)
     tail = tail.split("_ECCO_V4r4_")[1]
 
     # Get the filenames column from my table as a list of strings.
@@ -150,22 +151,14 @@ def find_podaac_metadata(podaac_dataset_table, filename):
     # Select that row from podaac_dataset_table table and make a copy of it.
     metadata = podaac_dataset_table[index].iloc[0].to_dict()
 
-#    gcmd_keywords = []
-    # Select the gcmd keywords to match this dataset ShortName.
-#    for prefix, keywords in __keywords__.items():
-#        if metadata['DATASET.SHORT_NAME'].startswith(prefix):
-#            gcmd_keywords = ", ".join([" > ".join(kw.values()) for kw in keywords])
-#            break
-
-#    print(gcmd_keywords)
-
     podaac_metadata = {
         'id': metadata['DATASET.PERSISTENT_ID'].replace("PODAAC-","10.5067/"),
         'metadata_link': f"https://cmr.earthdata.nasa.gov/search/collections.umm_json?ShortName={metadata['DATASET.SHORT_NAME']}",
         'title': metadata['DATASET.LONG_NAME'],
     }
+    #print('\n... podaac metadata:')
+    #pprint(podaac_metadata)
 
-    print(metadata['DATASET.LONG_NAME'])
     return podaac_metadata
 
 #%%
@@ -304,6 +297,7 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
     max_k = 50
 
     ecco_start_time = np.datetime64('1992-01-01T12:00:00')
+    ecco_end_time   = np.datetime64('2017-12-31T12:00:00')
 
     # Define tail for dataset description (summary)
     dataset_description_tail_native = ' on the native Lat-Lon-Cap 90 (LLC90) model grid from the ECCO Version 4 revision 4 (V4r4) ocean and sea-ice state estimate.'
@@ -748,24 +742,58 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
     print('\nLooping through time levels')
     for cur_ts_i, cur_ts in enumerate(time_steps_to_process):
 
+        print('\n\n=== TIME LEVEL ===', str(cur_ts_i).zfill(5), str(cur_ts).zfill(10))
+        print('\n')
         time_delta = np.timedelta64(cur_ts, 'h')
         cur_ts = int(cur_ts)
         cur_time = ecco_start_time + time_delta
         times = [pd.to_datetime(str(cur_time))]
 
         if 'AVG' in output_freq_code:
-            tb, ct = ecco.make_time_bounds_from_ds64(np.datetime64(times[0]),output_freq_code)
+            tb, record_center_time = ecco.make_time_bounds_from_ds64(np.datetime64(times[0]),output_freq_code)
+            #print('tb', type(tb))
+            #print(tb)
+            print('ORIG  tb, ct ', tb, record_center_time)
+
+            # fix beginning of last record
+            if tb[0].astype('datetime64[D]') == ecco_end_time.astype('datetime64[D]'):
+                print('end time match ')
+                time_delta = np.timedelta64(12,'h')
+                rec_avg_start = tb[0] + time_delta 
+                rec_avg_end   = tb[1]
+                rec_avg_delta = rec_avg_end - rec_avg_start 
+                rec_avg_middle = rec_avg_start + rec_avg_delta/2
+                #print(rec_avg_start, rec_avg_middle, rec_avg_end)
+
+                tb[0] = rec_avg_start 
+                record_center_time = rec_avg_middle
+                #print('NEW  cur_ts, i, tb, ct ', str(cur_ts).zfill(10), str(cur_ts_i).zfill(4), tb, record_center_time)
+
+            # truncate to ecco_start_time
+            if tb[0].astype('datetime64[D]') == ecco_start_time.astype('datetime64[D]'):
+                print('start time match ')
+                rec_avg_start = ecco_start_time
+                rec_avg_end   = tb[1]
+                rec_avg_delta = tb[1] - ecco_start_time
+                rec_avg_middle = rec_avg_start + rec_avg_delta/2
+                #print(rec_avg_start, rec_avg_middle, rec_avg_end)
+
+                tb[0] = ecco_start_time
+                record_center_time = rec_avg_middle
+                #print('NEW  cur_ts, i, tb, ct ', str(cur_ts).zfill(10), str(cur_ts_i).zfill(4), tb, record_center_time)
 
             record_start_time = tb[0]
             record_end_time = tb[1]
-            print('cur_ts, i, tb ', str(cur_ts).zfill(10), str(cur_ts_i).zfill(4), tb)
+            print('FINAL tb, ct ', tb, record_center_time)
 
         else:
+            #snapshot, all times are the same
             print(times)
             print(type(times[0]))
 
             record_start_time = np.datetime64(times[0])
-            #sys.exit()
+            record_end_time = np.datetime64(times[0])
+            record_center_time = np.datetime64(times[0])
 
 
         # loop through variables to load
@@ -811,7 +839,8 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
                                                  nearest_source_index_to_target_index_i,
                                                  F_wet_native,\
                                                  target_grid_shape,\
-                                                 operation='mean', allow_nearest_neighbor=True)
+                                                 operation='mean', \
+                                                 allow_nearest_neighbor=True)
 
                         F_ll_masked = np.expand_dims(F_ll * land_mask_ll[0,:],0)
 
@@ -825,14 +854,15 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
 
                         F = ecco.read_llc_to_tiles(mds_var_dir, mds_file, \
                                                    llc=90, skip=0, nk=nk,\
-                                                   nl=1,
-                          	      filetype = '>f', less_output = True,
-                                  use_xmitgcm=False)
+                                                   nl=1,\
+                                                   filetype = '>f', \
+                                                   less_output = True,\
+                                                   use_xmitgcm=False)
 
                         F_ll = np.zeros((nk,360,720))
 
                         for k in range(max_k):
-                            print(var,k)
+                            #print(var,k)
                             F_k = F[k]
                             F_wet_native = F_k[wet_pts_k[k]]
 
@@ -860,27 +890,22 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
                                                     target_grid_lons_1D], \
                                             dims=["time", "Z", "latitude","longitude"])
 
+
                     # --- end 2D or 3D
 
-
-                    print('... assigning name', var)
                     # assign name to data array
+                    print('... assigning name', var)
                     F_DA.name = var
 
                     F_DS = F_DA.to_dataset()
 
-                    #   add appropriate time bounds.
+                    #   add time bounds object 
                     if 'AVG' in output_freq_code:
-                        tb, ct = \
+                        tb_ds, ct_ds = \
                             ecco.make_time_bounds_and_center_times_from_ecco_dataset(F_DS,\
                                                                                      output_freq_code)
-                        tb.time.values[0] = record_start_time
-
-                        #F_DS.time.values[0] = ct
-                        F_DS = xr.merge((F_DS, tb))
+                        F_DS = xr.merge((F_DS, tb_ds))
                         F_DS = F_DS.set_coords('time_bnds')
-                        F_DS_vars.append(F_DS)
-                        F_DS.time.values[0] = ct
 
 
                 elif product_type == 'native':
@@ -896,13 +921,7 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
                                                      grid_vars_to_coords = False,\
                                                      output_freq_code=output_freq_code,\
                                                      model_time_steps_to_load=cur_ts,
-                                                     less_output = False)
-
-
-                    for d in list(F_DS.dims):
-                        print(d);
-                        print(d, F_DS[d].attrs)
-                    #sys.exit()
+                                                     less_output = True)
 
                     vars_to_drop = set(F_DS.data_vars).difference(set([var]))
                     F_DS.drop_vars(vars_to_drop)
@@ -950,11 +969,28 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
                             print('I cannot determine dimension of data variable ', data_var)
                             sys.exit()
 
+
                 ############## end latlon vs. native load
 
+                #   fix time bounds.
+                if 'AVG' in output_freq_code:
+                    #print('\nfixing time and  time bounds')
+                    #print('----before')
+                    #print(F_DS.time)
+                    #print(F_DS.time_bnds)
+
+                    F_DS.time_bnds.values[0][0] = record_start_time
+                    F_DS.time_bnds.values[0][1] = record_end_time
+                    F_DS.time.values[0] = record_center_time 
+
+                    #print('----after')
+                    #print(F_DS.time)
+                    #print(F_DS.time_bnds)
+
                 # ADD TIME STEP COORDINATE
-                print('\n... assigning time step', np.int32(cur_ts))
-                F_DS[data_var] = F_DS[data_var].assign_coords({"time_step": (("time"), [np.int32(cur_ts)])})
+#                print('\n... assigning time step', np.int32(cur_ts))
+#                for data_var in F_DS.data_vars:
+#                    F_DS[data_var] = F_DS[data_var].assign_coords({"time_step": (("time"), [np.int32(cur_ts)])})
 
 
                 # Possibly rename variable if indicated
@@ -974,12 +1010,12 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
                     if F_DS[data_var].values.dtype != array_precision:
                         F_DS[data_var].values = F_DS[data_var].astype(array_precision)
 
-                # hack to fix mistake in OBP fields
-                if divide_OBP_by_g:
-                    for data_var in F_DS.data_vars:
-                        if data_var == 'OBP' or data_var == 'OBPGMAP':
-                            print('DIVIDING BY g! ', data_var)
-                            F_DS[data_var].values = F_DS[data_var].values / 9.8100
+#                # hack to fix mistake in OBP fields
+#                if divide_OBP_by_g:
+#                    for data_var in F_DS.data_vars:
+#                        if data_var == 'OBP' or data_var == 'OBPGMAP':
+#                            print('DIVIDING BY g! ', data_var)
+#                            F_DS[data_var].values = F_DS[data_var].values / 9.8100
 
                 # set valid min and max, and replace nan with fill values
                 for data_var in F_DS.data_vars:
@@ -1014,11 +1050,11 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
                 # add this dataset to F_DS_vars and repeat for next variable
                 F_DS_vars.append(F_DS)
 
-
             #####-- > END LOOPING THROUGH VARIABLES
 
 
             ## merge the data arrays to make one DATASET
+            print('\n... merging F_DS_vars')
             G = xr.merge((F_DS_vars))
 
             # ADD VARIABLE SPECIFIC METADATA TO VARIABLE ATTRIBUTES (DATA ARRAYS)
@@ -1080,7 +1116,7 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
             for dv in list(G.data_vars):
                 dv_coords_orig = set(list(G[dv].coords))
 
-                print(dv, dv_coords_orig)
+                #print(dv, dv_coords_orig)
 
                 # REMOVE TIME STEP FROM LIST OF COORDINATES (PODAAC REQUEST)
                 #coord_attrs[coord] = coord_attrs[coord].split('time_step')[0].strip()
@@ -1089,7 +1125,7 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
 
                 dv_coordinate_attrs[dv] = " ".join(set_intersect)
 
-                print(dv, dv_coordinate_attrs[dv])
+                #print(dv, dv_coordinate_attrs[dv])
 
             print('\n... creating variable encodings')
             # PROVIDE SPECIFIC ENCODING DIRECTIVES FOR EACH DATA VAR
@@ -1129,11 +1165,8 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
                 elif coord == 'time_step':
                     coord_encoding[coord]['dtype'] ='int32'
 
-
             # MERGE ENCODINGS for coordinates and variables
             encoding = {**dv_encoding, **coord_encoding}
-
-            #pprint(encoding)
 
             # MERGE GCMD KEYWORDS
             print('\n... merging GCMD keywords')
@@ -1147,7 +1180,7 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
                 else:
                     gcmd_keyword_str += ', ' + gcmd_keyword
 
-            print(gcmd_keyword_str)
+            #print(gcmd_keyword_str)
             G.attrs['keywords'] = gcmd_keyword_str
 
             ## ADD FINISHING TOUCHES
@@ -1257,7 +1290,7 @@ if __name__ == "__main__":
 
 
     mapping_factors_dir = Path('/home/ifenty/tmp/ecco-v4-podaac-mapping-factors')
-    output_dir_base = Path('/home/ifenty/tmp/v4r4_nc_output_20201208b_native')
+    output_dir_base = Path('/home/ifenty/tmp/v4r4_nc_output_20201215_native')
 
     diags_root = Path('/home/ifenty/ian1/ifenty/ECCOv4/binary_output/diags_all')
     ## METADATA
@@ -1277,10 +1310,18 @@ if __name__ == "__main__":
 
 
     #%%
+    time_steps_to_process = 'by_job'
     num_jobs = 1
     job_id = 0
-    grouping_to_process='by_job'
-    time_steps_to_process = 'by_job'
+    grouping_to_process = 0
+
+    #grouping_to_process='by_job'
+    
+    product_type = 'native'
+    #product_type = 'latlon'
+    
+    #output_freq_codes = ['AVG_DAY', 'AVG_MON', 'SNAPSHOT']
+    output_freq_codes = ['AVG_DAY']
 
 
 #    0 dynamic sea surface height and model sea level anomaly
@@ -1304,6 +1345,11 @@ if __name__ == "__main__":
 # 	 18 Gent-McWilliams ocean bolus velocity
 # 	 19 ocean three-dimensional momentum tendency
 
+    #groupings_latlon  (13)    = [0, 1, 2, 3, 4, 5, 6, 7, 8, 15, 16, 17, 18]
+
+    # SSH, obp, sea ice and snow, sea ice velocity, TS
+    #groupings_native_snap (5) = [0, 1, 7, 8, 15]
+    #groupings_native_avg  (20) = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
 
     print (sys.argv)
     if len(sys.argv) > 1:
@@ -1311,25 +1357,11 @@ if __name__ == "__main__":
     if len(sys.argv) > 2:
         job_id = int(sys.argv[2])
     if len(sys.argv) > 3:
-        grouping_to_process = int(sys.argv[3])
-
-    product_type = 'native'
-    #output_freq_codes = ['AVG_DAY', 'AVG_MON']
-
-    #output_freq_codes = ['AVG_DAY']
-
-    #output_freq_codes = ['AVG_MON']
-    output_freq_codes = ['SNAPSHOT']
-
-
-    # obp, TS, SSH, sea ice and snow, sea ice velocity,
-    snapshot_groupings = [0, 1, 15, 7, 8]
-
-    # test gropuings
-    #avg_groupings = [8, 9, 0, 10, 11, 12, 13, 19, 14]
-
-    #groupings = avg_groupings
-    groupings = snapshot_groupings
+        groupings = [int(sys.argv[3])]
+    if len(sys.argv) > 4:
+    	output_freq_code = [sys.argv[4]]
+    if len(sys.argv) > 5:
+    	product_type = sys.argv[5]
 
     debug_mode=False
 
@@ -1339,6 +1371,9 @@ if __name__ == "__main__":
         print('starting python: num jobs, job_id', num_jobs, job_id)
         print('grouping to process', grouping_to_process)
         print('time_steps_to_process', time_steps_to_process)
+        print('output_freq_code', output_freq_code)
+        print('product_type', product_type)
+
 
         GS = []
         G = []
