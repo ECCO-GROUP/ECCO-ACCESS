@@ -10,7 +10,9 @@ import sys
 import json
 import numpy as np
 from importlib import reload
-sys.path.append('/home/ifenty/ECCOv4-py')
+#sys.path.append('/home/ifenty/ECCOv4-py')
+sys.path.append('/home/ifenty/git_repo_mine/ECCOv4-py/')
+
 import ecco_v4_py as ecco
 reload(ecco)
 sys.path.append('/home/ifenty/git_repos_others/ECCO-GROUP/ECCO-ACCESS/ecco-cloud-utils')
@@ -148,7 +150,7 @@ grid_new = \
                                                           geometry_metadata   = geometry_metadata_for_native_datasets, \
                                                           global_metadata     = global_metadata,\
                                                           cell_bounds = XC_YC_bnds,
-                                                          less_output=True, \
+                                                          less_output=False, \
                                                           write_to_disk=True)
 
 
