@@ -338,6 +338,24 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
         for field, (field_DS, success) in zip(fields, field_DSs):
             field_name = field["name_s"]
 
+            # time stuff
+            data_time_scale = dataset_metadata['data_time_scale_s']
+            if data_time_scale == 'daily':
+                output_freq_code = 'AVG_DAY'
+            elif data_time_scale == 'monthly':
+                output_freq_code = 'AVG_MON'
+
+            tb, ct = ea.make_time_bounds_from_ds64(field_DS.time_end.values[0], output_freq_code)
+
+            field_DS.time.values[0] = ct
+            field_DS.time_bnds.values[0][0] = tb[0]
+            field_DS.time_bnds.values[0][1] = tb[1]
+
+            # field_DS.time_bnds.attrs['long_name'] = 'time bounds'
+
+            field_DS = field_DS.drop('time_start')
+            field_DS = field_DS.drop('time_end')
+
             # Change .bz2 file extension to .nc
             if 'bz2' in file_name:
                 file_name = file_name[:-3] + 'nc'
@@ -351,7 +369,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
 
             # save field_DS
             ea.save_to_disk(field_DS,
-                            output_filename,
+                            output_filename[:-3],
                             fill_values['binary'], fill_values['netcdf'],
                             Path(output_path), Path(output_path),
                             binary_dtype, grid_type, save_binary=False)
@@ -375,7 +393,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
                     "transformation_completed_dt": {"set": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")},
                     "transformation_in_progress_b": {"set": False},
                     "success_b": {"set": success},
-                    "transformation_checksum_s": {"set": md5(transformed_location + '.nc')},
+                    "transformation_checksum_s": {"set": md5(transformed_location)},
                     "transformation_version_f": {"set": transformation_version}
                 }
             ]
