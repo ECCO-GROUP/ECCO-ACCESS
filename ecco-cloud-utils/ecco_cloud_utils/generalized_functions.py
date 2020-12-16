@@ -271,6 +271,10 @@ def generalized_transform_to_model_grid_solr(data_field_info, record_date, model
 
     data_DA.attrs['notes'] = record_notes
 
+    data_DA.attrs['original_time'] = str(data_DA.time.values[0])
+    data_DA.attrs['original_time_start'] = str(data_DA.time_start.values[0])
+    data_DA.attrs['original_time_end'] = str(data_DA.time_end.values[0])
+
     return data_DA
 # %%
 
