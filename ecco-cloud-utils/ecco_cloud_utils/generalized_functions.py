@@ -490,8 +490,8 @@ def open_and_merge(data_field_info, iso_dates_for_year, assimilated_paths,
 # returns nothing
 
 
-def generalized_aggregate_and_save(DA_year_merged,
-                                   new_data_attr,
+def generalized_aggregate_and_save(DS_year_merged,
+                                   data_var,
                                    do_monthly_aggregation,
                                    year,
                                    skipna_in_mean,
@@ -510,41 +510,31 @@ def generalized_aggregate_and_save(DA_year_merged,
     # if everything comes back nans it means there were no files
     # to load for the entire year.  don't bother saving the
     # netcdf or binary files for this year
-    if np.sum(~np.isnan(DA_year_merged.values)) == 0:
+    if np.sum(~np.isnan(DS_year_merged[data_var].values)) == 0:
         print('Empty year not writing to disk', year)
         return True
     else:
 
-        # update the dataset attributes
-        DA_year_merged.attrs['original_dataset_title'] = new_data_attr['original_dataset_title']
-        DA_year_merged.attrs['original_dataset_url'] = new_data_attr['original_dataset_url']
-        DA_year_merged.attrs['original_dataset_reference'] = new_data_attr['original_dataset_reference']
-        DA_year_merged.attrs['original_dataset_doi'] = new_data_attr['original_dataset_doi']
-        DA_year_merged.attrs['interpolated_grid_id'] = new_data_attr['interpolated_grid_id']
-        DA_year_merged.name = new_data_attr['new_name']
+        global_attrs = DS_year_merged.attrs
 
-        DA_year_merged.attrs['valid_min'] = np.nanmin(DA_year_merged.values)
-        DA_year_merged.attrs['valid_max'] = np.nanmax(DA_year_merged.values)
-
-        DA_year_merged.attrs['uuid'] = uuids[0]
+        DS_year_merged.attrs['uuid'] = uuids[0]
 
         if data_time_scale.upper() == 'DAILY':
-            DA_year_merged.attrs['time_coverage_duration'] = 'P1D'
-            DA_year_merged.attrs['time_coverage_resolution'] = 'P1D'
-            DA_year_merged.attrs['time_coverage_start'] = str(
-                DA_year_merged.time_start.values[0])[0:19]
-            DA_year_merged.attrs['time_coverage_end'] = str(
-                DA_year_merged.time_end.values[-1])[0:19]
+            DS_year_merged.attrs['time_coverage_duration'] = 'P1D'
+            DS_year_merged.attrs['time_coverage_resolution'] = 'P1D'
+
+            DS_year_merged.attrs['time_coverage_start'] = str(DS_year_merged.time_bnds.values[0][0])[0:19]
+            DS_year_merged.attrs['time_coverage_end'] = str(DS_year_merged.time_bnds.values[-1][-1])[0:19]
+
         elif data_time_scale.upper() == 'MONTHLY':
-            DA_year_merged.attrs['time_coverage_duration'] = 'P1M'
-            DA_year_merged.attrs['time_coverage_resolution'] = 'P1M'
-            DA_year_merged.attrs['time_coverage_start'] = str(
-                DA_year_merged.time_start.values[0])[0:19]
-            DA_year_merged.attrs['time_coverage_end'] = str(
-                DA_year_merged.time_end.values[-1])[0:19]
+            DS_year_merged.attrs['time_coverage_duration'] = 'P1M'
+            DS_year_merged.attrs['time_coverage_resolution'] = 'P1M'
+
+            DS_year_merged.attrs['time_coverage_start'] = str(DS_year_merged.time_bnds.values[0][0])[0:19]
+            DS_year_merged.attrs['time_coverage_end'] = str(DS_year_merged.time_bnds.values[-1][-1])[0:19]
 
         if do_monthly_aggregation:
-            mon_DA_year = []
+            mon_DS_year = []
             for month in range(1, 13):
                 # to find the last day of the month, we go up one month,
                 # and back one day
@@ -560,7 +550,7 @@ def generalized_aggregate_and_save(DA_year_merged,
                                                  '-' + str(1).zfill(2), 'ns')
 
                 mon_str = str(year) + '-' + str(month).zfill(2)
-                cur_mon = DA_year_merged.sel(time=mon_str)
+                cur_mon = DS_year_merged[data_var].sel(time=mon_str)
 
                 if remove_nan_days_from_data:
                     nonnan_days = []
@@ -575,47 +565,43 @@ def generalized_aggregate_and_save(DA_year_merged,
 
                 tb, ct = ea.make_time_bounds_from_ds64(cur_mon_year, 'AVG_MON')
 
-                # print('mon_DA', mon_DA)
-
                 mon_DA = mon_DA.assign_coords({'time': ct})
                 mon_DA = mon_DA.expand_dims('time', axis=0)
-                mon_DA.attrs['time_coverage_duration'] = 'P1M'
-                mon_DA.attrs['time_coverage_resolution'] = 'P1M'
-
-                avg_start_time = mon_DA.time.copy(deep=True)
-                avg_start_time.values[0] = tb[0]
-
-                avg_end_time = mon_DA.time.copy(deep=True)
-                avg_end_time.values[0] = tb[1]
 
                 avg_center_time = mon_DA.time.copy(deep=True)
                 avg_center_time.values[0] = ct
-
-                # we'll make the center of the averaging time
-                mon_DA = mon_DA.assign_coords(
-                    {'time_start': ('time', avg_start_time)})
-                mon_DA = mon_DA.assign_coords(
-                    {'time_end': ('time', avg_end_time)})
 
                 # halfway through the approx 1M averaging period.
                 mon_DA.time.values[0] = ct
                 mon_DA.time.attrs['long_name'] = 'center time of 1M averaging period'
 
-                mon_DA_year.append(mon_DA)
+                mon_DS = mon_DA.to_dataset()
 
-            mon_DA_year_merged = xr.concat((mon_DA_year), dim='time')
+                mon_DS = mon_DS.assign_coords(
+                    {'time_bnds': (('time','nv'), [tb])})
+                mon_DS.time.attrs.update(bounds='time_bnds')
 
-            mon_DA_year_merged.attrs['valid_min'] = np.nanmin(
-                mon_DA_year_merged.values)
-            mon_DA_year_merged.attrs['valid_max'] = np.nanmax(
-                mon_DA_year_merged.values)
+                mon_DS_year.append(mon_DS)
 
-            mon_DA_year_merged.attrs['time_coverage_start'] = str(
-                mon_DA_year_merged.time_start.values[0])[0:19]
-            mon_DA_year_merged.attrs['time_coverage_end'] = str(
-                mon_DA_year_merged.time_end.values[-1])[0:19]
+            mon_DS_year_merged = xr.concat((mon_DS_year), dim='time', combine_attrs='no_conflicts')
 
-            mon_DA_year_merged.attrs['uuid'] = uuids[1]
+            # start_time = mon_DS_year_merged.time.values.min()
+            # end_time = mon_DS_year_merged.time.values.max()
+
+            # time_bnds = np.array([start_time, end_time], dtype='datetime64')
+            # time_bnds = time_bnds.T
+            # mon_DS_year_merged = mon_DS_year_merged.assign_coords(
+            #     {'time_bnds': (('time','nv'), [time_bnds])})
+            # mon_DS_year_merged.time.attrs.update(bounds='time_bnds')
+
+            global_attrs['time_coverage_duration'] = 'P1M'
+            global_attrs['time_coverage_resolution'] = 'P1M'
+
+            global_attrs['valid_min'] = np.nanmin(mon_DS_year_merged[data_var].values)
+            global_attrs['valid_max'] = np.nanmax(mon_DS_year_merged[data_var].values)
+            global_attrs['uuid'] = uuids[1]
+
+            mon_DS_year_merged.attrs = global_attrs
 
         save_netcdf = save_netcdf and not on_aws
         save_binary = save_binary or on_aws
@@ -623,29 +609,28 @@ def generalized_aggregate_and_save(DA_year_merged,
         #######################################################
         ## BEGIN SAVE TO DISK                                ##
 
-        DA_year_merged.values = \
-                np.where(np.isnan(DA_year_merged.values),
-                        fill_values['netcdf'], DA_year_merged.values)
+        DS_year_merged[data_var].values = \
+                np.where(np.isnan(DS_year_merged[data_var].values),
+                        fill_values['netcdf'], DS_year_merged[data_var].values)
 
-        ea.save_to_disk(DA_year_merged,
+        ea.save_to_disk(DS_year_merged,
                         filenames['shortest'],
                         fill_values['binary'], fill_values['netcdf'],
                         output_dirs['netcdf'], output_dirs['binary'],
                         binary_dtype, model_grid_type, save_binary=save_binary,
-                        save_netcdf=save_netcdf)
+                        save_netcdf=save_netcdf, data_var=data_var)
 
         if do_monthly_aggregation:
+            mon_DS_year_merged[data_var].values = \
+                    np.where(np.isnan(mon_DS_year_merged[data_var].values),
+                            fill_values['netcdf'], mon_DS_year_merged[data_var].values)
 
-            mon_DA_year_merged.values = \
-                    np.where(np.isnan(mon_DA_year_merged.values),
-                            fill_values['netcdf'], mon_DA_year_merged.values)
-
-            ea.save_to_disk(mon_DA_year_merged,
+            ea.save_to_disk(mon_DS_year_merged,
                             filenames['monthly'],
                             fill_values['binary'], fill_values['netcdf'],
                             output_dirs['netcdf'], output_dirs['binary'],
                             binary_dtype, model_grid_type, save_binary=save_binary,
-                            save_netcdf=save_netcdf)
+                            save_netcdf=save_netcdf, data_var=data_var)
 
         ## END   SAVE TO DISK                                ##
         #######################################################

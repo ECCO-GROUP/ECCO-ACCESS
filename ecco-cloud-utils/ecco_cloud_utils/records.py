@@ -116,9 +116,14 @@ def save_to_disk(data,
                  output_filename,
                  binary_fill_value, netcdf_fill_value,
                  netcdf_output_dir, binary_output_dir, binary_output_dtype,
-                 model_grid_type, save_binary=True, save_netcdf=True):
+                 model_grid_type, save_binary=True, save_netcdf=True, data_var=''):
 
     if save_binary:
+        if data_var:
+            data_values = data[data_var].values
+        else:
+            data_values = data.values
+            
         # define binary file output filetype
         dt_out = np.dtype(binary_output_dtype)
 
@@ -129,8 +134,8 @@ def save_to_disk(data,
         binary_output_filename = binary_output_dir / output_filename
 
         # replace nans with the binary fill value (something like -9999)
-        tmp_fields = np.where(np.isnan(data.values),
-                              binary_fill_value, data.values)
+        tmp_fields = np.where(np.isnan(data_values),
+                              binary_fill_value, data_values)
 
         # SAVE FLAT BINARY
         # loop through each record of the year, save binary fields one at a time
@@ -217,3 +222,5 @@ def save_to_disk(data,
         # the actual saving (so easy with xarray!)
         data_DS.to_netcdf(netcdf_output_filename,  encoding=encoding)
         data_DS.close()
+
+# %%
