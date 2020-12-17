@@ -563,7 +563,7 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False):
 
             if 'download_time_dt' in last_success_item.keys():
                 update_doc['last_download_dt'] = {
-                    "set": last_success_item['download_time_dt']['set']}
+                    "set": last_success_item['download_time_dt']}
 
             if old_start == None or overall_start < old_start:
                 update_doc['start_date_dt'] = {

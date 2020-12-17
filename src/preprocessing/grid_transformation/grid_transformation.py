@@ -901,7 +901,6 @@ def run_in_any_env(model_grid, grid_name, grid_type, fields, factors, ds, record
         # time_bnds stuff
         # add time_bnds coordinate
         # [start_time, end_time] dimensions
-        # field_DS = field_DS.expand_dims({'nv':2}, axis=1)
         time_bnds = np.array([field_DS.time_start, field_DS.time_end], dtype='datetime64')  
         time_bnds = time_bnds.T
         field_DS = field_DS.assign_coords(

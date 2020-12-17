@@ -208,9 +208,13 @@ def run_aggregation(output_dir, s3=None, config_path=''):
                 transformations = []
                 json_output['dataset'] = dataset_metadata
 
-                daily_DA_year = []
+                daily_DS_year = []
 
                 for date in dates_in_year:
+
+                    # variable to store name of data values in dataset
+                    data_var = f'{field_name}_interpolated_to_{grid_name}'
+
                     # Query for date
                     fq = [f'dataset_s:{dataset_name}', 'type_s:transformation',
                           f'grid_name_s:{grid_name}', f'field_s:{field_name}', f'date_s:{date}*']
@@ -252,14 +256,20 @@ def run_aggregation(output_dir, s3=None, config_path=''):
                             source_bucket_name, key_name = split_s3_bucket_key(
                                 doc['transformation_file_path_s'])
                             obj = s3.Object(source_bucket_name, key_name)
-                            data_DA = xr.open_dataarray(obj, decode_times=True)
+                            data_DS = xr.open_dataset(obj, decode_times=True)
                             # f = obj.get()['Body'].read()
                             # data = np.frombuffer(f, dtype=dt, count=-1)
                         else:
-                            data_DA = xr.open_dataarray(
+                            data_DS = xr.open_dataset(
                                 doc['transformation_file_path_s'], decode_times=True)
 
-                        opened_datasets.append(data_DA)
+                        # get name of data variable in the dataset
+                        # to be used when accessing the values of the transformed data
+                        # since the transformed files only have one variable, we index at zero to get it
+                        # type is str
+                        data_var = list(data_DS.keys())[0]
+
+                        opened_datasets.append((data_DS, data_var))
 
                         # Update JSON transformations list
                         fq = [f'dataset_s:{dataset_name}', 'type_s:harvested',
@@ -273,34 +283,69 @@ def run_aggregation(output_dir, s3=None, config_path=''):
                     # If there are more than one files for this grid/field/date combination (implies hemisphered data),
                     # combine hemispheres on nonempty datafile, if present.
                     if len(opened_datasets) == 2:
-                        if ~np.isnan(opened_datasets[0].values).all():
-                            data_DA = opened_datasets[0].copy()
-                            data_DA.values = np.where(
-                                np.isnan(data_DA.values), opened_datasets[1].values, data_DA.values)
+                        first_DS = opened_datasets[0][0]
+                        first_DS_name = opened_datasets[0][1]
+                        second_DS = opened_datasets[1][0]
+                        second_DS_name = opened_datasets[1][1]
+                        if ~np.isnan(first_DS[first_DS_name].values).all():
+                            data_DS = first_DS.copy()
+                            data_DS[first_DS_name].values = np.where(
+                                np.isnan(data_DS[first_DS_name].values), second_DS[second_DS_name].values, data_DS[first_DS_name].values)
+                            data_var = first_DS_name
                         else:
-                            data_DA = opened_datasets[1].copy()
-                            data_DA.values = np.where(
-                                np.isnan(data_DA.values), opened_datasets[0].values, data_DA.values)
+                            data_DS = second_DS.copy()
+                            data_DS[second_DS_name].values = np.where(
+                                np.isnan(data_DS[second_DS_name].values), first_DS[first_DS_name].values, data_DS[second_DS_name].values)
+                            data_var = second_DS_name
                     elif len(opened_datasets) == 1:
-                        data_DA = opened_datasets[0]
+                        data_DS = opened_datasets[0][0]
+                        data_var = opened_datasets[0][1]
                     else:
                         data_DA = ea.make_empty_record(
                             field['standard_name_s'], field['long_name_s'], field['units_s'], date, model_grid, grid_type, array_precision)
+                        data_DA.name = data_var
+
+                        empty_record_attrs = data_DA.attrs
+                        empty_record_attrs['original_field_name'] = field_name
+                        empty_record_attrs['interpolation_date'] = str(np.datetime64(datetime.now(), 'D'))
+                        data_DA.attrs = empty_record_attrs
+
+                        data_DS = data_DA.to_dataset()
+
+                        # time_bnds stuff to match dataset
+                        # add time_bnds coordinate
+                        # [start_time, end_time] dimensions
+                        time_bnds = np.array([data_DS.time_start, data_DS.time_end], dtype='datetime64')  
+                        time_bnds = time_bnds.T
+                        data_DS = data_DS.assign_coords(
+                            {'time_bnds': (['time','nv'], time_bnds)})
+
+                        data_DS.time.attrs.update(bounds='time_bnds')
+
+                        data_DS = data_DS.drop('time_start')
+                        data_DS = data_DS.drop('time_end')
+                        
                     # Append each day's data to annual list
-                    daily_DA_year.append(data_DA)
+                    daily_DS_year.append(data_DS)
 
                 # Concatenate all data files within annual list
-                daily_DA_year_merged = xr.concat((daily_DA_year), dim='time')
+                daily_DS_year_merged = xr.concat((daily_DS_year), dim='time', combine_attrs='no_conflicts')
+                data_var = list(daily_DS_year_merged.keys())[0]
 
-                # Create metadata fields for aggregated data file
-                new_data_attr = {}
-                new_data_attr['original_dataset_title'] = dataset_metadata['original_dataset_title_s']
-                new_data_attr['original_dataset_short_name'] = dataset_metadata['original_dataset_short_name_s']
-                new_data_attr['original_dataset_url'] = dataset_metadata['original_dataset_url_s']
-                new_data_attr['original_dataset_reference'] = dataset_metadata['original_dataset_reference_s']
-                new_data_attr['original_dataset_doi'] = dataset_metadata['original_dataset_doi_s']
-                new_data_attr['new_name'] = f'{field_name}_interpolated_to_{grid_name}'
-                new_data_attr['interpolated_grid_id'] = grid_name
+                # daily_DS_year_merged[data_var].attrs['valid_min'] = np.nanmin(daily_DS_year_merged[data_var].values)
+                # daily_DS_year_merged[data_var].attrs['valid_max'] = np.nanmax(daily_DS_year_merged[data_var].values)
+
+                remove_keys = []
+                for (key, _) in daily_DS_year_merged[data_var].attrs.items():
+                    if 'original' in key and key != 'original_field_name':
+                        remove_keys.append(key)
+
+                for key in remove_keys:
+                    del daily_DS_year_merged[data_var].attrs[key]
+
+                # Update merged time_bnds values
+                daily_DS_year_merged.time_bnds.values[0] = daily_DS_year_merged.time.values.min()
+                daily_DS_year_merged.time_bnds.values[1] = daily_DS_year_merged.time.values.max()
 
                 # Create filenames based on date time scale
                 # If data time scale is monthly, shortest_filename is monthly
@@ -331,14 +376,12 @@ def run_aggregation(output_dir, s3=None, config_path=''):
                                     'monthly_bin': f'{output_path}bin/{monthly_filename}',
                                     'monthly_netCDF': f'{output_path}netCDF/{monthly_filename}.nc'}
 
-                # print(daily_DA_year_merged)
-
                 uuids = [str(uuid.uuid1()), str(uuid.uuid1())]
 
                 try:
                     # Performs the aggreagtion of the yearly data, and saves it
-                    empty_year = ea.generalized_aggregate_and_save(daily_DA_year_merged,
-                                                                   new_data_attr,
+                    empty_year = ea.generalized_aggregate_and_save(daily_DS_year_merged,
+                                                                   data_var,
                                                                    config['do_monthly_aggregation'],
                                                                    int(year),
                                                                    config['skipna_in_mean'],
