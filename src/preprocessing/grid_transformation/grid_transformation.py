@@ -345,7 +345,8 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
             elif data_time_scale == 'monthly':
                 output_freq_code = 'AVG_MON'
 
-            tb, ct = ea.make_time_bounds_from_ds64(field_DS.time_end.values[0], output_freq_code)
+            tb, ct = ea.make_time_bounds_from_ds64(
+                field_DS.time_end.values[0], output_freq_code)
 
             field_DS.time.values[0] = ct
             field_DS.time_bnds.values[0][0] = tb[0]
@@ -876,8 +877,8 @@ def run_in_any_env(model_grid, grid_name, grid_type, fields, factors, ds, record
             success = False
 
         field_DA.values = \
-                np.where(np.isnan(field_DA.values),
-                        fill_values['netcdf'], field_DA.values)
+            np.where(np.isnan(field_DA.values),
+                     fill_values['netcdf'], field_DA.values)
 
         # make datasets and time_bnds stuff and ''metadata stuff''
         field_DS = field_DA.to_dataset()
@@ -901,10 +902,11 @@ def run_in_any_env(model_grid, grid_name, grid_type, fields, factors, ds, record
         # time_bnds stuff
         # add time_bnds coordinate
         # [start_time, end_time] dimensions
-        time_bnds = np.array([field_DS.time_start, field_DS.time_end], dtype='datetime64')  
+        time_bnds = np.array(
+            [field_DS.time_start.values, field_DS.time_end.values], dtype='datetime64')
         time_bnds = time_bnds.T
         field_DS = field_DS.assign_coords(
-            {'time_bnds': (['time','nv'], time_bnds)})
+            {'time_bnds': (['time', 'nv'], time_bnds)})
 
         field_DS.time.attrs.update(bounds='time_bnds')
 
