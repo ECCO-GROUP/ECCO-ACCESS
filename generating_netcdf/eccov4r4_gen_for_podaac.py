@@ -4,15 +4,16 @@ Created on Fri May 10 17:27:09 2019
 @author: ifenty"""
 
 import sys
+sys.path.append('/home5/ifenty/git_repos_others/ECCO-GROUP/ECCO-ACCESS/ecco-cloud-utils')
+sys.path.append('/home5/ifenty/git_repos_others/ECCO-GROUP/ECCOv4-py')
+
+from importlib import reload
+import ecco_v4_py as ecco
+import ecco_cloud_utils as ea
+
+import argparse
 import json
 import numpy as np
-from importlib import reload
-
-sys.path.append('/home/ifenty/ECCOv4-py')
-import ecco_v4_py as ecco
-
-sys.path.append('/home/ifenty/git_repos_others/ECCO-GROUP/ECCO-ACCESS/ecco-cloud-utils')
-import ecco_cloud_utils as ea
 from pathlib import Path
 import pandas as pd
 import netCDF4 as nc4
@@ -23,9 +24,8 @@ import pyresample as pr
 import uuid
 import pickle
 from collections import OrderedDict
-
 from pandas import read_csv
-reload(ecco)
+
 
 def find_all_time_steps(vars_to_load, var_directories):
     all_time_steps_var = dict()
@@ -371,7 +371,8 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
     podaac_dataset_table = read_csv(podaac_dir / 'datasets.csv')
 
     # load ECCO grid
-    ecco_grid = ecco.load_ecco_grid_nc(ecco_grid_dir, ecco_grid_filename)
+    #ecco_grid = ecco.load_ecco_grid_nc(ecco_grid_dir, ecco_grid_filename)
+    ecco_grid = xr.open_dataset(ecco_grid_dir / ecco_grid_filename)
 
     print(ecco_grid)
 
@@ -630,7 +631,10 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
         mds_diags_root_dir = diags_root / 'diags_inst'
         period_suffix = 'day_inst'
         dataset_description_head = 'This dataset contains instantaneous '
-
+    else:
+        print('valid options are AVG_DAY, AVG_MON, SNAPSHOT')
+        print('you provided ', output_freq_code)
+        sys.exit()
 
     print('...output_freq_code ', output_freq_code)
 
@@ -756,7 +760,7 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
             print('ORIG  tb, ct ', tb, record_center_time)
 
             # fix beginning of last record
-            if tb[0].astype('datetime64[D]') == ecco_end_time.astype('datetime64[D]'):
+            if tb[1].astype('datetime64[D]') == ecco_end_time.astype('datetime64[D]'):
                 print('end time match ')
                 time_delta = np.timedelta64(12,'h')
                 rec_avg_start = tb[0] + time_delta 
@@ -1286,45 +1290,94 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
     return G, ecco_grid
 
 #%%
+
+
+def create_parser():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('--time_steps_to_process', default='by_job', nargs="+",\
+                        help='which time steps to process')
+
+    parser.add_argument('--num_jobs', type=int, default=1,\
+                        help='the total number of separate jobs you are using to process the files')
+
+    parser.add_argument('--job_id', type=int, default=0,\
+                        help='the id of this particular job (out of num_jobs)')
+
+    parser.add_argument('--grouping_to_process', required=True, type=int,\
+                        help='which dataset grouping to process, there are 20 in v4r4')
+
+    parser.add_argument('--product_type', required=True, type=str, choices=['latlon', 'native'], \
+                        help='one of either "latlon" or "native" ')
+
+    parser.add_argument('--output_freq_code', required=True, type=str, choices=['AVG_MON','AVG_DAY','SNAPSHOT'],\
+                        help='one of AVG_MON, AVG_DAY, or SNAPSHOT')
+
+    parser.add_argument('--output_dir', required=True, type=str,\
+                        help='output directory')
+    return parser
+
+
+
+
+
+
 if __name__ == "__main__":
 
+    parser = create_parser()
+    args = parser.parse_args()
 
-    mapping_factors_dir = Path('/home/ifenty/tmp/ecco-v4-podaac-mapping-factors')
-    output_dir_base = Path('/home/ifenty/tmp/v4r4_nc_output_20201215_native')
+    print(args.time_steps_to_process, type(args.time_steps_to_process))
+    print(args.num_jobs, type(args.num_jobs))
+    print(args.job_id, type(args.job_id))
+    print(args.grouping_to_process, type(args.grouping_to_process))
+    print(args.product_type, type(args.product_type))
+    print(args.output_freq_code, type(args.output_freq_code))
+    print(args.output_dir, type(args.output_dir))
 
-    diags_root = Path('/home/ifenty/ian1/ifenty/ECCOv4/binary_output/diags_all')
+    time_steps_to_process = args.time_steps_to_process
+    num_jobs = args.num_jobs
+    job_id = args.job_id
+    grouping_to_process = args.grouping_to_process
+    product_type = args.product_type
+    output_freq_code = args.output_freq_code
+    output_dir_base = Path(args.output_dir)
+
+    #sys.exit()
+    reload(ecco)
+
+    #mapping_factors_dir = Path('/home/ifenty/tmp/ecco-v4-podaac-mapping-factors')
+    #output_dir_base = Path('/home/ifenty/tmp/v4r4_nc_output_20201215_native')
+
+    #diags_root = Path('/home/ifenty/ian1/ifenty/ECCOv4/binary_output/diags_all')
     ## METADATA
-    metadata_json_dir = Path('/home/ifenty/git_repos_others/ECCO-GROUP/ECCO-ACCESS/metadata/ECCOv4r4_metadata_json')
-    podaac_dir = Path('/home/ifenty/git_repos_others/ecco-data-pub/metadata')
+    #metadata_json_dir = Path('/home/ifenty/git_repos_others/ECCO-GROUP/ECCO-ACCESS/metadata/ECCOv4r4_metadata_json')
+    #podaac_dir = Path('/home/ifenty/git_repos_others/ecco-data-pub/metadata')
 
-    ecco_grid_dir = Path('/home/ifenty/data/grids/grid_ECCOV4r4')
-    ecco_grid_dir_mds = Path('/home/ifenty/data/grids/grid_ECCOV4r4')
+    #ecco_grid_dir = Path('/home/ifenty/data/grids/grid_ECCOV4r4')
+    #ecco_grid_dir_mds = Path('/home/ifenty/data/grids/grid_ECCOV4r4')
 
     ## PODAAC fields
+    #ecco_grid_filename = 'ECCO_V4r4_llc90_grid_geometry.nc'
+
     ecco_grid_filename = 'ECCO_V4r4_llc90_grid_geometry.nc'
+    ecco_grid_dir     = Path('/nobackupp2/ifenty/grids/grid_ECCOV4r4')
+    ecco_grid_dir_mds = Path('/nobackupp2/ifenty/grids/grid_ECCOV4r4/')
+
+    podaac_dir = Path('/home5/ifenty/git_repos_others/ecco-data-pub/metadata')
+    metadata_json_dir = Path('/home5/ifenty/git_repos_others/ECCO-GROUP/ECCO-ACCESS/metadata/ECCOv4r4_metadata_json')
+    diags_root = Path('/nobackupp11/owang/runs/V4r4/')
+    #output_dir_base = Path('/nobackupp2/ifenty/podaac')
+    mapping_factors_dir = Path('/nobackupp2/ifenty/podaac/lat-lon/mapping_factors')
 
     #%%
     # Define precision of output files, float32 is standard
     # ------------------------------------------------------
     array_precision = np.float32
 
-
-    #%%
-    time_steps_to_process = 'by_job'
-    num_jobs = 1
-    job_id = 0
-    grouping_to_process = 0
-
-    #grouping_to_process='by_job'
     
-    product_type = 'native'
-    #product_type = 'latlon'
-    
-    #output_freq_codes = ['AVG_DAY', 'AVG_MON', 'SNAPSHOT']
-    output_freq_codes = ['AVG_DAY']
-
-
-#    0 dynamic sea surface height and model sea level anomaly
+# 20 NATIVE GRID GROUPINGS
+#        0 dynamic sea surface height and model sea level anomaly
 # 	 1 ocean bottom pressure and model ocean bottom pressure anomaly
 # 	 2 ocean and sea-ice surface freshwater fluxes
 # 	 3 ocean and sea-ice surface heat fluxes
@@ -1345,40 +1398,40 @@ if __name__ == "__main__":
 # 	 18 Gent-McWilliams ocean bolus velocity
 # 	 19 ocean three-dimensional momentum tendency
 
-    #groupings_latlon  (13)    = [0, 1, 2, 3, 4, 5, 6, 7, 8, 15, 16, 17, 18]
+# ----- > groupings_native_snap (5) = [0, 1, 7, 8, 15]
+# SSH, obp, sea ice and snow, sea ice velocity, TS
 
-    # SSH, obp, sea ice and snow, sea ice velocity, TS
-    #groupings_native_snap (5) = [0, 1, 7, 8, 15]
-    #groupings_native_avg  (20) = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
 
-    print (sys.argv)
-    if len(sys.argv) > 1:
-        num_jobs = int(sys.argv[1])
-    if len(sys.argv) > 2:
-        job_id = int(sys.argv[2])
-    if len(sys.argv) > 3:
-        groupings = [int(sys.argv[3])]
-    if len(sys.argv) > 4:
-    	output_freq_code = [sys.argv[4]]
-    if len(sys.argv) > 5:
-    	product_type = sys.argv[5]
+# 13 LATLON GRID GROUPINGS
+#         0 "dynamic sea surface height",
+#         1 "ocean bottom pressure",
+#         2 "ocean and sea-ice surface freshwater fluxes",
+#         3 "ocean and sea-ice surface heat fluxes",
+#         4 "atmosphere surface temperature, humidity, wind, and pressure",
+#         5 "ocean mixed layer depth",
+#         6 "ocean and sea-ice surface stress",
+#         7 "sea-ice and snow concentration and thickness",
+#         8 "sea-ice velocity",
+#         9 "ocean potential temperature and salinity",
+#        10 "ocean density, stratification, and hydrostatic pressure",
+#        11 "ocean velocity",
+#        12 "Gent-McWilliams ocean bolus velocity",
+
+	
 
     debug_mode=False
 
-    for output_freq_code in output_freq_codes:
-
-        print('\n\n===================================')
-        print('starting python: num jobs, job_id', num_jobs, job_id)
-        print('grouping to process', grouping_to_process)
-        print('time_steps_to_process', time_steps_to_process)
-        print('output_freq_code', output_freq_code)
-        print('product_type', product_type)
+    print('\n\n===================================')
+    print('starting python: num jobs, job_id', num_jobs, job_id)
+    print('grouping to process', grouping_to_process)
+    print('time_steps_to_process', time_steps_to_process)
+    print('output_freq_code', output_freq_code)
+    print('product_type', product_type)
 
 
-        GS = []
-        G = []
-        for grouping_to_process in groupings: #list(range(1)):
-           G, ecco_grid =  generate_netcdfs(output_freq_code, job_id, num_jobs,
+    G = []
+
+    G, ecco_grid =  generate_netcdfs(output_freq_code, job_id, num_jobs,
                              product_type,
                              mapping_factors_dir,
                              output_dir_base,
@@ -1392,8 +1445,3 @@ if __name__ == "__main__":
                              grouping_to_process,
                              time_steps_to_process,
                              debug_mode)
-           GS.append(G)
-
-
-    #%%
-
