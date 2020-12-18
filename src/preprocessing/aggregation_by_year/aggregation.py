@@ -211,7 +211,6 @@ def run_aggregation(output_dir, s3=None, config_path=''):
                 daily_DS_year = []
 
                 for date in dates_in_year:
-
                     # variable to store name of data values in dataset
                     data_var = f'{field_name}_interpolated_to_{grid_name}'
 
@@ -307,7 +306,8 @@ def run_aggregation(output_dir, s3=None, config_path=''):
 
                         empty_record_attrs = data_DA.attrs
                         empty_record_attrs['original_field_name'] = field_name
-                        empty_record_attrs['interpolation_date'] = str(np.datetime64(datetime.now(), 'D'))
+                        empty_record_attrs['interpolation_date'] = str(
+                            np.datetime64(datetime.now(), 'D'))
                         data_DA.attrs = empty_record_attrs
 
                         data_DS = data_DA.to_dataset()
@@ -315,21 +315,25 @@ def run_aggregation(output_dir, s3=None, config_path=''):
                         # time_bnds stuff to match dataset
                         # add time_bnds coordinate
                         # [start_time, end_time] dimensions
-                        time_bnds = np.array([data_DS.time_start, data_DS.time_end], dtype='datetime64')  
+                        time_bnds = np.array(
+                            [data_DS.time_start.values, data_DS.time_end.values], dtype='datetime64')
+
                         time_bnds = time_bnds.T
+
                         data_DS = data_DS.assign_coords(
-                            {'time_bnds': (['time','nv'], time_bnds)})
+                            {'time_bnds': (['time', 'nv'], time_bnds)})
 
                         data_DS.time.attrs.update(bounds='time_bnds')
 
                         data_DS = data_DS.drop('time_start')
                         data_DS = data_DS.drop('time_end')
-                        
+
                     # Append each day's data to annual list
                     daily_DS_year.append(data_DS)
 
                 # Concatenate all data files within annual list
-                daily_DS_year_merged = xr.concat((daily_DS_year), dim='time', combine_attrs='no_conflicts')
+                daily_DS_year_merged = xr.concat(
+                    (daily_DS_year), dim='time', combine_attrs='no_conflicts')
                 data_var = list(daily_DS_year_merged.keys())[0]
 
                 # daily_DS_year_merged[data_var].attrs['valid_min'] = np.nanmin(daily_DS_year_merged[data_var].values)
@@ -342,10 +346,6 @@ def run_aggregation(output_dir, s3=None, config_path=''):
 
                 for key in remove_keys:
                     del daily_DS_year_merged[data_var].attrs[key]
-
-                # Update merged time_bnds values
-                daily_DS_year_merged.time_bnds.values[0] = daily_DS_year_merged.time.values.min()
-                daily_DS_year_merged.time_bnds.values[1] = daily_DS_year_merged.time.values.max()
 
                 # Create filenames based on date time scale
                 # If data time scale is monthly, shortest_filename is monthly
