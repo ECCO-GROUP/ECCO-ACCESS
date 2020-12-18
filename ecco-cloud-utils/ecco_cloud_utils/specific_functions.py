@@ -34,3 +34,22 @@ def seaice_concentration_to_fraction(da, field_name):
         da.attrs['units'] = '1'
         da.values /= 100.
     return da
+
+# time_start and time_end for MEaSUREs_1812 is not acceptable
+# this function takes the provided center time, removes the hours:minutes:seconds.ns
+# and sets the new time_start and time_end based on that new time
+def MEaSUREs_fix_time(da, field_name):
+    cur_time = da.time.values
+
+    # remove time from date
+    cur_day = str(cur_time[0])[:10]
+
+    new_start = str(np.datetime64(cur_day, 'ns'))
+
+    # new end is the start date plus 1 day
+    new_end = str(np.datetime64(str(np.datetime64(cur_day, 'D') + 1), 'ns'))
+
+    da.time_start.values[0] = new_start
+    da.time_end.values[0] = new_end
+
+    return da
