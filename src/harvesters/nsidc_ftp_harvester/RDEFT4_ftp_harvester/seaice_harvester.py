@@ -291,6 +291,14 @@ def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False):
         config = yaml.load(stream, yaml.Loader)
 
     # =====================================================
+    # Code to import ecco utils locally...
+    # =====================================================
+    generalized_functions_path = Path(
+        f'{Path(__file__).resolve().parents[5]}/ECCO-ACCESS/ecco-cloud-utils/')
+    sys.path.append(str(generalized_functions_path))
+    import ecco_cloud_utils as ea  # pylint: disable=import-error
+
+    # =====================================================
     # Setup AWS Target Bucket
     # =====================================================
     if on_aws:
@@ -411,10 +419,14 @@ def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False):
             date_time = datetime.datetime.strptime(date, "%Y%m%d")
             new_date_format = f'{date[:4]}-{date[4:6]}-{date[6:]}T00:00:00Z'
 
-            local_fp = f'{folder}{config["ds_name"]}_granule.nc' if on_aws else f'{target_dir}{date[:4]}/{filename}'
+            tb, _ = ea.make_time_bounds_from_ds64(np.datetime64(new_date_format) + np.timedelta64(1, 'D'), 'AVG_MON')
+            new_date_format = f'{str(tb[0])[:10]}T00:00:00Z'
+            year = new_date_format[:4]
 
-            if not os.path.exists(f'{target_dir}{date[:4]}/'):
-                os.makedirs(f'{target_dir}{date[:4]}/')
+            local_fp = f'{folder}{config["ds_name"]}_granule.nc' if on_aws else f'{target_dir}{year}/{filename}'
+
+            if not os.path.exists(f'{target_dir}{year}/'):
+                os.makedirs(f'{target_dir}{year}/')
 
             start.append(datetime.datetime.strptime(
                 new_date_format, config['date_regex']))

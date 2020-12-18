@@ -346,7 +346,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
                 output_freq_code = 'AVG_MON'
 
             tb, ct = ea.make_time_bounds_from_ds64(
-                field_DS.time_end.values[0], output_freq_code)
+                field_DS.time_bnds.values[0][1], output_freq_code)
 
             field_DS.time.values[0] = ct
             field_DS.time_bnds.values[0][0] = tb[0]
@@ -365,8 +365,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
             output_path = f'{output_dir}{dataset_name}/transformed_products/{grid_name}/transformed/{field_name}/'
             transformed_location = f'{output_path}{output_filename}'
 
-            if not os.path.exists(output_path):
-                os.makedirs(output_path)
+            Path(output_path).mkdir(parents=True, exist_ok=True)
 
             # save field_DS
             ea.save_to_disk(field_DS,
@@ -816,6 +815,7 @@ def run_in_any_env(model_grid, grid_name, grid_type, fields, factors, ds, record
     record_file_name = ds.attrs['original_file_name']
     extra_information = config['extra_information']
     time_zone_included_with_time = config['time_zone_included_with_time']
+    data_time_scale = dataset_metadata['data_time_scale_s'].upper()
 
     field_DSs = []
 
@@ -897,13 +897,26 @@ def run_in_any_env(model_grid, grid_name, grid_type, fields, factors, ds, record
         ds_meta['original_dataset_reference'] = original_dataset_metadata['original_dataset_reference_s']
         ds_meta['original_dataset_doi'] = original_dataset_metadata['original_dataset_doi_s']
         ds_meta['interpolated_grid_id'] = grid_name
+        ds_meta['transformation_version'] = config['version']
         field_DS = field_DS.assign_attrs(ds_meta)
 
         # time_bnds stuff
         # add time_bnds coordinate
         # [start_time, end_time] dimensions
+
+        start_time = field_DS.time_start.values
+        end_time = field_DS.time_end.values
+
+        if start_time == end_time:
+            if data_time_scale.upper() == 'MONTHLY':
+                end_time = str(end_time[0])
+                month = str(np.datetime64(end_time, 'M') + 1)
+                end_time = [str(np.datetime64(month, 'ns'))]
+            elif data_time_scale.upper() == 'DAILY':
+                end_time = end_time + np.timedelta64(1, 'D')
+
         time_bnds = np.array(
-            [field_DS.time_start.values, field_DS.time_end.values], dtype='datetime64')
+            [start_time, end_time], dtype='datetime64')
         time_bnds = time_bnds.T
         field_DS = field_DS.assign_coords(
             {'time_bnds': (['time', 'nv'], time_bnds)})

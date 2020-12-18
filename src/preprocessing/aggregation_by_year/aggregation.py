@@ -315,9 +315,17 @@ def run_aggregation(output_dir, s3=None, config_path=''):
                         # time_bnds stuff to match dataset
                         # add time_bnds coordinate
                         # [start_time, end_time] dimensions
-                        time_bnds = np.array(
-                            [data_DS.time_start.values, data_DS.time_end.values], dtype='datetime64')
+                        if data_time_scale.upper() == 'MONTHLY':
+                            end_time = str(data_DS.time_end.values[0])
+                            month = str(np.datetime64(end_time, 'M') + 1)
+                            end_time = [str(np.datetime64(month, 'ns'))]
+                        elif data_time_scale.upper() == 'DAILY':
+                            end_time = data_DS.time_end.values + np.timedelta64(1, 'D')
 
+                        start_time = data_DS.time_start.values
+
+                        time_bnds = np.array(
+                            [start_time, end_time], dtype='datetime64')
                         time_bnds = time_bnds.T
 
                         data_DS = data_DS.assign_coords(
@@ -336,12 +344,14 @@ def run_aggregation(output_dir, s3=None, config_path=''):
                     (daily_DS_year), dim='time', combine_attrs='no_conflicts')
                 data_var = list(daily_DS_year_merged.keys())[0]
 
-                # daily_DS_year_merged[data_var].attrs['valid_min'] = np.nanmin(daily_DS_year_merged[data_var].values)
-                # daily_DS_year_merged[data_var].attrs['valid_max'] = np.nanmax(daily_DS_year_merged[data_var].values)
+                daily_DS_year_merged.attrs['aggregation_version'] = config['version']
+
+                daily_DS_year_merged[data_var].attrs['valid_min'] = np.nanmin(daily_DS_year_merged[data_var].values)
+                daily_DS_year_merged[data_var].attrs['valid_max'] = np.nanmax(daily_DS_year_merged[data_var].values)
 
                 remove_keys = []
                 for (key, _) in daily_DS_year_merged[data_var].attrs.items():
-                    if 'original' in key and key != 'original_field_name':
+                    if ('original' in key and key != 'original_field_name'):
                         remove_keys.append(key)
 
                 for key in remove_keys:
@@ -359,19 +369,18 @@ def run_aggregation(output_dir, s3=None, config_path=''):
 
                 bin_output_dir = output_path + 'bin/'
 
-                if not os.path.exists(bin_output_dir):
-                    os.makedirs(bin_output_dir)
+                Path(bin_output_dir).mkdir(parents=True, exist_ok=True)
 
                 netCDF_output_dir = output_path + 'netCDF/'
 
-                if not os.path.exists(netCDF_output_dir):
-                    os.makedirs(netCDF_output_dir)
+                Path(netCDF_output_dir).mkdir(parents=True, exist_ok=True)
 
                 # generalized_aggregate_and_save expects Paths
                 output_dirs = {'binary': Path(bin_output_dir),
                                'netcdf': Path(netCDF_output_dir)}
 
-                output_filepaths = {'daily_bin': f'{output_path}bin/{shortest_filename}',
+                # used for Solr docs metadata
+                solr_output_filepaths = {'daily_bin': f'{output_path}bin/{shortest_filename}',
                                     'daily_netCDF': f'{output_path}netCDF/{shortest_filename}.nc',
                                     'monthly_bin': f'{output_path}bin/{monthly_filename}',
                                     'monthly_netCDF': f'{output_path}netCDF/{monthly_filename}.nc'}
@@ -410,13 +419,13 @@ def run_aggregation(output_dir, s3=None, config_path=''):
 
                         if config['do_monthly_aggregation']:
                             target_bucket.upload_file(
-                                output_filepaths['daily_bin'], output_filenames['shortest'])
+                                solr_output_filepaths['daily_bin'], output_filenames['shortest'])
                             if data_time_scale.upper() != 'MONTHLY':
                                 target_bucket.upload_file(
-                                    output_filepaths['monthly_bin'], output_filenames['monthly'])
+                                    solr_output_filepaths['monthly_bin'], output_filenames['monthly'])
                         else:
                             target_bucket.upload_file(
-                                output_filepaths['daily_bin'], output_filenames['shortest'])
+                                solr_output_filepaths['daily_bin'], output_filenames['shortest'])
 
                         s3_path = f's3://{target_bucket_name}/{s3_output_dir}'
 
@@ -426,7 +435,7 @@ def run_aggregation(output_dir, s3=None, config_path=''):
                     logger.error(e)
                     empty_year = True
                     success = False
-                    output_filepaths = {'daily_bin': '',
+                    solr_output_filepaths = {'daily_bin': '',
                                         'daily_netCDF': '',
                                         'monthly_bin': '',
                                         'monthly_netCDF': ''}
@@ -435,7 +444,7 @@ def run_aggregation(output_dir, s3=None, config_path=''):
                 empty_year = empty_year and success
 
                 if empty_year:
-                    output_filepaths = {'daily_bin': '',
+                    solr_output_filepaths = {'daily_bin': '',
                                         'daily_netCDF': '',
                                         'monthly_bin': '',
                                         'monthly_netCDF': ''}
@@ -459,29 +468,29 @@ def run_aggregation(output_dir, s3=None, config_path=''):
                     # Update file paths according to the data time scale and do monthly aggregation config field
                     if (data_time_scale == 'daily') and (config['do_monthly_aggregation']):
                         update_body[0]["aggregated_daily_bin_path_s"] = {
-                            "set": output_filepaths['daily_bin']}
+                            "set": solr_output_filepaths['daily_bin']}
                         update_body[0]["aggregated_daily_netCDF_path_s"] = {
-                            "set": output_filepaths['daily_netCDF']}
+                            "set": solr_output_filepaths['daily_netCDF']}
                         update_body[0]["aggregated_monthly_bin_path_s"] = {
-                            "set": output_filepaths['monthly_bin']}
+                            "set": solr_output_filepaths['monthly_bin']}
                         update_body[0]["aggregated_monthly_netCDF_path_s"] = {
-                            "set": output_filepaths['monthly_netCDF']}
+                            "set": solr_output_filepaths['monthly_netCDF']}
                         update_body[0]["daily_aggregated_uuid_s"] = {
                             "set": uuids[0]}
                         update_body[0]["monthly_aggregated_uuid_s"] = {
                             "set": uuids[1]}
                     elif (data_time_scale == 'daily') and not (config['do_monthly_aggregation']):
                         update_body[0]["aggregated_daily_bin_path_s"] = {
-                            "set": output_filepaths['daily_bin']}
+                            "set": solr_output_filepaths['daily_bin']}
                         update_body[0]["aggregated_daily_netCDF_path_s"] = {
-                            "set": output_filepaths['daily_netCDF']}
+                            "set": solr_output_filepaths['daily_netCDF']}
                         update_body[0]["daily_aggregated_uuid_s"] = {
                             "set": uuids[0]}
                     elif data_time_scale == 'monthly':
                         update_body[0]["aggregated_monthly_bin_path_s"] = {
-                            "set": output_filepaths['monthly_bin']}
+                            "set": solr_output_filepaths['monthly_bin']}
                         update_body[0]["aggregated_monthly_netCDF_path_s"] = {
-                            "set": output_filepaths['monthly_netCDF']}
+                            "set": solr_output_filepaths['monthly_netCDF']}
                         update_body[0]["monthly_aggregated_uuid_s"] = {
                             "set": uuids[1]}
 
@@ -512,29 +521,29 @@ def run_aggregation(output_dir, s3=None, config_path=''):
                     # Update file paths according to the data time scale and do monthly aggregation config field
                     if (data_time_scale == 'daily') and (config['do_monthly_aggregation']):
                         update_body[0]["aggregated_daily_bin_path_s"] = {
-                            "set": output_filepaths['daily_bin']}
+                            "set": solr_output_filepaths['daily_bin']}
                         update_body[0]["aggregated_daily_netCDF_path_s"] = {
-                            "set": output_filepaths['daily_netCDF']}
+                            "set": solr_output_filepaths['daily_netCDF']}
                         update_body[0]["aggregated_monthly_bin_path_s"] = {
-                            "set": output_filepaths['monthly_bin']}
+                            "set": solr_output_filepaths['monthly_bin']}
                         update_body[0]["aggregated_monthly_netCDF_path_s"] = {
-                            "set": output_filepaths['monthly_netCDF']}
+                            "set": solr_output_filepaths['monthly_netCDF']}
                         update_body[0]["daily_aggregated_uuid_s"] = {
                             "set": uuids[0]}
                         update_body[0]["monthly_aggregated_uuid_s"] = {
                             "set": uuids[1]}
                     elif (data_time_scale == 'daily') and (not config['do_monthly_aggregation']):
                         update_body[0]["aggregated_daily_bin_path_s"] = {
-                            "set": output_filepaths['daily_bin']}
+                            "set": solr_output_filepaths['daily_bin']}
                         update_body[0]["aggregated_daily_netCDF_path_s"] = {
-                            "set": output_filepaths['daily_netCDF']}
+                            "set": solr_output_filepaths['daily_netCDF']}
                         update_body[0]["daily_aggregated_uuid_s"] = {
                             "set": uuids[0]}
                     elif data_time_scale == 'monthly':
                         update_body[0]["aggregated_monthly_bin_path_s"] = {
-                            "set": output_filepaths['monthly_bin']}
+                            "set": solr_output_filepaths['monthly_bin']}
                         update_body[0]["aggregated_monthly_netCDF_path_s"] = {
-                            "set": output_filepaths['monthly_netCDF']}
+                            "set": solr_output_filepaths['monthly_netCDF']}
                         update_body[0]["monthly_aggregated_uuid_s"] = {
                             "set": uuids[1]}
 
@@ -571,7 +580,7 @@ def run_aggregation(output_dir, s3=None, config_path=''):
                         ]
 
                         # Add aggregation file path fields to descendants entry
-                        for key, value in output_filepaths.items():
+                        for key, value in solr_output_filepaths.items():
                             update_body[0][f'{grid_name}_{field_name}_aggregated_{key}_path_s'] = {
                                 "set": value}
 

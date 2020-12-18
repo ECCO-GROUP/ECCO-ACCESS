@@ -47,7 +47,7 @@ proj_info:
 #   }
 
 pre_transformation_steps: [] # List of functions to call on the DataSet before transformation
-post_transformation_steps: [] # List of functions to call on the DataArrays after transformation
+post_transformation_steps: ["MEaSUREs_fix_time"] # List of functions to call on the DataArrays after transformation
 
 # =====================================================
 # Solr

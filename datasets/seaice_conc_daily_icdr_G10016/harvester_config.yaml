@@ -22,13 +22,13 @@ fields:
   [
     {
       name: seaice_conc_cdr,
-      long_name: NOAA/NSIDC Climate Data Record of Passive Microwave Daily Sea Ice Concentration,
+      long_name: NOAA/NSIDC Climate Data Record of Passive Microwave Sea Ice Concentration,
       standard_name: sea_ice_area_fraction,
       units: 1,
     },
     {
       name: stdev_of_seaice_conc_cdr,
-      long_name: Passive Microwave Daily Sea Ice Concentration Source Estimated Standard Deviation,
+      long_name: Passive Microwave Sea Ice Concentration Source Estimated Standard Deviation,
       standard_name: " ",
       units: " ",
     },
