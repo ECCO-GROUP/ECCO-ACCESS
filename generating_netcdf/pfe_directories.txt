@@ -2,24 +2,8 @@ import sys
 sys.path.append('/home5/ifenty/git_repos_others/ECCO-GROUP/ECCO-ACCESS/ecco-cloud-utils')
 sys.path.append('/home5/ifenty/git_repos_others/ECCO-GROUP/ECCOv4-py')
 
-import json
-import numpy as np
-from importlib import reload
-import ecco_v4_py as ecco
-import ecco_cloud_utils as ea
-from pathlib import Path
-import pandas as pd
-import netCDF4 as nc4
-import xarray as xr
-import datetime
-from pprint import pprint
-import pyresample as pr
-import uuid
-import pickle
-from collections import OrderedDict
 
-
-
+# for main
 ecco_grid_filename = 'ECCO_V4r4_llc90_grid_geometry.nc'
 ecco_grid_dir     = Path('/nobackupp2/ifenty/grids/grid_ECCOV4r4/')
 ecco_grid_dir_mds = Path('/nobackupp2/ifenty/grids/grid_ECCOV4r4/')
