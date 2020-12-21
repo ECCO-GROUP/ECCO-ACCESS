@@ -16,6 +16,64 @@ from urllib.request import urlopen, urlcleanup, urlretrieve
 log = logging.getLogger(__name__)
 
 
+def clean_solr(config, solr_host, grids_to_use, solr_collection_name):
+    """
+    Remove harvested, transformed, and descendant entries in Solr for dates
+    outside of config date range. Also remove related aggregations, and force
+    aggregation rerun for those years.
+    """
+    dataset_name = config['ds_name']
+    config_start = config['start']
+    config_end = config['end']
+
+    # Convert config dates to Solr format
+    config_start = f'{config_start[:4]}-{config_start[4:6]}-{config_start[6:]}'
+    config_end = f'{config_end[:4]}-{config_end[4:6]}-{config_end[6:]}'
+
+    fq = [f'type_s:dataset', f'dataset_s:{dataset_name}']
+    dataset_metadata = solr_query(config, solr_host, fq, solr_collection_name)
+
+    if not dataset_metadata:
+        return
+    else:
+        dataset_metadata = dataset_metadata[0]
+
+    # Remove entries earlier than config start date
+    fq = [f'dataset_s:{dataset_name}', f'date_s:[* TO {config_start}}}']
+    url = f'{solr_host}{solr_collection_name}/update?commit=true'
+    requests.post(url, json={'delete': fq})
+
+    # Remove entries later than config end date
+    fq = [f'dataset_s:{dataset_name}', f'date_s:{{{config_end} TO *]']
+    url = f'{solr_host}{solr_collection_name}/update?commit=true'
+    requests.post(url, json={'delete': fq})
+
+    # Add start and end years to 'years_updated' field in dataset entry
+    # Forces the bounding years to be re-aggregated to account for potential
+    # removed dates
+    start_year = config_start[:4]
+    end_year = config_end[:4]
+    update_body = [{
+        "id": dataset_metadata['id']
+    }]
+
+    for grid in grids_to_use:
+        solr_grid_years = f'{grid}_years_updated_ss'
+        if solr_grid_years in dataset_metadata.keys():
+            years = dataset_metadata[solr_grid_years]
+        else:
+            years = []
+        if start_year not in years:
+            years.append(start_year)
+        if end_year not in years:
+            years.append(end_year)
+
+        update_body[0][solr_grid_years] = {"set": years}
+
+    r = solr_update(config, solr_host, update_body,
+                    solr_collection_name, r=True)
+
+
 def md5(fname):
     """
     Creates md5 checksum from file
