@@ -5,7 +5,7 @@ import importlib
 from pathlib import Path
 
 
-def main(config_path='', output_path=''):
+def main(config_path='', output_path='', solr_info=''):
     import aggregation
     aggregation = importlib.reload(aggregation)
 
@@ -14,10 +14,10 @@ def main(config_path='', output_path=''):
         print('No path for configuration file. Can not run aggregation.')
         return
 
-    with open(config_path, "r") as stream:
-        config = yaml.load(stream, yaml.Loader)
+    # with open(config_path, "r") as stream:
+    #     config = yaml.load(stream, yaml.Loader)
 
-    aggregation.run_aggregation(output_path, config_path=config_path)
+    aggregation.run_aggregation(output_path, config_path=config_path, solr_info=solr_info)
 
 
 ##################################################
