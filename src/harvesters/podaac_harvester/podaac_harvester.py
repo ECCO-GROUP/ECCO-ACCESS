@@ -26,6 +26,14 @@ def clean_solr(config, solr_host, grids_to_use, solr_collection_name):
     config_start = config['start']
     config_end = config['end']
 
+    # Query for grids
+    if not grids_to_use:
+        fq = ['type_s:grid']
+        docs = solr_query(config, solr_host, fq, solr_collection_name)
+        grids = [doc['grid_name_s'] for doc in docs]
+    else:
+        grids = grids_to_use
+
     # Convert config dates to Solr format
     config_start = f'{config_start[:4]}-{config_start[4:6]}-{config_start[6:]}'
     config_end = f'{config_end[:4]}-{config_end[4:6]}-{config_end[6:]}'
@@ -57,7 +65,7 @@ def clean_solr(config, solr_host, grids_to_use, solr_collection_name):
         "id": dataset_metadata['id']
     }]
 
-    for grid in grids_to_use:
+    for grid in grids:
         solr_grid_years = f'{grid}_years_updated_ss'
         if solr_grid_years in dataset_metadata.keys():
             years = dataset_metadata[solr_grid_years]
@@ -70,8 +78,9 @@ def clean_solr(config, solr_host, grids_to_use, solr_collection_name):
 
         update_body[0][solr_grid_years] = {"set": years}
 
-    r = solr_update(config, solr_host, update_body,
-                    solr_collection_name, r=True)
+    if grids:
+        r = solr_update(config, solr_host, update_body,
+                        solr_collection_name, r=True)
 
 
 def md5(fname):
@@ -118,7 +127,7 @@ def solr_update(config, solr_host, update_body, solr_collection_name, r=False):
         requests.post(url, json=update_body)
 
 
-def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False, solr_info=''):
+def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False, solr_info='', grids_to_use=[]):
     """
     Pulls data files for PODAAC id and date range given in harvester_config.yaml.
     If not on_aws, saves locally, else saves to s3 bucket.
@@ -607,13 +616,14 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
 
             body.append(field_obj)
 
-        # Update Solr with dataset fields metadata
-        r = solr_update(config, solr_host, body, solr_collection_name, r=True)
+        if body:
+            # Update Solr with dataset fields metadata
+            r = solr_update(config, solr_host, body, solr_collection_name, r=True)
 
-        if r.status_code == 200:
-            print('Successfully created Solr field documents')
-        else:
-            print('Failed to create Solr field documents')
+            if r.status_code == 200:
+                print('Successfully created Solr field documents')
+            else:
+                print('Failed to create Solr field documents')
 
     # if dataset entry exists, update download time, converage start date, coverage end date
     else:

@@ -14,7 +14,7 @@ from collections import defaultdict
 
 # Determines grid/field combinations that have yet to be transformed for a given granule
 # Returns dictionary where key is grid and value is list of fields
-def get_remaining_transformations(config, granule_file_path, grid_transformation, solr_info):
+def get_remaining_transformations(config, granule_file_path, grid_transformation, solr_info, grids):
     dataset_name = config['ds_name']
     if solr_info:
         solr_host = solr_info['solr_url']
@@ -22,11 +22,6 @@ def get_remaining_transformations(config, granule_file_path, grid_transformation
     else:
         solr_host = config['solr_host_local']
         solr_collection_name = config['solr_collection_name']
-
-    # Query for grids
-    fq = ['type_s:grid']
-    docs = grid_transformation.solr_query(config, solr_host, fq, solr_collection_name)
-    grids = [doc['grid_name_s'] for doc in docs]
 
     # Query for fields
     fq = ['type_s:field', f'dataset_s:{dataset_name}']
@@ -134,7 +129,7 @@ def delete_mismatch_transformations(config, grid_transformation, solr_info):
             requests.post(url, json={'delete': [transformation['id']]})
 
 
-def multiprocess_transformation(granule, config_path, output_path, solr_info):
+def multiprocess_transformation(granule, config_path, output_path, solr_info, grids):
     import grid_transformation
     grid_transformation = importlib.reload(grid_transformation)
 
@@ -151,7 +146,7 @@ def multiprocess_transformation(granule, config_path, output_path, solr_info):
 
     # Get transformations to be completed for this file
     remaining_transformations = get_remaining_transformations(
-        config, f, grid_transformation, solr_info)
+        config, f, grid_transformation, solr_info, grids)
 
     # Perform remaining transformations
     if remaining_transformations:
@@ -165,7 +160,7 @@ def multiprocess_transformation(granule, config_path, output_path, solr_info):
         return ('', '')
 
 
-def main(config_path='', output_path='', multiprocessing=False, user_cpus=1, wipe=False, solr_info=''):
+def main(config_path='', output_path='', multiprocessing=False, user_cpus=1, wipe=False, solr_info='', grids_to_use=[]):
     import grid_transformation
     grid_transformation = importlib.reload(grid_transformation)
 
@@ -202,17 +197,20 @@ def main(config_path='', output_path='', multiprocessing=False, user_cpus=1, wip
 
     years_updated = defaultdict(list)
 
+    # Query for grids
+    if not grids_to_use:
+        fq = ['type_s:grid']
+        docs = grid_transformation.solr_query(config, solr_host, fq, solr_collection_name)
+        grids = [doc['grid_name_s'] for doc in docs]
+    else:
+        grids = grids_to_use
+
     if multiprocessing:
         # PRE GENERATE FACTORS TO ACCOMODATE MULTIPROCESSING
         # Query for dataset metadata
         fq = [f'dataset_s:{dataset_name}', 'type_s:dataset']
         dataset_metadata = grid_transformation.solr_query(
             config, solr_host, fq, solr_collection_name)[0]
-
-        # Query for grids
-        fq = ['type_s:grid']
-        docs = grid_transformation.solr_query(config, solr_host, fq, solr_collection_name)
-        grids = [doc['grid_name_s'] for doc in docs]
 
         # Precompute grid factors using one dataset data file
         # (or one from each hemisphere, if data is hemispherical) before running main loop
@@ -258,7 +256,7 @@ def main(config_path='', output_path='', multiprocessing=False, user_cpus=1, wip
 
             # Get transformations to be completed for this file
             remaining_transformations = get_remaining_transformations(
-                config, file_path, grid_transformation, solr_info)
+                config, file_path, grid_transformation, solr_info, grids)
 
             grids_updated, year = grid_transformation.run_locally_wrapper(
                 file_path, remaining_transformations, output_path, config_path=config_path, verbose=True, solr_info=solr_info)
@@ -270,7 +268,7 @@ def main(config_path='', output_path='', multiprocessing=False, user_cpus=1, wip
 
         # BEGIN MULTIPROCESSING
         # Create list of tuples of function arguments (necessary for using pool.starmap)
-        multiprocess_tuples = [(granule, config_path, output_path, solr_info)
+        multiprocess_tuples = [(granule, config_path, output_path, solr_info, grids)
                                for granule in harvested_granules]
 
         grid_years_list = []
@@ -304,7 +302,7 @@ def main(config_path='', output_path='', multiprocessing=False, user_cpus=1, wip
 
             # Get transformations to be completed for this file
             remaining_transformations = get_remaining_transformations(
-                config, f, grid_transformation, solr_info)
+                config, f, grid_transformation, solr_info, grids)
 
             # Perform remaining transformations
             if remaining_transformations:

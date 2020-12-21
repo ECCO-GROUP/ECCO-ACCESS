@@ -44,7 +44,7 @@ def solr_update(config, solr_host, update_body, r=False):
         requests.post(url, json=update_body)
 
 
-def main(path=''):
+def main(path='', grids_to_use=[], verify=False):
     # =====================================================
     # Read configurations from YAML file
     # =====================================================
@@ -181,6 +181,21 @@ def main(path=''):
             print(f'Successfully updated {grid_name} Solr grid document')
         else:
             print(f'Failed to update Solr {grid_name} grid document')
+
+    # =====================================================
+    # Verify grid names supplied exist on Solr
+    # =====================================================
+    grids_not_in_solr = []
+    if verify:
+        for grid_name in grids_to_use:
+            fq = ['type_s:grid', f'grid_name_s:{grid_name}']
+            docs = solr_query(config, solr_host, fq)
+            if docs:
+                continue
+            else:
+                grids_not_in_solr.append(grid_name)
+
+    return grids_not_in_solr
 
 
 if __name__ == '__main__':

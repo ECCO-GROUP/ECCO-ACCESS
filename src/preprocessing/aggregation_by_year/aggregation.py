@@ -78,7 +78,7 @@ def solr_update(config, solr_host, update_body, solr_collection_name, r=False):
 
 
 # Aggregates data into annual files, saves them, and updates Solr
-def run_aggregation(output_dir, s3=None, config_path='', solr_info=''):
+def run_aggregation(output_dir, s3=None, config_path='', solr_info='', grids_to_use=[]):
     # =====================================================
     # Read configurations from YAML file
     # =====================================================
@@ -122,6 +122,10 @@ def run_aggregation(output_dir, s3=None, config_path='', solr_info=''):
 
     fq = ['type_s:grid']
     grids = [grid for grid in solr_query(config, solr_host, fq, solr_collection_name)]
+
+    # Update grids to only use those in grids_to_use
+    if grids_to_use:
+        grids = [grid for grid in grids if grids['grid_name_s'] in grids_to_use]
 
     fq = ['type_s:field', f'dataset_s:{dataset_name}']
     fields = solr_query(config, solr_host, fq, solr_collection_name)

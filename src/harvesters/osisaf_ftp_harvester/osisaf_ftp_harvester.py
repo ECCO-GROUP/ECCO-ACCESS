@@ -72,7 +72,7 @@ def solr_update(config, solr_host, update_body, solr_collection_name, r=False):
         requests.post(url, json=update_body)
 
 
-def osisaf_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False, solr_info=''):
+def osisaf_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False, solr_info='', grids_to_use=[]):
     """
     Pulls data files for OSISAF FTP id and date range given in harvester_config.yaml.
     If not on_aws, saves locally, else saves to s3 bucket.

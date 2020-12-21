@@ -279,7 +279,7 @@ def solr_update(config, solr_host, update_body, solr_collection_name, r=False):
         requests.post(url, json=update_body)
 
 
-def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False, solr_info=''):
+def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False, solr_info='', grids_to_use=[]):
     # =====================================================
     # Read configurations from YAML file
     # =====================================================
