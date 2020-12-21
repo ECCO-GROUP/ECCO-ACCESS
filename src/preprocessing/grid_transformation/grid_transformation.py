@@ -446,15 +446,15 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
     return grids_updated, date[:4]
 
 
-def run_using_aws_wrapper(s3, filename, solr_info=''):
+def run_using_aws_wrapper(s3, filename):
     try:
-        run_using_aws(s3, filename, solr_info)
+        run_using_aws(s3, filename)
     except Exception as e:
         print(e)
         print('Unable to run AWS transformation')
 
 
-def run_using_aws(s3, filename, solr_info=''):
+def run_using_aws(s3, filename):
     # =====================================================
     # Set configuration options
     # =====================================================
@@ -473,12 +473,8 @@ def run_using_aws(s3, filename, solr_info=''):
     output_dir = f'{dataset_name}_transformed/'
     transformation_version = config['version']
 
-    if solr_info:
-        solr_host = solr_info['solr_url']
-        solr_collection_name = solr_info['solr_collection_name']
-    else:
-        solr_host = config['solr_host_aws']
-        solr_collection_name = config['solr_collection_name']
+    solr_host = config['solr_host_aws']
+    solr_collection_name = config['solr_collection_name']
 
     # Query Solr for dataset entry
     fq = [f'dataset_s:{dataset_name}', 'type_s:dataset']
