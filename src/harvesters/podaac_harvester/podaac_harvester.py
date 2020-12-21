@@ -39,14 +39,14 @@ def clean_solr(config, solr_host, grids_to_use, solr_collection_name):
         dataset_metadata = dataset_metadata[0]
 
     # Remove entries earlier than config start date
-    fq = [f'dataset_s:{dataset_name}', f'date_s:[* TO {config_start}}}']
+    fq = f'dataset_s:{dataset_name} AND date_s:[* TO {config_start}}}'
     url = f'{solr_host}{solr_collection_name}/update?commit=true'
-    requests.post(url, json={'delete': fq})
+    requests.post(url, json={'delete': {'query': fq}})
 
     # Remove entries later than config end date
-    fq = [f'dataset_s:{dataset_name}', f'date_s:{{{config_end} TO *]']
+    fq = f'dataset_s:{dataset_name} AND date_s:{{{config_end} TO *]'
     url = f'{solr_host}{solr_collection_name}/update?commit=true'
-    requests.post(url, json={'delete': fq})
+    requests.post(url, json={'delete': {'query': fq}})
 
     # Add start and end years to 'years_updated' field in dataset entry
     # Forces the bounding years to be re-aggregated to account for potential
@@ -182,6 +182,8 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
             solr_collection_name = config['solr_collection_name']
         print(f'Downloading {dataset_name} files to {target_dir}\n')
 
+    clean_solr(config, solr_host, grids_to_use, solr_collection_name)
+
     # =====================================================
     # Pull existing entries from Solr
     # =====================================================
@@ -200,7 +202,8 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
 
     # Query for existing descendants docs
     fq = ['type_s:descendants', f'dataset_s:{dataset_name}']
-    existing_descendants_docs = solr_query(config, solr_host, fq, solr_collection_name)
+    existing_descendants_docs = solr_query(
+        config, solr_host, fq, solr_collection_name)
 
     # Dictionary of existing descendants docs
     # descendant doc date : solr entry for that doc
@@ -435,7 +438,8 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
                             # Query for existing granule in Solr in order to update it
                             fq = ['type_s:harvested', f'dataset_s:{dataset_name}',
                                   f'date_s:{time_s[:10]}*']
-                            granule = solr_query(config, solr_host, fq, solr_collection_name)
+                            granule = solr_query(
+                                config, solr_host, fq, solr_collection_name)
 
                             if granule:
                                 item['id'] = granule[0]['id']
@@ -501,7 +505,8 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
     # Only update Solr harvested entries if there are fresh downloads
     if entries_for_solr:
         # Update Solr with downloaded granule metadata entries
-        r = solr_update(config, solr_host, entries_for_solr, solr_collection_name, r=True)
+        r = solr_update(config, solr_host, entries_for_solr,
+                        solr_collection_name, r=True)
         if r.status_code == 200:
             print('Successfully created or updated Solr harvested documents')
         else:
@@ -515,7 +520,8 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
     # Query for Solr successful harvest documents
     fq = ['type_s:harvested',
           f'dataset_s:{dataset_name}', f'harvest_success_b:true']
-    successful_harvesting = solr_query(config, solr_host, fq, solr_collection_name)
+    successful_harvesting = solr_query(
+        config, solr_host, fq, solr_collection_name)
 
     harvest_status = f'All granules successfully harvested'
 
@@ -567,7 +573,8 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
         ds_meta['harvest_status_s'] = harvest_status
 
         # Update Solr with dataset metadata
-        r = solr_update(config, solr_host, [ds_meta], solr_collection_name, r=True)
+        r = solr_update(config, solr_host, [
+                        ds_meta], solr_collection_name, r=True)
 
         if r.status_code == 200:
             print('Successfully created Solr dataset document')
@@ -642,7 +649,8 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
                     "set": overall_end.strftime(time_format)}
 
         # Update Solr with modified dataset entry
-        r = solr_update(config, solr_host, [update_doc], solr_collection_name, r=True)
+        r = solr_update(config, solr_host, [
+                        update_doc], solr_collection_name, r=True)
 
         if r.status_code == 200:
             print('Successfully updated Solr dataset document\n')
