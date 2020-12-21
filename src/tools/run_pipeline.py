@@ -46,6 +46,10 @@ def create_parser():
                         help='deletes transformations with version number different than what is \
                             currently in transformation_config')
 
+    parser.add_argument('--developer_solr', default=False, nargs='*',
+                        help='Uses provided Solr host url and collection name for all Solr entries. if no args given, defaults to \
+                            hard coded Solr host url and collection name in configuration files. Otherwise takes two args: Solr host url and collection name')                      
+
     return parser
 
 
@@ -136,7 +140,7 @@ def print_log(log_path):
                     print(f'\t\t\033[91m{message}\033[0m')
 
 
-def run_harvester(datasets, path_to_harvesters, output_dir):
+def run_harvester(datasets, path_to_harvesters, output_dir, solr_info):
     print('\n=========================================================')
     print(
         '================== \033[36mRunning harvesters\033[0m ===================')
@@ -184,7 +188,8 @@ def run_harvester(datasets, path_to_harvesters, output_dir):
                     ret_import = importlib.import_module(harvester)
 
                 ret_import.main(config_path=config_path,
-                                output_path=output_dir)
+                                output_path=output_dir,
+                                solr_info=solr_info)
                 sys.path.remove(str(path_to_code))
 
             harv_logger.info(f'Harvest successful')
@@ -196,7 +201,7 @@ def run_harvester(datasets, path_to_harvesters, output_dir):
         print('=========================================================')
 
 
-def run_transformation(datasets, path_to_preprocessing, output_dir, multiprocessing, user_cpus, wipe):
+def run_transformation(datasets, path_to_preprocessing, output_dir, multiprocessing, user_cpus, wipe, solr_info):
     print('\n=========================================================')
     print(
         '=============== \033[36mRunning transformations\033[0m =================')
@@ -224,7 +229,8 @@ def run_transformation(datasets, path_to_preprocessing, output_dir, multiprocess
                 ret_import = importlib.import_module(transformer)
 
             ret_import.main(config_path=config_path, output_path=output_dir,
-                            multiprocessing=multiprocessing, user_cpus=user_cpus, wipe=wipe)
+                            multiprocessing=multiprocessing, user_cpus=user_cpus, wipe=wipe,
+                            solr_info=solr_info)
             sys.path.remove(str(path_to_code))
 
             trans_logger.info(f'Transformation successful')
@@ -236,7 +242,7 @@ def run_transformation(datasets, path_to_preprocessing, output_dir, multiprocess
         print('=========================================================')
 
 
-def run_aggregation(datasets, path_to_preprocessing, output_dir):
+def run_aggregation(datasets, path_to_preprocessing, output_dir, solr_info):
     print('\n=========================================================')
     print(
         '================ \033[36mRunning aggregations\033[0m ===================')
@@ -262,7 +268,8 @@ def run_aggregation(datasets, path_to_preprocessing, output_dir):
             except:
                 ret_import = importlib.import_module(aggregation)
 
-            ret_import.main(config_path=config_path, output_path=output_dir)
+            ret_import.main(config_path=config_path, output_path=output_dir,
+                            solr_info=solr_info)
             sys.path.remove(str(path_to_code))
             agg_logger.info(f'Aggregation successful')
             print('\033[92mAggregation successful\033[0m')
@@ -292,6 +299,12 @@ if __name__ == '__main__':
     # ------------------- Clean Solr -------------------
     if isinstance(args.clean_solr, list) and len(args.clean_solr) in [0, 2]:
         clean_solr_granules(args=args.clean_solr)
+
+    # ------------------- Developer Solr -------------------
+    if isinstance(args.developer_solr, list) and len(args.developer_solr) in [0, 2]:
+        solr_info = {'solr_url': args.developer_solr[0], 'solr_collection_name': args.developer_solr[1]}
+    else:
+        solr_info = ''
 
     # ------------------- Grids to Solr -------------------
     if args.grids_to_solr:
@@ -407,21 +420,21 @@ if __name__ == '__main__':
     # Run all
     if chosen_option == '1':
         for ds in datasets:
-            run_harvester([ds], path_to_harvesters, output_dir)
+            run_harvester([ds], path_to_harvesters, output_dir, solr_info)
             run_transformation([ds], path_to_preprocessing,
-                               output_dir, multiprocessing, user_cpus, wipe)
-            run_aggregation([ds], path_to_preprocessing, output_dir)
+                               output_dir, multiprocessing, user_cpus, wipe, solr_info)
+            run_aggregation([ds], path_to_preprocessing, output_dir, solr_info)
 
     # Run harvester
     elif chosen_option == '2':
-        run_harvester(datasets, path_to_harvesters, output_dir)
+        run_harvester(datasets, path_to_harvesters, output_dir, solr_info)
 
     # Run up through transformation
     elif chosen_option == '3':
         for ds in datasets:
-            run_harvester([ds], path_to_harvesters, output_dir)
+            run_harvester([ds], path_to_harvesters, output_dir, solr_info)
             run_transformation([ds], path_to_preprocessing,
-                               output_dir, multiprocessing, user_cpus, wipe)
+                               output_dir, multiprocessing, user_cpus, wipe, solr_info)
 
     # Manually enter dataset and pipeline step(s)
     elif chosen_option == '4':
@@ -459,17 +472,17 @@ if __name__ == '__main__':
         wanted_steps = steps_dict[int(steps_index)]
 
         if 'harvest' in wanted_steps:
-            run_harvester([wanted_ds], path_to_harvesters, output_dir)
+            run_harvester([wanted_ds], path_to_harvesters, output_dir, solr_info)
         if 'transform' in wanted_steps:
             run_transformation([wanted_ds], path_to_preprocessing,
-                               output_dir, multiprocessing, user_cpus, wipe)
+                               output_dir, multiprocessing, user_cpus, wipe, solr_info)
         if 'aggregate' in wanted_steps:
-            run_aggregation([wanted_ds], path_to_preprocessing, output_dir)
+            run_aggregation([wanted_ds], path_to_preprocessing, output_dir, solr_info)
         if wanted_steps == 'all':
-            run_harvester([wanted_ds], path_to_harvesters, output_dir)
+            run_harvester([wanted_ds], path_to_harvesters, output_dir, solr_info)
             run_transformation([wanted_ds], path_to_preprocessing,
-                               output_dir, multiprocessing, user_cpus, wipe)
-            run_aggregation([wanted_ds], path_to_preprocessing, output_dir)
+                               output_dir, multiprocessing, user_cpus, wipe, solr_info)
+            run_aggregation([wanted_ds], path_to_preprocessing, output_dir, solr_info)
 
     # Yes/no for each dataset
     elif chosen_option == '5':
@@ -482,10 +495,10 @@ if __name__ == '__main__':
                 else:
                     break
             if yes_no == 'Y':
-                run_harvester([ds], path_to_harvesters, output_dir)
+                run_harvester([ds], path_to_harvesters, output_dir, solr_info)
                 run_transformation([ds], path_to_preprocessing,
-                                   output_dir, multiprocessing, user_cpus, wipe)
-                run_aggregation([ds], path_to_preprocessing, output_dir)
+                                   output_dir, multiprocessing, user_cpus, wipe, solr_info)
+                run_aggregation([ds], path_to_preprocessing, output_dir, solr_info)
             elif yes_no == 'E':
                 break
             else:  # yes_no == 'N'

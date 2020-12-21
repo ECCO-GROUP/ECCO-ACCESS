@@ -255,8 +255,8 @@ def getdate(regex, fname):
     return date
 
 
-def solr_query(config, solr_host, fq):
-    solr_collection_name = config['solr_collection_name']
+def solr_query(config, solr_host, fq, solr_collection_name):
+    # solr_collection_name = config['solr_collection_name']
 
     getVars = {'q': '*:*',
                'fq': fq,
@@ -267,9 +267,9 @@ def solr_query(config, solr_host, fq):
     return response.json()['response']['docs']
 
 
-def solr_update(config, update_body, r=False):
-    solr_host = config['solr_host']
-    solr_collection_name = config['solr_collection_name']
+def solr_update(config, solr_host, update_body, solr_collection_name, r=False):
+    # solr_host = config['solr_host']
+    # solr_collection_name = config['solr_collection_name']
 
     url = solr_host + solr_collection_name + '/update?commit=true'
 
@@ -279,7 +279,7 @@ def solr_update(config, update_body, r=False):
         requests.post(url, json=update_body)
 
 
-def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False):
+def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False, solr_info=''):
     # =====================================================
     # Read configurations from YAML file
     # =====================================================
@@ -314,7 +314,12 @@ def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False):
     data_time_scale = config['data_time_scale']
 
     short_name = 'RDEFT4'
-    solr_host = config['solr_host']
+    if solr_info:
+        solr_host = solr_info['solr_url']
+        solr_collection_name = solr_info['solr_collection_name']
+    else:
+        solr_host = config['solr_host_local']
+        solr_collection_name = config['solr_collection_name']
     version = '1'
 
     if not on_aws:
@@ -338,18 +343,18 @@ def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False):
     descendants_docs = {}
 
     fq = ['type_s:harvested', f'dataset_s:{config["ds_name"]}']
-    query_docs = solr_query(config, solr_host, fq)
+    query_docs = solr_query(config, solr_host, fq, solr_collection_name)
 
     if len(query_docs) > 0:
         for doc in query_docs:
             docs[doc['filename_s']] = doc
 
     fq = ['type_s:dataset', f'dataset_s:{config["ds_name"]}']
-    query_docs = solr_query(config, solr_host, fq)
+    query_docs = solr_query(config, solr_host, fq, solr_collection_name)
 
     # Query for existing descendants docs
     fq = ['type_s:descendants', f'dataset_s:{dataset_name}']
-    existing_descendants_docs = solr_query(config, solr_host, fq)
+    existing_descendants_docs = solr_query(config, solr_host, fq, solr_collection_name)
 
     if len(existing_descendants_docs) > 0:
         for doc in existing_descendants_docs:
@@ -561,7 +566,7 @@ def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False):
 
     if meta:
         # post granule metadata documents for downloaded granules
-        r = solr_update(config, meta, r=True)
+        r = solr_update(config, solr_host, meta, solr_collection_name, r=True)
 
         if r.status_code == 200:
             print('Successfully created or updated Solr harvested documents')
@@ -571,12 +576,12 @@ def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False):
     # Query for Solr failed harvest documents
     fq = ['type_s:harvested',
           f'dataset_s:{dataset_name}', f'harvest_success_b:false']
-    failed_harvesting = solr_query(config, solr_host, fq)
+    failed_harvesting = solr_query(config, solr_host, fq, solr_collection_name)
 
     # Query for Solr successful harvest documents
     fq = ['type_s:harvested',
           f'dataset_s:{dataset_name}', f'harvest_success_b:true']
-    successful_harvesting = solr_query(config, solr_host, fq)
+    successful_harvesting = solr_query(config, solr_host, fq, solr_collection_name)
 
     harvest_status = f'All granules successfully harvested'
 
@@ -589,7 +594,7 @@ def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False):
     overall_end = max(end) if len(end) > 0 else None
 
     fq = ['type_s:dataset', 'dataset_s:'+config['ds_name']]
-    docs = solr_query(config, solr_host, fq)
+    docs = solr_query(config, solr_host, fq, solr_collection_name)
 
     update = (len(docs) == 1)
 
@@ -627,7 +632,7 @@ def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False):
         body.append(ds_meta)
 
         # Post document
-        r = solr_update(config, body, r=True)
+        r = solr_update(config, solr_host, body, solr_collection_name, r=True)
 
         if r.status_code == 200:
             print('Successfully created Solr dataset document')
@@ -638,7 +643,7 @@ def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False):
         # modify updating variable to account for updates in config and then incinerate and rewrite
         # Query for Solr field documents
         fq = ['type_s:field', f'dataset_s:{dataset_name}']
-        field_query = solr_query(config, solr_host, fq)
+        field_query = solr_query(config, solr_host, fq, solr_collection_name)
 
         body = []
         for field in config['fields']:
@@ -657,7 +662,7 @@ def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False):
             body.append(field_obj)
 
         # Update Solr with dataset fields metadata
-        r = solr_update(config, body, r=True)
+        r = solr_update(config, solr_host, body, solr_collection_name, r=True)
 
         if r.status_code == 200:
             print('Successfully created Solr field documents')
@@ -697,7 +702,7 @@ def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False):
                     "set": overall_end.strftime("%Y-%m-%dT%H:%M:%SZ")}
 
         body = [update_doc]
-        r = solr_update(config, body, r=True)
+        r = solr_update(config, solr_host, body, solr_collection_name, r=True)
 
         if r.status_code == 200:
             print('Successfully updated Solr dataset document\n')

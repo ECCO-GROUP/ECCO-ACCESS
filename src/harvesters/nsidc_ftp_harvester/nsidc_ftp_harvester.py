@@ -39,12 +39,12 @@ def getdate(regex, fname):
     return date
 
 
-def solr_query(config, solr_host, fq):
+def solr_query(config, solr_host, fq, solr_collection_name):
     """
     Queries Solr database using the filter query passed in.
     Returns list of Solr entries that satisfies the query.
     """
-    solr_collection_name = config['solr_collection_name']
+    # solr_collection_name = config['solr_collection_name']
 
     getVars = {'q': '*:*',
                'fq': fq,
@@ -55,14 +55,14 @@ def solr_query(config, solr_host, fq):
     return response.json()['response']['docs']
 
 
-def solr_update(config, solr_host, update_body, r=False):
+def solr_update(config, solr_host, update_body, solr_collection_name, r=False):
     """
     Posts an update to Solr database with the update body passed in.
     For each item in update_body, a new entry is created in Solr, unless
     that entry contains an id, in which case that entry is updated with new values.
     Optional return of the request status code (ex: 200 for success)
     """
-    solr_collection_name = config['solr_collection_name']
+    # solr_collection_name = config['solr_collection_name']
 
     url = f'{solr_host}{solr_collection_name}/update?commit=true'
 
@@ -72,7 +72,7 @@ def solr_update(config, solr_host, update_body, r=False):
         requests.post(url, json=update_body)
 
 
-def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False):
+def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False, solr_info=''):
     """
     Pulls data files for NSIDC FTP id and date range given in harvester_config.yaml.
     If not on_aws, saves locally, else saves to s3 bucket.
@@ -118,11 +118,21 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False):
     if on_aws:
         target_bucket_name = config['target_bucket_name']
         target_bucket = s3.Bucket(target_bucket_name)
-        solr_host = config['solr_host_aws']
+        if solr_info:
+            solr_host = solr_info['solr_url']
+            solr_collection_name = solr_info['solr_collection_name']
+        else:
+            solr_host = config['solr_host_aws']
+            solr_collection_name = config['solr_collection_name']
         print(f'Downloading {dataset_name} files and uploading to \
             {target_bucket_name}/{dataset_name}\n')
     else:
-        solr_host = config['solr_host_local']
+        if solr_info:
+            solr_host = solr_info['solr_url']
+            solr_collection_name = solr_info['solr_collection_name']
+        else:
+            solr_host = config['solr_host_local']
+            solr_collection_name = config['solr_collection_name']
         print(f'Downloading {dataset_name} files to {target_dir}\n')
 
     # if target path doesn't exist, make them
@@ -137,18 +147,18 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False):
 
     # Query for existing harvested docs
     fq = ['type_s:harvested', f'dataset_s:{dataset_name}']
-    query_docs = solr_query(config, solr_host, fq)
+    query_docs = solr_query(config, solr_host, fq, solr_collection_name)
 
     if len(query_docs) > 0:
         for doc in query_docs:
             docs[doc['filename_s']] = doc
 
     fq = ['type_s:dataset', f'dataset_s:{dataset_name}']
-    query_docs = solr_query(config, solr_host, fq)
+    query_docs = solr_query(config, solr_host, fq, solr_collection_name)
 
     # Query for existing descendants docs
     fq = ['type_s:descendants', f'dataset_s:{dataset_name}']
-    existing_descendants_docs = solr_query(config, solr_host, fq)
+    existing_descendants_docs = solr_query(config, solr_host, fq, solr_collection_name)
 
     if len(existing_descendants_docs) > 0:
         for doc in existing_descendants_docs:
@@ -352,7 +362,7 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False):
     # Only update Solr harvested entries if there are fresh downloads
     if entries_for_solr:
         # Update Solr with downloaded granule metadata entries
-        r = solr_update(config, solr_host, entries_for_solr, r=True)
+        r = solr_update(config, solr_host, entries_for_solr, solr_collection_name, r=True)
 
         if r.status_code == 200:
             print('Successfully created or updated Solr harvested documents')
@@ -362,12 +372,12 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False):
     # Query for Solr failed harvest documents
     fq = ['type_s:harvested',
           f'dataset_s:{dataset_name}', f'harvest_success_b:false']
-    failed_harvesting = solr_query(config, solr_host, fq)
+    failed_harvesting = solr_query(config, solr_host, fq, solr_collection_name)
 
     # Query for Solr successful harvest documents
     fq = ['type_s:harvested',
           f'dataset_s:{dataset_name}', f'harvest_success_b:true']
-    successful_harvesting = solr_query(config, solr_host, fq)
+    successful_harvesting = solr_query(config, solr_host, fq, solr_collection_name)
 
     harvest_status = f'All granules successfully harvested'
 
@@ -381,7 +391,7 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False):
 
     # Query for Solr Dataset-level Document
     fq = ['type_s:dataset', f'dataset_s:{dataset_name}']
-    dataset_query = solr_query(config, solr_host, fq)
+    dataset_query = solr_query(config, solr_host, fq, solr_collection_name)
 
     # If dataset entry exists on Solr
     update = (len(dataset_query) == 1)
@@ -420,7 +430,7 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False):
         ds_meta['harvest_status_s'] = harvest_status
 
         # Update Solr with dataset metadata
-        r = solr_update(config, solr_host, [ds_meta], r=True)
+        r = solr_update(config, solr_host, [ds_meta], solr_collection_name, r=True)
 
         if r.status_code == 200:
             print('Successfully created Solr dataset document')
@@ -435,7 +445,7 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False):
 
         # Query for Solr field documents
         fq = ['type_s:field', f'dataset_s:{dataset_name}']
-        field_query = solr_query(config, solr_host, fq)
+        field_query = solr_query(config, solr_host, fq, solr_collection_name)
 
         body = []
         for field in config['fields']:
@@ -454,7 +464,7 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False):
             body.append(field_obj)
 
         # Update Solr with dataset fields metadata
-        r = solr_update(config, solr_host, body, r=True)
+        r = solr_update(config, solr_host, body, solr_collection_name, r=True)
 
         if r.status_code == 200:
             print('Successfully created Solr field documents')
@@ -495,7 +505,7 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False):
                     "set": overall_end.strftime(time_format)}
 
         # Update Solr with modified dataset entry
-        r = solr_update(config, solr_host, [update_doc], r=True)
+        r = solr_update(config, solr_host, [update_doc], solr_collection_name, r=True)
 
         if r.status_code == 200:
             print('Successfully updated Solr dataset document\n')

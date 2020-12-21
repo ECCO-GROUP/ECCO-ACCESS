@@ -51,8 +51,8 @@ def md5(fname):
 
 # Queries Solr based on config information and filter query
 # Returns list of Solr entries (docs)
-def solr_query(config, solr_host, fq):
-    solr_collection_name = config['solr_collection_name']
+def solr_query(config, solr_host, fq, solr_collection_name):
+    # solr_collection_name = config['solr_collection_name']
 
     getVars = {'q': '*:*',
                'fq': fq,
@@ -66,8 +66,8 @@ def solr_query(config, solr_host, fq):
 
 # Posts update to Solr with provided update body
 # Optional return of posting status code
-def solr_update(config, solr_host, update_body, r=False):
-    solr_collection_name = config['solr_collection_name']
+def solr_update(config, solr_host, update_body, solr_collection_name, r=False):
+    # solr_collection_name = config['solr_collection_name']
 
     url = solr_host + solr_collection_name + '/update?commit=true'
 
@@ -78,7 +78,7 @@ def solr_update(config, solr_host, update_body, r=False):
 
 
 # Aggregates data into annual files, saves them, and updates Solr
-def run_aggregation(output_dir, s3=None, config_path=''):
+def run_aggregation(output_dir, s3=None, config_path='', solr_info=''):
     # =====================================================
     # Read configurations from YAML file
     # =====================================================
@@ -106,18 +106,28 @@ def run_aggregation(output_dir, s3=None, config_path=''):
     logger = logging.getLogger(f'pipeline.{dataset_name}.aggregation')
 
     if s3:
-        solr_host = config['solr_host_aws']
+        if solr_info:
+            solr_host = solr_info['solr_url']
+            solr_collection_name = solr_info['solr_collection_name']
+        else:
+            solr_host = config['solr_host_aws']
+            solr_collection_name = config['solr_collection_name']
     else:
-        solr_host = config['solr_host_local']
+        if solr_info:
+            solr_host = solr_info['solr_url']
+            solr_collection_name = solr_info['solr_collection_name']
+        else:
+            solr_host = config['solr_host_local']
+            solr_collection_name = config['solr_collection_name']
 
     fq = ['type_s:grid']
-    grids = [grid for grid in solr_query(config, solr_host, fq)]
+    grids = [grid for grid in solr_query(config, solr_host, fq, solr_collection_name)]
 
     fq = ['type_s:field', f'dataset_s:{dataset_name}']
-    fields = solr_query(config, solr_host, fq)
+    fields = solr_query(config, solr_host, fq, solr_collection_name)
 
     fq = ['type_s:dataset', f'dataset_s:{dataset_name}']
-    dataset_metadata = solr_query(config, solr_host, fq)[0]
+    dataset_metadata = solr_query(config, solr_host, fq, solr_collection_name)[0]
 
     aggregate_all_years = False
     aggregation_version = str(config['version'])
@@ -218,7 +228,7 @@ def run_aggregation(output_dir, s3=None, config_path=''):
                     fq = [f'dataset_s:{dataset_name}', 'type_s:transformation',
                           f'grid_name_s:{grid_name}', f'field_s:{field_name}', f'date_s:{date}*']
 
-                    docs = solr_query(config, solr_host, fq)
+                    docs = solr_query(config, solr_host, fq, solr_collection_name)
 
                     # If first of month is not found, query with 7 day tolerance only for monthly data
                     if not docs and data_time_scale == 'monthly':
@@ -241,7 +251,7 @@ def run_aggregation(output_dir, s3=None, config_path=''):
                         for tol_date in tolerance_days:
                             fq = [f'dataset_s:{dataset_name}', 'type_s:transformation',
                                   f'grid_name_s:{grid_name}', f'field_s:{field_name}', f'date_s:{tol_date}*']
-                            docs = solr_query(config, solr_host, fq)
+                            docs = solr_query(config, solr_host, fq, solr_collection_name)
 
                             if docs:
                                 break
@@ -273,7 +283,7 @@ def run_aggregation(output_dir, s3=None, config_path=''):
                         # Update JSON transformations list
                         fq = [f'dataset_s:{dataset_name}', 'type_s:harvested',
                               f'pre_transformation_file_path_s:"{doc["pre_transformation_file_path_s"]}"']
-                        harvested_metadata = solr_query(config, solr_host, fq)
+                        harvested_metadata = solr_query(config, solr_host, fq, solr_collection_name)
 
                         transformation_metadata = doc
                         transformation_metadata['harvested'] = harvested_metadata
@@ -452,7 +462,7 @@ def run_aggregation(output_dir, s3=None, config_path=''):
                 # Query Solr for existing aggregation
                 fq = [f'dataset_s:{dataset_name}', 'type_s:aggregation',
                       f'grid_name_s:{grid_name}', f'field_s:{field_name}', f'year_s:{year}']
-                docs = solr_query(config, solr_host, fq)
+                docs = solr_query(config, solr_host, fq, solr_collection_name)
 
                 # If aggregation exists, update using Solr entry id
                 if len(docs) > 0:
@@ -556,7 +566,7 @@ def run_aggregation(output_dir, s3=None, config_path=''):
                     else:
                         update_body[0]["notes_s"] = {"set": ''}
 
-                r = solr_update(config, solr_host, update_body, r=True)
+                r = solr_update(config, solr_host, update_body, solr_collection_name, r=True)
 
                 if r.status_code != 200:
                     print(
@@ -565,7 +575,7 @@ def run_aggregation(output_dir, s3=None, config_path=''):
                 # Query for descendants entries from this year
                 fq = ['type_s:descendants',
                       f'dataset_s:{dataset_name}', f'date_s:{year}*']
-                existing_descendants_docs = solr_query(config, solr_host, fq)
+                existing_descendants_docs = solr_query(config, solr_host, fq, solr_collection_name)
 
                 # if descendants entries already exist, update them
                 if len(existing_descendants_docs) > 0:
@@ -584,7 +594,7 @@ def run_aggregation(output_dir, s3=None, config_path=''):
                             update_body[0][f'{grid_name}_{field_name}_aggregated_{key}_path_s'] = {
                                 "set": value}
 
-                        r = solr_update(config, solr_host, update_body, r=True)
+                        r = solr_update(config, solr_host, update_body, solr_collection_name, r=True)
 
                         if r.status_code != 200:
                             print(
@@ -592,7 +602,7 @@ def run_aggregation(output_dir, s3=None, config_path=''):
 
                 fq = [f'dataset_s:{dataset_name}', 'type_s:aggregation',
                       f'grid_name_s:{grid_name}', f'field_s:{field_name}', f'year_s:{year}']
-                docs = solr_query(config, solr_host, fq)
+                docs = solr_query(config, solr_host, fq, solr_collection_name)
 
                 # Export annual descendants JSON file for each aggregation created
                 print(
@@ -608,13 +618,13 @@ def run_aggregation(output_dir, s3=None, config_path=''):
     fq = [f'dataset_s:{dataset_name}',
           'type_s:aggregation', 'aggregation_success_b:true']
     successful_aggregations = solr_query(
-        config, solr_host, fq)
+        config, solr_host, fq, solr_collection_name)
 
     # Query Solr for failed aggregation documents
     fq = [f'dataset_s:{dataset_name}',
           'type_s:aggregation', 'aggregation_success_b:false']
     failed_aggregations = solr_query(
-        config, solr_host, fq)
+        config, solr_host, fq, solr_collection_name)
 
     aggregation_status = f'All aggregations successful'
 
@@ -638,7 +648,7 @@ def run_aggregation(output_dir, s3=None, config_path=''):
         solr_years_updated = f'{grid["grid_name_s"]}_years_updated_ss'
         update_body[0][solr_years_updated] = {"set": []}
 
-    r = solr_update(config, solr_host, update_body, r=True)
+    r = solr_update(config, solr_host, update_body, solr_collection_name, r=True)
 
     if r.status_code == 200:
         print(

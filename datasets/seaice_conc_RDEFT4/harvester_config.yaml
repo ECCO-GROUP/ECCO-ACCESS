@@ -44,7 +44,7 @@ original_dataset_doi: 10.5067/96JO0KIFDAS8
 
 # Local
 # REMEMBER, REPLACE LOCAL PATHS SO THEY POINT TO YOUR /SRC/ DIRECTORY
-solr_host: http://localhost:8983/solr/
+solr_host_local: http://localhost:8983/solr/
 solr_collection_name: ecco_datasets
 
 # AWS

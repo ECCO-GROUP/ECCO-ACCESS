@@ -28,8 +28,8 @@ def md5(fname):
 
 # Queries Solr based on config information and filter query
 # Returns list of Solr entries (docs)
-def solr_query(config, solr_host, fq):
-    solr_collection_name = config['solr_collection_name']
+def solr_query(config, solr_host, fq, solr_collection_name):
+    # solr_collection_name = config['solr_collection_name']
 
     getVars = {'q': '*:*',
                'fq': fq,
@@ -42,8 +42,8 @@ def solr_query(config, solr_host, fq):
 
 # Posts update to Solr with provided update body
 # Optional return of posting status code
-def solr_update(config, solr_host, update_body, r=False):
-    solr_collection_name = config['solr_collection_name']
+def solr_update(config, solr_host, update_body, solr_collection_name, r=False):
+    # solr_collection_name = config['solr_collection_name']
 
     url = solr_host + solr_collection_name + '/update?commit=true'
 
@@ -54,10 +54,10 @@ def solr_update(config, solr_host, update_body, r=False):
 
 
 # Calls run_locally and catches any errors
-def run_locally_wrapper(source_file_path, remaining_transformations, output_dir, config_path='', verbose=True):
+def run_locally_wrapper(source_file_path, remaining_transformations, output_dir, config_path='', verbose=True, solr_info=''):
     # try:
     return run_locally(source_file_path,
-                       remaining_transformations, output_dir, config_path=config_path, verbose=verbose)
+                       remaining_transformations, output_dir, config_path=config_path, verbose=verbose, solr_info=solr_info)
     # except Exception as e:
     #     print(e)
     #     print('Unable to run local transformation')
@@ -65,7 +65,7 @@ def run_locally_wrapper(source_file_path, remaining_transformations, output_dir,
 
 # Performs and saves locally all remaining transformations for a given source granule
 # Updates Solr with transformation entries and updates descendants, and dataset entries
-def run_locally(source_file_path, remaining_transformations, output_dir, config_path='', verbose=True):
+def run_locally(source_file_path, remaining_transformations, output_dir, config_path='', verbose=True, solr_info=''):
     # Conditional function definition:
     # verboseprint will use the print function if verbose is true
     # otherwise will use a lambda function that returns None (effectively not printing)
@@ -110,16 +110,21 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
     file_name = source_file_path.split('/')[-1]
     dataset_name = config['ds_name']
     transformation_version = config['version']
-    solr_host = config['solr_host_local']
+    if solr_info:
+        solr_host = solr_info['solr_url']
+        solr_collection_name = solr_info['solr_collection_name']
+    else:
+        solr_host = config['solr_host_local']
+        solr_collection_name = config['solr_collection_name']
 
     # Query Solr for dataset entry
     fq = [f'dataset_s:{dataset_name}', 'type_s:dataset']
-    dataset_metadata = solr_query(config, solr_host, fq)[0]
+    dataset_metadata = solr_query(config, solr_host, fq, solr_collection_name)[0]
 
     # Query Solr for harvested entry to get origin_checksum and date
     query_fq = [f'dataset_s:{dataset_name}', 'type_s:harvested',
                 f'pre_transformation_file_path_s:"{source_file_path}"']
-    harvested_metadata = solr_query(config, solr_host, query_fq)[0]
+    harvested_metadata = solr_query(config, solr_host, query_fq, solr_collection_name)[0]
     origin_checksum = harvested_metadata['checksum_s']
     date = harvested_metadata['date_s']
 
@@ -149,7 +154,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
 
         # Query Solr for grid metadata
         fq = ['type_s:grid', f'grid_name_s:{grid_name}']
-        grid_metadata = solr_query(config, solr_host, fq)[0]
+        grid_metadata = solr_query(config, solr_host, fq, solr_collection_name)[0]
 
         grid_path = grid_metadata['grid_path_s']
         grid_type = grid_metadata['grid_type_s']
@@ -258,7 +263,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
             verboseprint(' - Updating Solr with factors')
             # Query Solr for dataset entry
             query_fq = [f'dataset_s:{dataset_name}', 'type_s:dataset']
-            doc_id = solr_query(config, solr_host, query_fq)[0]['id']
+            doc_id = solr_query(config, solr_host, query_fq, solr_collection_name)[0]['id']
 
             # Update Solr dataset entry with factors metadata
             update_body = [
@@ -270,7 +275,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
                 }
             ]
 
-            r = solr_update(config, solr_host, update_body, r=True)
+            r = solr_update(config, solr_host, update_body, solr_collection_name, r=True)
 
             if r.status_code == 200:
                 verboseprint(
@@ -288,7 +293,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
             # Query if grid/field combination transformation entry exists
             query_fq = [f'dataset_s:{dataset_name}', 'type_s:transformation', f'grid_name_s:{grid_name}',
                         f'field_s:{field_name}', f'pre_transformation_file_path_s:"{source_file_path}"']
-            docs = solr_query(config, solr_host, query_fq)
+            docs = solr_query(config, solr_host, query_fq, solr_collection_name)
             update_body = []
             transform = {}
 
@@ -300,7 +305,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
                 transform['transformation_in_progress_b'] = {"set": True}
                 transform['success_b'] = {"set": False}
                 update_body.append(transform)
-                r = solr_update(config, solr_host, update_body, r=True)
+                r = solr_update(config, solr_host, update_body, solr_collection_name, r=True)
             else:
                 # Initialize new transformation entry
                 transform['type_s'] = 'transformation'
@@ -315,7 +320,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
                 transform['transformation_in_progress_b'] = True
                 transform['success_b'] = False
                 update_body.append(transform)
-                r = solr_update(config, solr_host, update_body, r=True)
+                r = solr_update(config, solr_host, update_body, solr_collection_name, r=True)
 
             if r.status_code != 200:
                 verboseprint(
@@ -378,8 +383,8 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
             query_fq = [f'dataset_s:{dataset_name}', 'type_s:transformation', f'grid_name_s:{grid_name}',
                         f'field_s:{field_name}', f'pre_transformation_file_path_s:"{source_file_path}"']
 
-            docs = solr_query(config, solr_host, query_fq)
-            doc_id = solr_query(config, solr_host, query_fq)[0]['id']
+            docs = solr_query(config, solr_host, query_fq, solr_collection_name)
+            doc_id = solr_query(config, solr_host, query_fq, solr_collection_name)[0]['id']
 
             transformation_successes = transformation_successes and success
             transformation_file_paths[f'{grid_name}_{field_name}_transformation_file_path_s'] = transformed_location
@@ -398,7 +403,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
                 }
             ]
 
-            r = solr_update(config, solr_host, update_body, r=True)
+            r = solr_update(config, solr_host, update_body, solr_collection_name, r=True)
 
             if r.status_code != 200:
                 verboseprint(
@@ -417,8 +422,8 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
     if hemi:
         query_fq.append(f'hemisphere_s:{hemi[1:]}')
 
-    docs = solr_query(config, solr_host, query_fq)
-    doc_id = solr_query(config, solr_host, query_fq)[0]['id']
+    docs = solr_query(config, solr_host, query_fq, solr_collection_name)
+    doc_id = solr_query(config, solr_host, query_fq, solr_collection_name)[0]['id']
 
     # Update descendants entry in Solr
     update_body = [
@@ -432,7 +437,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
     for key, path in transformation_file_paths.items():
         update_body[0][key] = {"set": path}
 
-    r = solr_update(config, solr_host, update_body, r=True)
+    r = solr_update(config, solr_host, update_body, solr_collection_name, r=True)
 
     if r.status_code != 200:
         verboseprint(
@@ -469,15 +474,16 @@ def run_using_aws(s3, filename):
     transformation_version = config['version']
 
     solr_host = config['solr_host_aws']
+    solr_collection_name = config['solr_collection_name']
 
     # Query Solr for dataset entry
     fq = [f'dataset_s:{dataset_name}', 'type_s:dataset']
-    dataset_metadata = solr_query(config, solr_host, fq)[0]
+    dataset_metadata = solr_query(config, solr_host, fq, solr_collection_name)[0]
 
     # Query Solr for harvested entry to get origin_checksum and date
     query_fq = [f'dataset_s:{dataset_name}', 'type_s:harvested',
                 f'filename_s:"{filename}"']
-    harvested_metadata = solr_query(config, solr_host, query_fq)[0]
+    harvested_metadata = solr_query(config, solr_host, query_fq, solr_collection_name)[0]
     source_file_path = harvested_metadata['pre_transformation_file_path_s']
     origin_checksum = harvested_metadata['checksum_s']
     date = harvested_metadata['date_s']
@@ -504,7 +510,7 @@ def run_using_aws(s3, filename):
 
     # Query Solr for grid metadata
     fq = ['type_s:grid', f'grid_name_s:{grid_name}']
-    grid_metadata = solr_query(config, solr_host, fq)[0]
+    grid_metadata = solr_query(config, solr_host, fq, solr_collection_name)[0]
 
     grid_path = grid_metadata['grid_path_s']
     grid_type = grid_metadata['grid_type_s']
@@ -613,7 +619,7 @@ def run_using_aws(s3, filename):
         print('===Updating Solr with factors===')
         # Query Solr for dataset entry
         query_fq = [f'dataset_s:{dataset_name}', 'type_s:dataset']
-        doc_id = solr_query(config, solr_host, query_fq)[0]['id']
+        doc_id = solr_query(config, solr_host, query_fq, solr_collection_name)[0]['id']
 
         aws_factors_path = "s3://" + target_bucket_name + '/' + output_filename
 
@@ -627,7 +633,7 @@ def run_using_aws(s3, filename):
             }
         ]
 
-        r = solr_update(config, solr_host, update_body, r=True)
+        r = solr_update(config, solr_host, update_body, solr_collection_name, r=True)
 
         if r.status_code == 200:
             print('Successfully updated Solr with factors information')
@@ -647,7 +653,7 @@ def run_using_aws(s3, filename):
     print("===loading data DONE===")
 
     query_fq = [f'dataset_s:{dataset_name}', f'type_s:field']
-    fields = solr_query(config, solr_host, query_fq)
+    fields = solr_query(config, solr_host, query_fq, solr_collection_name)
 
     for field in fields:
         field_name = field["name_s"]
@@ -655,7 +661,7 @@ def run_using_aws(s3, filename):
         # Query if grid/field combination transformation entry exists
         query_fq = [f'dataset_s:{dataset_name}', 'type_s:transformation', f'grid_name_s:{grid_name}',
                     f'field_s:{field_name}', f'pre_transformation_file_path_s:"{source_file_path}"']
-        docs = solr_query(config, solr_host, query_fq)
+        docs = solr_query(config, solr_host, query_fq, solr_collection_name)
 
         update_body = []
         transform = {}
@@ -667,7 +673,7 @@ def run_using_aws(s3, filename):
             transform['id'] = docs[0]['id']
             transform['transformation_in_progress_b']: {"set": True}
             transform['success_b']: {"set": False}
-            r = solr_update(config, solr_host, transform, r=True)
+            r = solr_update(config, solr_host, transform, solr_collection_name, r=True)
         else:
             # Initialize new transformation entry
             transform['type_s'] = 'transformation'
@@ -682,7 +688,7 @@ def run_using_aws(s3, filename):
             transform['transformation_in_progress_b'] = True
             transform['success_b'] = False
             update_body.append(transform)
-            r = solr_update(config, solr_host, update_body, r=True)
+            r = solr_update(config, solr_host, update_body, solr_collection_name, r=True)
 
         if r.status_code != 200:
             print(
@@ -736,8 +742,8 @@ def run_using_aws(s3, filename):
         query_fq = [f'dataset_s:{dataset_name}', 'type_s:transformation', f'grid_name_s:{grid_name}',
                     f'field_s:{field_name}', f'pre_transformation_file_path_s:"{source_file_path}"']
 
-        docs = solr_query(config, solr_host, query_fq)
-        doc_id = solr_query(config, solr_host, query_fq)[0]['id']
+        docs = solr_query(config, solr_host, query_fq, solr_collection_name)
+        doc_id = solr_query(config, solr_host, query_fq, solr_collection_name)[0]['id']
 
         transformation_successes = transformation_successes and success
         transformation_file_paths[f'{grid_name}_{field_name}_transformation_file_path_s'] = path
@@ -756,7 +762,7 @@ def run_using_aws(s3, filename):
             }
         ]
 
-        r = solr_update(config, solr_host, update_body, r=True)
+        r = solr_update(config, solr_host, update_body, solr_collection_name, r=True)
 
         if r.status_code != 200:
             print(
@@ -770,8 +776,8 @@ def run_using_aws(s3, filename):
     if hemi:
         query_fq.append(f'hemisphere_s:{hemi[1:]}')
 
-    docs = solr_query(config, solr_host, query_fq)
-    doc_id = solr_query(config, solr_host, query_fq)[0]['id']
+    docs = solr_query(config, solr_host, query_fq, solr_collection_name)
+    doc_id = solr_query(config, solr_host, query_fq, solr_collection_name)[0]['id']
 
     # Update descendants entry in Solr
     update_body = [
@@ -785,7 +791,7 @@ def run_using_aws(s3, filename):
     for key, path in transformation_file_paths.items():
         update_body[0][key] = {"set": path}
 
-    r = solr_update(config, solr_host, update_body, r=True)
+    r = solr_update(config, solr_host, update_body, solr_collection_name, r=True)
 
     if r.status_code != 200:
         print(
