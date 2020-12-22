@@ -10,6 +10,7 @@ import hashlib
 import requests
 import itertools
 import numpy as np
+import xarray as xr
 from pathlib import Path
 from dateutil import parser
 from datetime import datetime
@@ -462,6 +463,17 @@ def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
             modified_time = root.find(
                 'GranuleURMetaData').find('LastUpdate').text.replace(' ', 'T')
             modified_time = f'{modified_time[:-1]}Z'
+            original_start_time = root.find('GranuleURMetaData').find(
+                'RangeDateTime').find('RangeBeginningTime').text
+            original_start_date = root.find('GranuleURMetaData').find(
+                'RangeDateTime').find('RangeBeginningDate').text
+            original_end_time = root.find('GranuleURMetaData').find(
+                'RangeDateTime').find('RangeEndingTime').text
+            original_end_date = root.find('GranuleURMetaData').find(
+                'RangeDateTime').find('RangeEndingDate').text
+
+            time_coverage_start = f'{original_start_date}T{original_start_time}'
+            time_coverage_end = f'{original_end_date}T{original_end_time}'
 
             # check if file in download date range
             if (start_time_dt <= date_time) and (end_time_dt >= date_time):
@@ -503,6 +515,11 @@ def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
                             data = opener.open(req).read()
                             open(local_fp, 'wb').write(data)
 
+                            ds = xr.open_dataset(local_fp)
+                            ds.attrs['time_coverage_start'] = time_coverage_start
+                            ds.attrs['time_coverage_end'] = time_coverage_end
+                            ds.to_netcdf(local_fp)
+
                         # If file exists locally, but is out of date, download it
                         elif datetime.fromtimestamp(os.path.getmtime(local_fp)) <= modified_time:
                             print(
@@ -515,6 +532,11 @@ def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
                             opener = build_opener(HTTPCookieProcessor())
                             data = opener.open(req).read()
                             open(local_fp, 'wb').write(data)
+
+                            ds = xr.open_dataset(local_fp)
+                            ds.attrs['time_coverage_start'] = time_coverage_start
+                            ds.attrs['time_coverage_end'] = time_coverage_end
+                            ds.to_netcdf(local_fp)
 
                         else:
                             print(
@@ -715,8 +737,9 @@ def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
         update_doc = {}
         update_doc['id'] = dataset_metadata['id']
         update_doc['last_checked_dt'] = {"set": chk_time}
-        update_doc['start_date_dt'] = {"set": min(dates)}
-        update_doc['end_date_dt'] = {"set": max(dates)}
+        if dates:
+            update_doc['start_date_dt'] = {"set": min(dates)}
+            update_doc['end_date_dt'] = {"set": max(dates)}
 
         if entries_for_solr:
             update_doc['harvest_status_s'] = {"set": harvest_status}

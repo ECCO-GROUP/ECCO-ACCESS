@@ -568,8 +568,9 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False, s
         update_doc = {}
         update_doc['id'] = dataset_metadata['id']
         update_doc['last_checked_dt'] = {"set": chk_time}
-        update_doc['start_date_dt'] = {"set": min(dates)}
-        update_doc['end_date_dt'] = {"set": max(dates)}
+        if dates:
+            update_doc['start_date_dt'] = {"set": min(dates)}
+            update_doc['end_date_dt'] = {"set": max(dates)}
 
         if entries_for_solr:
             update_doc['harvest_status_s'] = {"set": harvest_status}
