@@ -93,7 +93,7 @@ def run_aggregation(output_dir, s3=None, config_path='', solr_info='', grids_to_
     # Code to import ecco utils locally...
     # =====================================================
     generalized_functions_path = Path(
-        f'{Path(__file__).resolve().parents[4]}/ECCO-ACCESS/ecco-cloud-utils/')
+        f'{Path(__file__).resolve().parents[4]}/ecco-cloud-utils/')
     sys.path.append(str(generalized_functions_path))
     import ecco_cloud_utils as ea  # pylint: disable=import-error
 
@@ -199,16 +199,10 @@ def run_aggregation(output_dir, s3=None, config_path='', solr_info='', grids_to_
             if data_time_scale == 'daily':
                 dates_in_year = np.arange(
                     f'{year}-01-01', f'{int(year)+1}-01-01', dtype='datetime64[D]')
-
             elif data_time_scale == 'monthly':
-                if config['time_center_in_middle']:
-                    dates_in_year = np.arange(
-                        f'{year}-01', f'{int(year)+1}-01', dtype='datetime64[M]')
-                    dates_in_year = [f'{date}-16' for date in dates_in_year]
-                else:
-                    dates_in_year = np.arange(
-                        f'{year}-01', f'{int(year)+1}-01', dtype='datetime64[M]')
-                    dates_in_year = [f'{date}-01' for date in dates_in_year]
+                dates_in_year = np.arange(
+                    f'{year}-01', f'{int(year)+1}-01', dtype='datetime64[M]')
+                dates_in_year = [f'{date}-01' for date in dates_in_year]
 
             # Iterate through dataset fields
             for field in fields:

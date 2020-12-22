@@ -38,7 +38,7 @@ def create_parser():
                         help=f'sets the number of multiprocesses used during transformation with a \
                             system max of {cpu_count()} with default set to half of system max')
 
-    parser.add_argument('--clean_solr', default=False, nargs='*',
+    parser.add_argument('--harvested_entry_validation', default=False, nargs='*',
                         help='verifies each Solr harvester entry points to a valid file. if no args given, defaults to \
                             hard coded Solr address. Otherwise takes two args: Solr host url and collection name')
 
@@ -55,8 +55,15 @@ def create_parser():
 
     return parser
 
+def check_solr_grids(solr_host, solr_collection_name):
+    response = requests.get(f'{solr_host}{solr_collection_name}/select?fq=type_s%3Agrid&q=*%3A*')
+    if not response.json()['response']['docs']:
+        return True
+    else:
+        return False
 
-def clean_solr_granules(args=[]):
+
+def harvested_entry_validation(args=[]):
     solr_host = 'http://localhost:8983/solr/'
     solr_collection_name = 'ecco_datasets'
 
@@ -300,9 +307,9 @@ if __name__ == '__main__':
     path_to_grids = Path(f'{pipeline_path.parents[2]}/grids_to_solr')
     path_to_datasets = Path(f'{pipeline_path.parents[2]}/datasets')
 
-    # ------------------- Clean Solr -------------------
-    if isinstance(args.clean_solr, list) and len(args.clean_solr) in [0, 2]:
-        clean_solr_granules(args=args.clean_solr)
+    # ------------------- Harvested Entry Validation -------------------
+    if isinstance(args.harvested_entry_validation, list) and len(args.harvested_entry_validation) in [0, 2]:
+        harvested_entry_validation(args=args.harvested_entry_validation)
 
     # ------------------- Developer Solr -------------------
     if isinstance(args.developer_solr, list) and len(args.developer_solr) in [0, 2]:
@@ -320,7 +327,13 @@ if __name__ == '__main__':
         verify_grids = False
 
     # ------------------- Grids to Solr -------------------
-    if args.grids_to_solr or verify_grids:
+    if solr_info:
+        solr_host = solr_info['solr_url']
+        solr_collection_name = solr_info['solr_collection_name']
+    else:
+        solr_host = 'http://localhost:8983/solr/'
+        solr_collection_name = 'ecco_datasets'
+    if args.grids_to_solr or verify_grids or check_solr_grids(solr_host, solr_collection_name):
         try:
             print(f'\n\033[93mRunning grids_to_solr\033[0m')
             print('=========================================================')
