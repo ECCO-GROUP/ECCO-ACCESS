@@ -15,7 +15,7 @@ from multiprocessing import cpu_count
 
 # Hardcoded output directory path for pipeline files
 # Leave blank to be prompted for an output directory
-output_dir = 'C:/Users/dunca/Documents/JPL/Code/pipeline_output/'
+output_dir = '/Users/kevinmarlis/Developer/JPL/pipeline_output'
 
 
 def create_parser():
@@ -51,7 +51,7 @@ def create_parser():
                             hard coded Solr host url and collection name in configuration files. Otherwise takes two args: Solr host url and collection name')
 
     parser.add_argument('--grids_to_use', default=False, nargs='*',
-                        help='Names of grids to use during the pipeline')                      
+                        help='Names of grids to use during the pipeline')
 
     return parser
 
@@ -306,10 +306,11 @@ if __name__ == '__main__':
 
     # ------------------- Developer Solr -------------------
     if isinstance(args.developer_solr, list) and len(args.developer_solr) in [0, 2]:
-        solr_info = {'solr_url': args.developer_solr[0], 'solr_collection_name': args.developer_solr[1]}
+        solr_info = {
+            'solr_url': args.developer_solr[0], 'solr_collection_name': args.developer_solr[1]}
     else:
         solr_info = ''
-    
+
     # ------------------- Grids to Use -------------------
     if isinstance(args.grids_to_use, list):
         grids_to_use = args.grids_to_use
@@ -332,12 +333,14 @@ if __name__ == '__main__':
             except:
                 ret_import = importlib.import_module(grids_to_solr)
 
-            grids_not_in_solr = ret_import.main(path=str(path_to_grids), grids_to_use=grids_to_use, verify=verify_grids)
+            grids_not_in_solr = ret_import.main(
+                path=str(path_to_grids), grids_to_use=grids_to_use, verify=verify_grids)
             sys.path.remove(str(path_to_grids))
 
             if grids_not_in_solr:
                 for name in grids_not_in_solr:
-                    print(f'Grid "{name}" not in Solr. Ensure it\'s file name is present in grids_config.yaml and run pipeline with the --grids_to_solr argument')
+                    print(
+                        f'Grid "{name}" not in Solr. Ensure it\'s file name is present in grids_config.yaml and run pipeline with the --grids_to_solr argument')
                 sys.exit()
 
             print('\033[92mgrids_to_solr successful\033[0m')
@@ -439,19 +442,23 @@ if __name__ == '__main__':
     # Run all
     if chosen_option == '1':
         for ds in datasets:
-            run_harvester([ds], path_to_harvesters, output_dir, solr_info, grids_to_use)
+            run_harvester([ds], path_to_harvesters,
+                          output_dir, solr_info, grids_to_use)
             run_transformation([ds], path_to_preprocessing,
                                output_dir, multiprocessing, user_cpus, wipe, solr_info, grids_to_use)
-            run_aggregation([ds], path_to_preprocessing, output_dir, solr_info, grids_to_use)
+            run_aggregation([ds], path_to_preprocessing,
+                            output_dir, solr_info, grids_to_use)
 
     # Run harvester
     elif chosen_option == '2':
-        run_harvester(datasets, path_to_harvesters, output_dir, solr_info, grids_to_use)
+        run_harvester(datasets, path_to_harvesters,
+                      output_dir, solr_info, grids_to_use)
 
     # Run up through transformation
     elif chosen_option == '3':
         for ds in datasets:
-            run_harvester([ds], path_to_harvesters, output_dir, solr_info, grids_to_use)
+            run_harvester([ds], path_to_harvesters,
+                          output_dir, solr_info, grids_to_use)
             run_transformation([ds], path_to_preprocessing,
                                output_dir, multiprocessing, user_cpus, wipe, solr_info, grids_to_use)
 
@@ -491,17 +498,21 @@ if __name__ == '__main__':
         wanted_steps = steps_dict[int(steps_index)]
 
         if 'harvest' in wanted_steps:
-            run_harvester([wanted_ds], path_to_harvesters, output_dir, solr_info, grids_to_use)
+            run_harvester([wanted_ds], path_to_harvesters,
+                          output_dir, solr_info, grids_to_use)
         if 'transform' in wanted_steps:
             run_transformation([wanted_ds], path_to_preprocessing,
                                output_dir, multiprocessing, user_cpus, wipe, solr_info, grids_to_use)
         if 'aggregate' in wanted_steps:
-            run_aggregation([wanted_ds], path_to_preprocessing, output_dir, solr_info, grids_to_use)
+            run_aggregation([wanted_ds], path_to_preprocessing,
+                            output_dir, solr_info, grids_to_use)
         if wanted_steps == 'all':
-            run_harvester([wanted_ds], path_to_harvesters, output_dir, solr_info, grids_to_use)
+            run_harvester([wanted_ds], path_to_harvesters,
+                          output_dir, solr_info, grids_to_use)
             run_transformation([wanted_ds], path_to_preprocessing,
                                output_dir, multiprocessing, user_cpus, wipe, solr_info, grids_to_use)
-            run_aggregation([wanted_ds], path_to_preprocessing, output_dir, solr_info, grids_to_use)
+            run_aggregation([wanted_ds], path_to_preprocessing,
+                            output_dir, solr_info, grids_to_use)
 
     # Yes/no for each dataset
     elif chosen_option == '5':
@@ -514,10 +525,12 @@ if __name__ == '__main__':
                 else:
                     break
             if yes_no == 'Y':
-                run_harvester([ds], path_to_harvesters, output_dir, solr_info, grids_to_use)
+                run_harvester([ds], path_to_harvesters,
+                              output_dir, solr_info, grids_to_use)
                 run_transformation([ds], path_to_preprocessing,
                                    output_dir, multiprocessing, user_cpus, wipe, solr_info, grids_to_use)
-                run_aggregation([ds], path_to_preprocessing, output_dir, solr_info, grids_to_use)
+                run_aggregation([ds], path_to_preprocessing,
+                                output_dir, solr_info, grids_to_use)
             elif yes_no == 'E':
                 break
             else:  # yes_no == 'N'
