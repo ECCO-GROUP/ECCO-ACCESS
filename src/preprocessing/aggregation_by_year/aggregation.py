@@ -329,12 +329,17 @@ def run_aggregation(output_dir, s3=None, config_path='', solr_info='', grids_to_
                         # time_bnds stuff to match dataset
                         # add time_bnds coordinate
                         # [start_time, end_time] dimensions
+                        # MONTHLY cannot use timedelta64 since it has a variable
+                        # number of ns/s/d. DAILY can so we use it.
                         if data_time_scale.upper() == 'MONTHLY':
                             end_time = str(data_DS.time_end.values[0])
                             month = str(np.datetime64(end_time, 'M') + 1)
                             end_time = [str(np.datetime64(month, 'ns'))]
                         elif data_time_scale.upper() == 'DAILY':
                             end_time = data_DS.time_end.values + np.timedelta64(1, 'D')
+
+                        _, ct = ea.make_time_bounds_from_ds64(np.datetime64(end_time[0], 'ns'), 'AVG_MON')
+                        data_DS.time.values[0] = ct
 
                         start_time = data_DS.time_start.values
 
