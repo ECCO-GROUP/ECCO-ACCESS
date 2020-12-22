@@ -244,6 +244,9 @@ def generalized_transform_to_model_grid_solr(data_field_info, record_date, model
                 data_DA.time_start.values[0] = ds.time_bounds[0].values
                 data_DA.time_end.values[0] = ds.time_bounds[1].values
     elif 'no_time' in extra_information:
+        # If no_time assume record_date is start date
+        # The file may not provide the start date, but it is
+        # determined in the harvesting code
         data_DA.time_start.values[0] = record_date
         data_DA.time_end.values[0] = record_date
     elif 'no_time_dashes' in extra_information:
@@ -520,14 +523,14 @@ def generalized_aggregate_and_save(DS_year_merged,
         DS_year_merged.attrs['uuid'] = uuids[0]
 
         if data_time_scale.upper() == 'DAILY':
-            DS_year_merged.attrs['time_coverage_duration'] = 'P1D'
+            DS_year_merged.attrs['time_coverage_duration'] = 'P1Y'
             DS_year_merged.attrs['time_coverage_resolution'] = 'P1D'
 
             DS_year_merged.attrs['time_coverage_start'] = str(DS_year_merged.time_bnds.values[0][0])[0:19]
             DS_year_merged.attrs['time_coverage_end'] = str(DS_year_merged.time_bnds.values[-1][-1])[0:19]
 
         elif data_time_scale.upper() == 'MONTHLY':
-            DS_year_merged.attrs['time_coverage_duration'] = 'P1M'
+            DS_year_merged.attrs['time_coverage_duration'] = 'P1Y'
             DS_year_merged.attrs['time_coverage_resolution'] = 'P1M'
 
             DS_year_merged.attrs['time_coverage_start'] = str(DS_year_merged.time_bnds.values[0][0])[0:19]
