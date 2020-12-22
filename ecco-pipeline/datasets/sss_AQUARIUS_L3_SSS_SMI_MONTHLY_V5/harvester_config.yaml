@@ -1,0 +1,53 @@
+# =====================================================
+# PODAAC
+# =====================================================
+# PODAAC explicitly expects this date format
+start: "20120101T00:00:01Z" # yyyymmddThh:mm:ssZ
+end: "20121231T23:59:59Z" # yyyymmddThh:mm:ssZ
+user: anonymous # does not change
+host: https://podaac.jpl.nasa.gov/ws/search/granule/?format=atom&pretty=false&itemsPerPage=300000 # does not change
+date_regex: "%Y-%m-%dT%H:%M:%SZ" # does not change
+
+# =====================================================
+# Dataset
+# =====================================================
+ds_name: "sss_AQUARIUS_L3_SSS_SMI_MONTHLY_V5" # Name for dataset
+harvester_type: "podaac"
+podaac_id: "PODAAC-AQR50-3SMCS"
+aggregated: false # if data is available aggregated
+data_time_scale: "monthly" # daily or monthly
+date_format: "yyyymm" # format of date in file name ex: yyyymmdd
+fields:
+  [
+    {
+      name: SSS,
+      long_name: Sea Surface Salinity,
+      standard_name: sea_surface_salinity,
+      units: " ",
+    },
+    {
+      name: SSS_sys_unc,
+      long_name: Sea Surface Salinity Uncertainty (systematic),
+      standard_name: " ",
+      units: " ",
+    },
+  ]
+
+# new_data_attrs:
+original_dataset_title: "Aquarius Official Release Level 3 Sea Surface Salinity Standard Mapped Image Monthly Data V5.0"
+original_dataset_short_name: "AQUARIUS_L3_SSS_SMI_MONTHLY_V5"
+original_dataset_url: "https://podaac.jpl.nasa.gov/dataset/AQUARIUS_L3_SSS_SMI_MONTHLY_V5"
+original_dataset_reference: "https://aquarius.nasa.gov/"
+original_dataset_doi: "10.5067/AQR50-3SMCS"
+
+# =====================================================
+# Solr
+# =====================================================
+solr_host_local: http://localhost:8983/solr/ # doesn't change if following standard Solr setup
+solr_host_aws: http://ec2-3-16-187-19.us-east-2.compute.amazonaws.com:8983/solr/
+solr_collection_name: ecco_datasets # doesn't change
+
+# =====================================================
+# AWS
+# =====================================================
+target_bucket_name: ecco-preprocess

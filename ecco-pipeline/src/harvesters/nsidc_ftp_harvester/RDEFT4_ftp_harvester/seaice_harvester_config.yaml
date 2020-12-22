@@ -1,0 +1,51 @@
+# Harvesting
+# Data is recorded from September - April
+start: "2010-09-20T00:00:00Z"
+end: "2011-09-21T00:00:00Z"
+
+# Provide date format from filename
+regex: '\d{8}'
+date_regex: "%Y-%m-%dT%H:%M:%SZ"
+
+# Dataset
+ds_name: seaice_RDEFT4
+aggregated: false
+short_name: seaice_RDEFT4
+data_time_scale: monthly
+date_format: yyyymmdd
+regions: []
+fields:
+  [
+    {
+      name: sea_ice_thickness,
+      long_name: Sea ice thickness,
+      standard_name: " ",
+      units: Meters,
+    },
+    {
+      name: snow_depth,
+      long_name: Snow depth,
+      standard_name: " ",
+      units: Meters,
+    },
+    {
+      name: freeboard,
+      long_name: Ice freeboard,
+      standard_name: " ",
+      units: Meters,
+    },
+  ]
+# new_data_attrs:
+original_dataset_title: CryoSat-2 Level-4 Sea Ice Elevation, Freeboard, and Thickness, Version 1
+original_dataset_short_name: seaice_RDEFT4
+original_dataset_url: https://nsidc.org/data/RDEFT4
+original_dataset_reference: https://doi.org/10.5067/96JO0KIFDAS8
+original_dataset_doi: 10.5067/96JO0KIFDAS8
+
+# Local
+# REMEMBER, REPLACE LOCAL PATHS SO THEY POINT TO YOUR /SRC/ DIRECTORY
+solr_host: http://localhost:8983/solr/
+solr_collection_name: ecco_datasets
+
+# AWS
+target_bucket_name: ecco-preprocess
