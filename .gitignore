@@ -1,6 +1,21 @@
 .vs*
 *.pyc
-*.pyc
-*.pyc
 
 .DS_Store
+=======
+# data files
+*.nc
+*.bz2
+
+# factors pickled files
+*_factors
+
+# Editors
+.vscode/
+
+# Mac/OSX
+.DS_Store
+
+__pycache__/
+*.py[cod]
+*$py.class

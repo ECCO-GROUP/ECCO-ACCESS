@@ -1,0 +1,64 @@
+# =====================================================
+# Dataset
+# =====================================================
+ds_name: "seaice_conc_daily_icdr_G10016" # Name for dataset
+version: 1.6 # Update this value if any changes are made to this file
+array_precision: float32
+time_zone_included_with_time: False # Data time values have time zone
+extra_information: [] # Unique things to do for dataset
+data_res: 25/111 # Resolution of dataset
+
+# Values for non split datasets
+data_max_lat: 90.0 # Maximum latitude in dataset
+area_extent: [-180, -90, 180, 90] # [lon_min, lat_min, lon_max, lat_max]
+dims: [360, 180] # [lon, lat]
+proj_info:
+  {
+    "area_id": "longlat",
+    "area_name": "Plate Carree",
+    "proj_id": "EPSG:4326",
+    "proj4_args": "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs",
+  }
+
+# Uncomment below lines and fill in with necessary information
+# if data is stored separately by hemisphere
+data_max_lat_nh: 90.0
+data_max_lat_sh: -90.0
+
+area_extent_nh: [-3850000.0, -5350000.0, 3750000.0, 5850000.0]
+area_extent_sh: [-3950000.0, -3950000.0, 3950000.0, 4350000.0]
+
+dims_nh: [304, 448]
+dims_sh: [316, 332]
+
+proj_info_nh:
+  {
+    "area_id": "3411",
+    "area_name": "polar_stereographic",
+    "proj_id": "3411",
+    "proj4_args": "+init=EPSG:3411",
+  }
+proj_info_sh:
+  {
+    "area_id": "3412",
+    "area_name": "polar_stereographic",
+    "proj_id": "3412",
+    "proj4_args": "+init=EPSG:3412",
+  }
+
+pre_transformation_steps: [] # List of functions to call on the DataSet before transformation
+post_transformation_steps: [] # List of functions to call on the DataArrays after transformation
+
+# =====================================================
+# Solr
+# =====================================================
+solr_host_local: http://localhost:8983/solr/ # doesn't change if following standard Solr setup
+solr_host_aws: http://ec2-3-16-187-19.us-east-2.compute.amazonaws.com:8983/solr/
+solr_collection_name: ecco_datasets # doesn't change
+
+# =====================================================
+# AWS
+# =====================================================
+source_bucket: ecco-preprocess
+target_bucket: ecco-ames
+aws_output_suffix: .nc
