@@ -49,7 +49,7 @@ proj_info:
 pre_transformation_steps: [] # List of functions to call on the DataSet before transformation
 post_transformation_steps: ["avhrr_sst_kelvin_to_celsius"] # List of functions to call on the DataArrays after transformation
 
-notes: '' # String to include in global attributes of output files
+notes: "" # String to include in global attributes of output files
 
 # =====================================================
 # Solr
