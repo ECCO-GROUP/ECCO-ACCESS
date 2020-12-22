@@ -18,6 +18,75 @@ from urllib.request import urlopen, urlcleanup, urlretrieve
 log = logging.getLogger(__name__)
 
 
+def clean_solr(config, solr_host, grids_to_use, solr_collection_name):
+    """
+    Remove harvested, transformed, and descendant entries in Solr for dates
+    outside of config date range. Also remove related aggregations, and force
+    aggregation rerun for those years.
+    """
+    dataset_name = config['ds_name']
+    config_start = config['start']
+    config_end = config['end']
+
+    # Query for grids
+    if not grids_to_use:
+        fq = ['type_s:grid']
+        docs = solr_query(config, solr_host, fq, solr_collection_name)
+        grids = [doc['grid_name_s'] for doc in docs]
+    else:
+        grids = grids_to_use
+
+    # Convert config dates to Solr format
+    config_start = f'{config_start[:4]}-{config_start[4:6]}-{config_start[6:]}'
+    config_end = f'{config_end[:4]}-{config_end[4:6]}-{config_end[6:]}'
+
+    fq = [f'type_s:dataset', f'dataset_s:{dataset_name}']
+    dataset_metadata = solr_query(config, solr_host, fq, solr_collection_name)
+
+    if not dataset_metadata:
+        return
+    else:
+        dataset_metadata = dataset_metadata[0]
+
+    print(
+        f'Removing Solr documents related to dates outside of configuration start and end dates: \n\t{config_start} to {config_end}.\n')
+
+    # Remove entries earlier than config start date
+    fq = f'dataset_s:{dataset_name} AND date_s:[* TO {config_start}}}'
+    url = f'{solr_host}{solr_collection_name}/update?commit=true'
+    requests.post(url, json={'delete': {'query': fq}})
+
+    # Remove entries later than config end date
+    fq = f'dataset_s:{dataset_name} AND date_s:{{{config_end} TO *]'
+    url = f'{solr_host}{solr_collection_name}/update?commit=true'
+    requests.post(url, json={'delete': {'query': fq}})
+
+    # Add start and end years to 'years_updated' field in dataset entry
+    # Forces the bounding years to be re-aggregated to account for potential
+    # removed dates
+    start_year = config_start[:4]
+    end_year = config_end[:4]
+    update_body = [{
+        "id": dataset_metadata['id']
+    }]
+
+    for grid in grids:
+        solr_grid_years = f'{grid}_years_updated_ss'
+        if solr_grid_years in dataset_metadata.keys():
+            years = dataset_metadata[solr_grid_years]
+        else:
+            years = []
+        if start_year not in years:
+            years.append(start_year)
+        if end_year not in years:
+            years.append(end_year)
+
+        update_body[0][solr_grid_years] = {"set": years}
+
+    if grids:
+        solr_update(config, solr_host, update_body, solr_collection_name)
+
+
 def md5(fname):
     """
     Creates md5 checksum from file
@@ -124,8 +193,9 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False, s
         else:
             solr_host = config['solr_host_aws']
             solr_collection_name = config['solr_collection_name']
-        print(f'Downloading {dataset_name} files and uploading to \
-            {target_bucket_name}/{dataset_name}\n')
+        clean_solr(config, solr_host, grids_to_use, solr_collection_name)
+        print(
+            f'Downloading {dataset_name} files and uploading to {target_bucket_name}/{dataset_name}\n')
     else:
         if solr_info:
             solr_host = solr_info['solr_url']
@@ -133,6 +203,7 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False, s
         else:
             solr_host = config['solr_host_local']
             solr_collection_name = config['solr_collection_name']
+        clean_solr(config, solr_host, grids_to_use, solr_collection_name)
         print(f'Downloading {dataset_name} files to {target_dir}\n')
 
     # if target path doesn't exist, make them
@@ -158,7 +229,8 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False, s
 
     # Query for existing descendants docs
     fq = ['type_s:descendants', f'dataset_s:{dataset_name}']
-    existing_descendants_docs = solr_query(config, solr_host, fq, solr_collection_name)
+    existing_descendants_docs = solr_query(
+        config, solr_host, fq, solr_collection_name)
 
     if len(existing_descendants_docs) > 0:
         for doc in existing_descendants_docs:
@@ -239,9 +311,10 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False, s
                     # descendants metadta setup to be populated for each granule
                     descendants_item = {}
                     descendants_item['type_s'] = 'descendants'
-                    descendants_item['dataset_s'] = item['dataset_s']
                     descendants_item['date_s'] = item["date_s"]
+                    descendants_item['dataset_s'] = item['dataset_s']
                     descendants_item['hemisphere_s'] = hemi
+                    descendants_item['filename_s'] = newfile
                     descendants_item['source_s'] = item['source_s']
 
                     updating = False
@@ -362,7 +435,8 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False, s
     # Only update Solr harvested entries if there are fresh downloads
     if entries_for_solr:
         # Update Solr with downloaded granule metadata entries
-        r = solr_update(config, solr_host, entries_for_solr, solr_collection_name, r=True)
+        r = solr_update(config, solr_host, entries_for_solr,
+                        solr_collection_name, r=True)
 
         if r.status_code == 200:
             print('Successfully created or updated Solr harvested documents')
@@ -377,7 +451,8 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False, s
     # Query for Solr successful harvest documents
     fq = ['type_s:harvested',
           f'dataset_s:{dataset_name}', f'harvest_success_b:true']
-    successful_harvesting = solr_query(config, solr_host, fq, solr_collection_name)
+    successful_harvesting = solr_query(
+        config, solr_host, fq, solr_collection_name)
 
     harvest_status = f'All granules successfully harvested'
 
@@ -430,7 +505,8 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False, s
         ds_meta['harvest_status_s'] = harvest_status
 
         # Update Solr with dataset metadata
-        r = solr_update(config, solr_host, [ds_meta], solr_collection_name, r=True)
+        r = solr_update(config, solr_host, [ds_meta],
+                        solr_collection_name, r=True)
 
         if r.status_code == 200:
             print('Successfully created Solr dataset document')
@@ -478,16 +554,22 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False, s
         # -----------------------------------------------------
         dataset_metadata = dataset_query[0]
 
-        # Check start and end date coverage
-        old_start = datetime.strptime(
-            dataset_metadata['start_date_dt'], time_format) if 'start_date_dt' in dataset_metadata.keys() else None
-        old_end = datetime.strptime(
-            dataset_metadata['end_date_dt'], time_format) if 'end_date_dt' in dataset_metadata.keys() else None
+        # Query for dates of all harvested docs
+        getVars = {'q': '*:*',
+                   'fq': [f'dataset_s:{dataset_name}', 'type_s:harvested', 'harvest_success_b:true'],
+                   'fl': 'date_s',
+                   'rows': 300000}
 
-        # build update document body
+        url = f'{solr_host}{solr_collection_name}/select?'
+        response = requests.get(url, params=getVars)
+        dates = [x['date_s'] for x in response.json()['response']['docs']]
+
+        # Build update document body
         update_doc = {}
         update_doc['id'] = dataset_metadata['id']
         update_doc['last_checked_dt'] = {"set": chk_time}
+        update_doc['start_date_dt'] = {"set": min(dates)}
+        update_doc['end_date_dt'] = {"set": max(dates)}
 
         if entries_for_solr:
             update_doc['harvest_status_s'] = {"set": harvest_status}
@@ -496,16 +578,9 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False, s
                 update_doc['last_download_dt'] = {
                     "set": last_success_item['download_time_dt']}
 
-            if old_start == None or overall_start < old_start:
-                update_doc['start_date_dt'] = {
-                    "set": overall_start.strftime(time_format)}
-
-            if old_end == None or overall_end > old_end:
-                update_doc['end_date_dt'] = {
-                    "set": overall_end.strftime(time_format)}
-
         # Update Solr with modified dataset entry
-        r = solr_update(config, solr_host, [update_doc], solr_collection_name, r=True)
+        r = solr_update(config, solr_host, [
+                        update_doc], solr_collection_name, r=True)
 
         if r.status_code == 200:
             print('Successfully updated Solr dataset document\n')
