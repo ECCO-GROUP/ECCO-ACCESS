@@ -2,9 +2,6 @@
 *.nc
 *.bz2
 
-# json output
-*.json
-
 # factors pickled files
 *_factors
 
