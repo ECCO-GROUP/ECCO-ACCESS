@@ -167,7 +167,7 @@ def generalized_get_data_filepaths_for_year(year, data_dir, data_file_suffix,
 
 def generalized_transform_to_model_grid_solr(data_field_info, record_date, model_grid,
                                              model_grid_type, array_precision,
-                                             record_file_name, original_dataset_metadata,
+                                             record_file_name, data_time_scale,
                                              extra_information, ds, factors,
                                              time_zone_included_with_time,
                                              model_grid_name):
@@ -247,8 +247,16 @@ def generalized_transform_to_model_grid_solr(data_field_info, record_date, model
         # If no_time assume record_date is start date
         # The file may not provide the start date, but it is
         # determined in the harvesting code
+
+        if data_time_scale.upper() == 'MONTHLY':
+            month = str(np.datetime64(record_date, 'M') + 1)
+            end_time = str(np.datetime64(month, 'ns'))
+        elif data_time_scale.upper() == 'DAILY':
+            end_time = str(np.datetime64(record_date, 'D') +
+                           np.timedelta64(1, 'D'))
+
         data_DA.time_start.values[0] = record_date
-        data_DA.time_end.values[0] = record_date
+        data_DA.time_end.values[0] = end_time
     elif 'no_time_dashes' in extra_information:
         new_start_time = f'{ds.time_coverage_start[0:4]}-{ds.time_coverage_start[4:6]}-{ds.time_coverage_start[6:8]}'
         new_end_time = f'{ds.time_coverage_end[0:4]}-{ds.time_coverage_end[4:6]}-{ds.time_coverage_end[6:8]}'
@@ -526,15 +534,19 @@ def generalized_aggregate_and_save(DS_year_merged,
             DS_year_merged.attrs['time_coverage_duration'] = 'P1Y'
             DS_year_merged.attrs['time_coverage_resolution'] = 'P1D'
 
-            DS_year_merged.attrs['time_coverage_start'] = str(DS_year_merged.time_bnds.values[0][0])[0:19]
-            DS_year_merged.attrs['time_coverage_end'] = str(DS_year_merged.time_bnds.values[-1][-1])[0:19]
+            DS_year_merged.attrs['time_coverage_start'] = str(
+                DS_year_merged.time_bnds.values[0][0])[0:19]
+            DS_year_merged.attrs['time_coverage_end'] = str(
+                DS_year_merged.time_bnds.values[-1][-1])[0:19]
 
         elif data_time_scale.upper() == 'MONTHLY':
             DS_year_merged.attrs['time_coverage_duration'] = 'P1Y'
             DS_year_merged.attrs['time_coverage_resolution'] = 'P1M'
 
-            DS_year_merged.attrs['time_coverage_start'] = str(DS_year_merged.time_bnds.values[0][0])[0:19]
-            DS_year_merged.attrs['time_coverage_end'] = str(DS_year_merged.time_bnds.values[-1][-1])[0:19]
+            DS_year_merged.attrs['time_coverage_start'] = str(
+                DS_year_merged.time_bnds.values[0][0])[0:19]
+            DS_year_merged.attrs['time_coverage_end'] = str(
+                DS_year_merged.time_bnds.values[-1][-1])[0:19]
 
         if do_monthly_aggregation:
             mon_DS_year = []
@@ -581,12 +593,13 @@ def generalized_aggregate_and_save(DS_year_merged,
                 mon_DS = mon_DA.to_dataset()
 
                 mon_DS = mon_DS.assign_coords(
-                    {'time_bnds': (('time','nv'), [tb])})
+                    {'time_bnds': (('time', 'nv'), [tb])})
                 mon_DS.time.attrs.update(bounds='time_bnds')
 
                 mon_DS_year.append(mon_DS)
 
-            mon_DS_year_merged = xr.concat((mon_DS_year), dim='time', combine_attrs='no_conflicts')
+            mon_DS_year_merged = xr.concat(
+                (mon_DS_year), dim='time', combine_attrs='no_conflicts')
 
             # start_time = mon_DS_year_merged.time.values.min()
             # end_time = mon_DS_year_merged.time.values.max()
@@ -600,8 +613,10 @@ def generalized_aggregate_and_save(DS_year_merged,
             global_attrs['time_coverage_duration'] = 'P1M'
             global_attrs['time_coverage_resolution'] = 'P1M'
 
-            global_attrs['valid_min'] = np.nanmin(mon_DS_year_merged[data_var].values)
-            global_attrs['valid_max'] = np.nanmax(mon_DS_year_merged[data_var].values)
+            global_attrs['valid_min'] = np.nanmin(
+                mon_DS_year_merged[data_var].values)
+            global_attrs['valid_max'] = np.nanmax(
+                mon_DS_year_merged[data_var].values)
             global_attrs['uuid'] = uuids[1]
 
             mon_DS_year_merged.attrs = global_attrs
@@ -613,8 +628,8 @@ def generalized_aggregate_and_save(DS_year_merged,
         ## BEGIN SAVE TO DISK                                ##
 
         DS_year_merged[data_var].values = \
-                np.where(np.isnan(DS_year_merged[data_var].values),
-                        fill_values['netcdf'], DS_year_merged[data_var].values)
+            np.where(np.isnan(DS_year_merged[data_var].values),
+                     fill_values['netcdf'], DS_year_merged[data_var].values)
 
         ea.save_to_disk(DS_year_merged,
                         filenames['shortest'],
@@ -625,8 +640,8 @@ def generalized_aggregate_and_save(DS_year_merged,
 
         if do_monthly_aggregation:
             mon_DS_year_merged[data_var].values = \
-                    np.where(np.isnan(mon_DS_year_merged[data_var].values),
-                            fill_values['netcdf'], mon_DS_year_merged[data_var].values)
+                np.where(np.isnan(mon_DS_year_merged[data_var].values),
+                         fill_values['netcdf'], mon_DS_year_merged[data_var].values)
 
             ea.save_to_disk(mon_DS_year_merged,
                             filenames['monthly'],
