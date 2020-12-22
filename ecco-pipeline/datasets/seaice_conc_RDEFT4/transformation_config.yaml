@@ -49,6 +49,8 @@ proj_info:
 pre_transformation_steps: ["RDEFT4_remove_negative_values"] # List of functions to call on the DataSet before transformation
 post_transformation_steps: [] # List of functions to call on the DataArrays after transformation
 
+notes: 'All saved filenames have the end date in their name instead of the data's start date' # String to include in global attributes of output files
+
 # =====================================================
 # Solr
 # =====================================================

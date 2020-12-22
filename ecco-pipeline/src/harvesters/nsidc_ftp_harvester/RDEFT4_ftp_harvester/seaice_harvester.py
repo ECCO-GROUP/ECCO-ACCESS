@@ -325,7 +325,7 @@ def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
     # Code to import ecco utils locally...
     # =====================================================
     generalized_functions_path = Path(
-        f'{Path(__file__).resolve().parents[5]}/ECCO-ACCESS/ecco-cloud-utils/')
+        f'{Path(__file__).resolve().parents[5]}/ecco-cloud-utils/')
     sys.path.append(str(generalized_functions_path))
     import ecco_cloud_utils as ea  # pylint: disable=import-error
 

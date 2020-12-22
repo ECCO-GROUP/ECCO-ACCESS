@@ -100,7 +100,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
     # Code to import ecco utils locally...
     # =====================================================
     generalized_functions_path = Path(
-        f'{Path(__file__).resolve().parents[4]}/ECCO-ACCESS/ecco-cloud-utils/')
+        f'{Path(__file__).resolve().parents[4]}/ecco-cloud-utils/')
     sys.path.append(str(generalized_functions_path))
     import ecco_cloud_utils as ea  # pylint: disable=import-error
 
@@ -804,7 +804,7 @@ def run_in_any_env(model_grid, grid_name, grid_type, fields, factors, ds, record
     # Code to import ecco utils locally...
     # =====================================================
     generalized_functions_path = Path(
-        f'{Path(__file__).resolve().parents[4]}/ECCO-ACCESS/ecco-cloud-utils/')
+        f'{Path(__file__).resolve().parents[4]}/ecco-cloud-utils/')
     sys.path.append(str(generalized_functions_path))
     import ecco_cloud_utils as ea  # pylint: disable=import-error
 
@@ -904,6 +904,7 @@ def run_in_any_env(model_grid, grid_name, grid_type, fields, factors, ds, record
         ds_meta['original_dataset_doi'] = original_dataset_metadata['original_dataset_doi_s']
         ds_meta['interpolated_grid_id'] = grid_name
         ds_meta['transformation_version'] = config['version']
+        ds_meta['notes'] = config['notes']
         field_DS = field_DS.assign_attrs(ds_meta)
 
         # time_bnds stuff

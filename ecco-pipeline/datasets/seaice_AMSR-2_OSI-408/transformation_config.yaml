@@ -49,6 +49,8 @@ proj_info_sh:
 pre_transformation_steps: [] # List of functions to call on the DataSet before transformation
 post_transformation_steps: ["seaice_concentration_to_fraction"] # List of functions to call on the DataArrays after transformation
 
+notes: '' # String to include in global attributes of output files
+
 # =====================================================
 # Solr
 # =====================================================

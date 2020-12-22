@@ -154,6 +154,7 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
     end_time = config['end']
     host = config['host']
     podaac_id = config['podaac_id']
+    data_time_scale = config['data_time_scale']
     target_dir = f'{output_path}{dataset_name}/harvested_granules/'
 
     # If target paths don't exist, make them
@@ -390,8 +391,15 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
                         ]
 
                         for time in ds_times:
-                            year = time[:4]
                             new_ds = ds.sel(time=time)
+                            
+                            if data_time_scale.upper() == 'MONTHLY':
+                                if not time[7:9] == '01':
+                                    new_start = f'{time[0:8]}01T00:00:00.000000000'
+                                    print('NS: ', new_start, 'T: ', time)
+                                    time = new_start
+                            year = time[:4]
+
                             file_name = f'{dataset_name}_{time.replace("-","")[:8]}.nc'
                             local_fp = f'{target_dir}{year}/{file_name}'
                             time_s = f'{time[:-10]}Z'
@@ -649,8 +657,9 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
         update_doc = {}
         update_doc['id'] = dataset_metadata['id']
         update_doc['last_checked_dt'] = {"set": chk_time}
-        update_doc['start_date_dt'] = {"set": min(dates)}
-        update_doc['end_date_dt'] = {"set": max(dates)}
+        if dates:
+            update_doc['start_date_dt'] = {"set": min(dates)}
+            update_doc['end_date_dt'] = {"set": max(dates)}
 
         if entries_for_solr:
             update_doc['harvest_status_s'] = {"set": harvest_status}
