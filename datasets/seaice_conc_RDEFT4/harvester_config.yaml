@@ -1,19 +1,21 @@
-# Harvesting
+# =====================================================
+# NSIDC - RDEFT4
+# =====================================================
 # Data is recorded from September - April
-start: "2010-09-20T00:00:00Z"
-end: "2011-09-21T00:00:00Z"
-
-# Provide date format from filename
-regex: '\d{8}'
+# Data files are named with the end date of the rolling average
+start: "2010-09-25T00:00:00Z"
+end: "2010-12-05T00:00:00Z"
 date_regex: "%Y-%m-%dT%H:%M:%SZ"
+regex: '\d{8}'
 
+# =====================================================
 # Dataset
-ds_name: seaice_conc_RDEFT4
+# =====================================================
+ds_name: "seaice_conc_RDEFT4"
 harvester_type: "nsidc_ftp"
 aggregated: false
-data_time_scale: monthly
+data_time_scale: "monthly"
 date_format: yyyymmdd
-regions: []
 fields:
   [
     {
@@ -35,6 +37,7 @@ fields:
       units: Meters,
     },
   ]
+
 # new_data_attrs:
 original_dataset_title: CryoSat-2 Level-4 Sea Ice Elevation, Freeboard, and Thickness, Version 1
 original_dataset_short_name: seaice_conc_RDEFT4
@@ -42,10 +45,14 @@ original_dataset_url: https://nsidc.org/data/RDEFT4
 original_dataset_reference: https://doi.org/10.5067/96JO0KIFDAS8
 original_dataset_doi: 10.5067/96JO0KIFDAS8
 
-# Local
-# REMEMBER, REPLACE LOCAL PATHS SO THEY POINT TO YOUR /SRC/ DIRECTORY
-solr_host_local: http://localhost:8983/solr/
-solr_collection_name: ecco_datasets
+# =====================================================
+# Solr
+# =====================================================
+solr_host_local: http://localhost:8983/solr/ # doesn't change if following standard Solr setup
+solr_host_aws: http://ec2-3-16-187-19.us-east-2.compute.amazonaws.com:8983/solr/
+solr_collection_name: ecco_datasets # doesn't change
 
+# =====================================================
 # AWS
+# =====================================================
 target_bucket_name: ecco-preprocess
