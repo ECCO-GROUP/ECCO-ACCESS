@@ -46,6 +46,9 @@ def clean_solr(config, solr_host, grids_to_use, solr_collection_name):
     else:
         dataset_metadata = dataset_metadata[0]
 
+    print(
+        f'Removing Solr documents related to dates outside of configuration start and end dates: \n\t{config_start} to {config_end}.\n')
+
     # Remove entries earlier than config start date
     fq = f'dataset_s:{dataset_name} AND date_s:[* TO {config_start}}}'
     url = f'{solr_host}{solr_collection_name}/update?commit=true'
@@ -79,8 +82,7 @@ def clean_solr(config, solr_host, grids_to_use, solr_collection_name):
         update_body[0][solr_grid_years] = {"set": years}
 
     if grids:
-        r = solr_update(config, solr_host, update_body,
-                        solr_collection_name, r=True)
+        solr_update(config, solr_host, update_body, solr_collection_name)
 
 
 def md5(fname):
@@ -179,8 +181,9 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
         else:
             solr_host = config['solr_host_aws']
             solr_collection_name = config['solr_collection_name']
-        print(f'Downloading {dataset_name} files and uploading to \
-              {target_bucket_name}/{dataset_name}\n')
+        clean_solr(config, solr_host, grids_to_use, solr_collection_name)
+        print(
+            f'Downloading {dataset_name} files and uploading to {target_bucket_name}/{dataset_name}\n')
     else:
         target_bucket = None
         if solr_info:
@@ -189,9 +192,8 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
         else:
             solr_host = config['solr_host_local']
             solr_collection_name = config['solr_collection_name']
+        clean_solr(config, solr_host, grids_to_use, solr_collection_name)
         print(f'Downloading {dataset_name} files to {target_dir}\n')
-
-    clean_solr(config, solr_host, grids_to_use, solr_collection_name)
 
     # =====================================================
     # Pull existing entries from Solr
@@ -618,7 +620,8 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
 
         if body:
             # Update Solr with dataset fields metadata
-            r = solr_update(config, solr_host, body, solr_collection_name, r=True)
+            r = solr_update(config, solr_host, body,
+                            solr_collection_name, r=True)
 
             if r.status_code == 200:
                 print('Successfully created Solr field documents')
@@ -632,16 +635,22 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
         # -----------------------------------------------------
         dataset_metadata = dataset_query[0]
 
-        # Check start and end date coverage
-        old_start = datetime.strptime(dataset_metadata['start_date_dt'], time_format) \
-            if 'start_date_dt' in dataset_metadata.keys() else None
-        old_end = datetime.strptime(dataset_metadata['end_date_dt'], time_format) \
-            if 'end_date_dt' in dataset_metadata.keys() else None
+        # Query for dates of all harvested docs
+        getVars = {'q': '*:*',
+                   'fq': [f'dataset_s:{dataset_name}', 'type_s:harvested', 'harvest_success_b:true'],
+                   'fl': 'date_s',
+                   'rows': 300000}
+
+        url = f'{solr_host}{solr_collection_name}/select?'
+        response = requests.get(url, params=getVars)
+        dates = [x['date_s'] for x in response.json()['response']['docs']]
 
         # Build update document body
         update_doc = {}
         update_doc['id'] = dataset_metadata['id']
         update_doc['last_checked_dt'] = {"set": chk_time}
+        update_doc['start_date_dt'] = {"set": min(dates)}
+        update_doc['end_date_dt'] = {"set": max(dates)}
 
         if entries_for_solr:
             update_doc['harvest_status_s'] = {"set": harvest_status}
@@ -649,14 +658,6 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
             if 'download_time_dt' in last_success_item.keys():
                 update_doc['last_download_dt'] = {
                     "set": last_success_item['download_time_dt']}
-
-            if old_start == None or overall_start < old_start:
-                update_doc['start_date_dt'] = {
-                    "set": overall_start.strftime(time_format)}
-
-            if old_end == None or overall_end > old_end:
-                update_doc['end_date_dt'] = {
-                    "set": overall_end.strftime(time_format)}
 
         # Update Solr with modified dataset entry
         r = solr_update(config, solr_host, [
