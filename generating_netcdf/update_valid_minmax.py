@@ -22,13 +22,17 @@ from pprint import pprint
 
 
 #%%
-def calculate_valid_minmax_for_dataset(dataset_base_dir):
+def calculate_valid_minmax_for_dataset(dataset_base_dir,\
+                                       grouping_to_process=-1):
     print(dataset_base_dir)
     groupings = list(dataset_base_dir.glob('*'))
 
     pprint(groupings)
     tmp = []
     file = []
+
+    if grouping_to_process != -1:
+        groupings = [groupings[grouping_to_process]]
 
     for grouping in groupings:
     #grouping = groupings[grouping_to_process]
@@ -62,9 +66,9 @@ def calculate_valid_minmax_for_dataset(dataset_base_dir):
         new_dict = dict()
         for data_var in data_vars.keys():
             print ('\n==== ', data_var)
-            print('\t ------ valid mins')
+            print('\tvalid mins')
             pprint(data_vars[data_var]['valid_min'])
-            print('\t ------ valid maxs')
+            print('\tvalid maxs')
             pprint(data_vars[data_var]['valid_max'])
 
             data_vars[data_var]['valid_min'] = np.nanmin(data_vars[data_var]['valid_min'])
@@ -96,17 +100,31 @@ def calculate_valid_minmax_for_dataset(dataset_base_dir):
 
 #%%
 
-def apply_valid_minmax_for_dataset(dataset_base_dir, scaling_factor=1.0, valid_minmax_prec=32):
+def apply_valid_minmax_for_dataset(dataset_base_dir,\
+                                   grouping_to_process=-1,\
+                                   scaling_factor=1.0,\
+                                   valid_minmax_prec=32):
 
+
+    # grouping
     print(dataset_base_dir)
     groupings = list(dataset_base_dir.glob('*'))
 
     pprint(groupings)
 
+    if grouping_to_process != -1:
+        groupings = [groupings[grouping_to_process]]
+
     for grouping in groupings:
         print('\n\n --- grouping', grouping)
 
-        valid_minmax_ds = xr.open_dataset(grouping / 'valid_minmax.nc')
+        valid_minmax_filename = grouping / 'valid_minmax.nc'
+
+        if valid_minmax_filename.exists():
+            valid_minmax_ds = xr.open_dataset(grouping / 'valid_minmax.nc')
+        else:
+            continue
+
         for data_var in valid_minmax_ds:
             print('\n ', data_var)
             pprint(valid_minmax_ds[data_var].values)
@@ -178,6 +196,10 @@ def create_parser():
     parser.add_argument('--valid_minmax_prec', required=False, type=int, default=32, choices=[32, 64],\
                        help='32 or 64 bit precision for valid min and max')
 
+
+    parser.add_argument('--grouping_to_process', required=False, type=int, default=-1,\
+                        help='which grouping id to process, -1 = all')
+
     return parser
 
 
@@ -196,11 +218,12 @@ if __name__ == "__main__":
 
     valid_minmax_prec = args.valid_minmax_prec
 
+    grouping_to_process = args.grouping_to_process
+
     if valid_minmax_prec == 32:
         valid_scaling_factor = np.float32(args.valid_scaling_factor)
     elif valid_minmax_prec == 64:
         valid_scaling_factor = np.float64(args.valid_scaling_factor)
-
 
     print('\n\n===================================')
     print('starting update_valid_minmax')
@@ -208,12 +231,14 @@ if __name__ == "__main__":
     print('apply_valid_minmax', apply_valid_minmax)
     print('calculate_valid_minmax', calculate_valid_minmax)
     print('valid_scaling_factor', valid_scaling_factor)
+    print('grouping_to_process ', grouping_to_process)
 
-    #dataset_base_dir = Path('/home/ifenty/tmp/v4r4_nc_output_20201215_native/native/mon_mean_x')
 
-
-    if calculate_valid_minmax or apply_valid_minmax:
-        calculate_valid_minmax_for_dataset(dataset_base_dir)
+    if calculate_valid_minmax:
+        calculate_valid_minmax_for_dataset(dataset_base_dir, grouping_to_process)
 
     if apply_valid_minmax:
-        apply_valid_minmax_for_dataset(dataset_base_dir, valid_scaling_factor, valid_minmax_prec)
+        apply_valid_minmax_for_dataset(dataset_base_dir,\
+                                       grouping_to_process,\
+                                       valid_scaling_factor,\
+                                       valid_minmax_prec)
