@@ -24,6 +24,10 @@ from pprint import pprint
 #%%
 def calculate_valid_minmax_for_dataset(dataset_base_dir,\
                                        grouping_to_process=-1):
+
+    print('\n\n===========================')
+    print('CALCULATE_VALID_MINMAX_FOR_DATASET')
+
     print(dataset_base_dir)
     groupings = list(dataset_base_dir.glob('*'))
 
@@ -105,24 +109,32 @@ def apply_valid_minmax_for_dataset(dataset_base_dir,\
                                    scaling_factor=1.0,\
                                    valid_minmax_prec=32):
 
+    print('\n\n===========================')
+    print('APPLY_VALID_MINMAX_FOR_DATASET')
 
     # grouping
-    print(dataset_base_dir)
+    print('dataset_base_dir ', dataset_base_dir)
     groupings = list(dataset_base_dir.glob('*'))
 
-    pprint(groupings)
+    #pprint(groupings)
+    print('\n... found groupings ')
+    for grouping in groupings:
+        print(grouping.name)
 
     if grouping_to_process != -1:
         groupings = [groupings[grouping_to_process]]
 
     for grouping in groupings:
-        print('\n\n --- grouping', grouping)
+        print('\n --- grouping to process', grouping.name)
 
         valid_minmax_filename = grouping / 'valid_minmax.nc'
 
         if valid_minmax_filename.exists():
+            print('loading ', grouping, 'valid_minmax.nc')
             valid_minmax_ds = xr.open_dataset(grouping / 'valid_minmax.nc')
         else:
+            print('no valid_minmax.nc file here ', grouping)
+            print('.... skipping ', grouping.name)
             continue
 
         for data_var in valid_minmax_ds:
@@ -183,14 +195,14 @@ def create_parser():
                         help='directory containing dataset grouping subdirectories')
 
     parser.add_argument('--calculate_valid_minmax', type=bool, nargs='?',\
-                        const=True, default=True,\
+                        const=True, default=False,\
                             help='calculate the valid minmax for the groupings in dataset_base_dir')
 
     parser.add_argument('--apply_valid_minmax', type=bool, nargs='?',\
                         const=True, default=False,\
                             help='apply the new minmax for the groupings in dataset_base_dir')
 
-    parser.add_argument('--valid_scaling_factor', required=False, type=float, default=1.0,\
+    parser.add_argument('--valid_minmax_scaling_factor', required=False, type=float, default=1.0,\
                        help='scaling factor by which to inflate the valid min and valid max')
 
     parser.add_argument('--valid_minmax_prec', required=False, type=int, default=32, choices=[32, 64],\
@@ -221,24 +233,31 @@ if __name__ == "__main__":
     grouping_to_process = args.grouping_to_process
 
     if valid_minmax_prec == 32:
-        valid_scaling_factor = np.float32(args.valid_scaling_factor)
+        valid_scaling_factor = np.float32(args.valid_minmax_scaling_factor)
     elif valid_minmax_prec == 64:
-        valid_scaling_factor = np.float64(args.valid_scaling_factor)
+        valid_scaling_factor = np.float64(args.valid_minmax_scaling_factor)
 
     print('\n\n===================================')
     print('starting update_valid_minmax')
+    print('\n')
     print('dataset_base_dir', dataset_base_dir)
     print('apply_valid_minmax', apply_valid_minmax)
     print('calculate_valid_minmax', calculate_valid_minmax)
     print('valid_scaling_factor', valid_scaling_factor)
     print('grouping_to_process ', grouping_to_process)
 
-
     if calculate_valid_minmax:
+        print('... calculating valid minmax')
         calculate_valid_minmax_for_dataset(dataset_base_dir, grouping_to_process)
+    else:
+        print('... not calculating valid minmax')
+
 
     if apply_valid_minmax:
+        print('... applying valid minmax')
         apply_valid_minmax_for_dataset(dataset_base_dir,\
                                        grouping_to_process,\
                                        valid_scaling_factor,\
                                        valid_minmax_prec)
+    else:
+        print('... not applying valid minmax')
