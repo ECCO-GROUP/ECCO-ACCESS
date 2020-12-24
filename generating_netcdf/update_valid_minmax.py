@@ -17,16 +17,18 @@ import datetime
 from pprint import pprint
 
 #%%
-
-
-
-
-#%%
-def calculate_valid_minmax_for_dataset(dataset_base_dir,\
+def calculate_valid_minmax_for_dataset(dataset_base_dir, method='easy',
                                        grouping_to_process=-1):
+
+    # dataset_base_dir is root directory of datasets, like native/mon_mean or lat-lon/day_mean
+    # grouping to process = -1  means ALL dataset
+    # method = easy   means use existing valid_min and valid_max from attributes
+    # method = hard   means recalculate from the actual arrays
 
     print('\n\n===========================')
     print('CALCULATE_VALID_MINMAX_FOR_DATASET')
+    print('grouping_to_process: ', grouping_to_process)
+    print('method: ', method)
 
     print(dataset_base_dir)
     groupings = list(dataset_base_dir.glob('*'))
@@ -39,7 +41,6 @@ def calculate_valid_minmax_for_dataset(dataset_base_dir,\
         groupings = [groupings[grouping_to_process]]
 
     for grouping in groupings:
-    #grouping = groupings[grouping_to_process]
 
         print('\n --- grouping', grouping)
 
@@ -63,8 +64,15 @@ def calculate_valid_minmax_for_dataset(dataset_base_dir,\
                     data_vars[data_var]['valid_min'] = []
 
             for data_var in tmp.data_vars:
-                data_vars[data_var]['valid_max'].append(tmp[data_var].attrs['valid_max'])
-                data_vars[data_var]['valid_min'].append(tmp[data_var].attrs['valid_min'])
+                if method == 'easy':
+                    # trust the values in the valid_min and valid_max attributes 
+                    data_vars[data_var]['valid_max'].append(tmp[data_var].attrs['valid_max'])
+                    data_vars[data_var]['valid_min'].append(tmp[data_var].attrs['valid_min'])
+
+                elif method == 'hard':
+                    # actually query the values in the array
+                    data_vars[data_var]['valid_max'].append(np.nanmax(tmp[data_var]))
+                    data_vars[data_var]['valid_min'].append(np.nanmin(tmp[data_var]))
 
         # finish looping through files, calculate min and max
         new_dict = dict()
@@ -188,32 +196,47 @@ def apply_valid_minmax_for_dataset(dataset_base_dir,\
 
 #%%
 
+def str2bool(v):
+    if isinstance(v, bool):
+       return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
+
 def create_parser():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--dataset_base_dir', required=True, type=str,\
+    parser.add_argument('--dataset_base_dir', type=str, required=True,\
                         help='directory containing dataset grouping subdirectories')
 
-    parser.add_argument('--calculate_valid_minmax', type=bool, nargs='?',\
-                        const=True, default=False,\
-                            help='calculate the valid minmax for the groupings in dataset_base_dir')
+    parser.add_argument('--calculate_valid_minmax', type=str2bool, nargs='?', const=True,\
+                        help='calculate the valid minmax for the groupings in dataset_base_dir')
 
-    parser.add_argument('--apply_valid_minmax', type=bool, nargs='?',\
-                        const=True, default=False,\
-                            help='apply the new minmax for the groupings in dataset_base_dir')
+    parser.add_argument('--calculate_valid_minmax_method', type=str,\
+                        default = 'easy', choices=['easy','hard'],\
+                        help='"easy" (use existing attributes) or "hard" (recalculate from array values)')
 
-    parser.add_argument('--valid_minmax_scaling_factor', required=False, type=float, default=1.0,\
-                       help='scaling factor by which to inflate the valid min and valid max')
+    parser.add_argument('--apply_valid_minmax', type=str2bool, nargs='?', const=True,\
+                        default = False,
+                        help='apply the new minmax for the groupings in dataset_base_dir')
 
-    parser.add_argument('--valid_minmax_prec', required=False, type=int, default=32, choices=[32, 64],\
-                       help='32 or 64 bit precision for valid min and max')
+    parser.add_argument('--valid_minmax_scaling_factor', type=float,\
+                        default = 1.0,\
+                        help='scaling factor by which to inflate the valid min and valid max')
 
+    parser.add_argument('--valid_minmax_prec', type=int,\
+                        default = 32, choices=[32, 64],\
+                        help='32 or 64 bit precision for valid min and max')
 
-    parser.add_argument('--grouping_to_process', required=False, type=int, default=-1,\
+    parser.add_argument('--grouping_to_process',  type=int,\
+                        default = -1,\
                         help='which grouping id to process, -1 = all')
 
     return parser
-
 
 
 #%%
@@ -221,12 +244,15 @@ if __name__ == "__main__":
 
     parser = create_parser()
     args = parser.parse_args()
+    print(args)
 
     dataset_base_dir = Path(args.dataset_base_dir)
 
     apply_valid_minmax = args.apply_valid_minmax
 
     calculate_valid_minmax = args.calculate_valid_minmax
+
+    calculate_valid_minmax_method = args.calculate_valid_minmax_method
 
     valid_minmax_prec = args.valid_minmax_prec
 
@@ -241,14 +267,18 @@ if __name__ == "__main__":
     print('starting update_valid_minmax')
     print('\n')
     print('dataset_base_dir', dataset_base_dir)
-    print('apply_valid_minmax', apply_valid_minmax)
     print('calculate_valid_minmax', calculate_valid_minmax)
+    print('calculate_valid_minmax_method', calculate_valid_minmax_method)
+    print('apply_valid_minmax', apply_valid_minmax)
     print('valid_scaling_factor', valid_scaling_factor)
     print('grouping_to_process ', grouping_to_process)
+    print('\n')
 
     if calculate_valid_minmax:
         print('... calculating valid minmax')
-        calculate_valid_minmax_for_dataset(dataset_base_dir, grouping_to_process)
+        calculate_valid_minmax_for_dataset(dataset_base_dir,\
+                                           method = calculate_valid_minmax_method,\
+                                           grouping_to_process = grouping_to_process)
     else:
         print('... not calculating valid minmax')
 
