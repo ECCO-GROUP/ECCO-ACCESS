@@ -118,7 +118,7 @@ def find_time_steps_to_process_by_job_id(num_jobs:int, job_id:int, \
     return time_steps_to_process
 
 #%%
-def find_podaac_metadata(podaac_dataset_table, filename):
+def find_podaac_metadata(podaac_dataset_table, filename, debug=False):
     """Return revised file metadata based on an input ECCO `filename`.
 
     This should consistently parse a filename that conforms to the
@@ -140,7 +140,13 @@ def find_podaac_metadata(podaac_dataset_table, filename):
     else:
         raise Exception("Error: filename may not conform to ECCO V4r4 convention.")
 
+    if debug:
+        print('split filename into ', head, tail)
+
     tail = tail.split("_ECCO_V4r4_")[1]
+
+    if debug:
+        print('further split tail into ',  tail)
 
     # Get the filenames column from my table as a list of strings.
     names = podaac_dataset_table['DATASET.FILENAME']
@@ -156,8 +162,9 @@ def find_podaac_metadata(podaac_dataset_table, filename):
         'metadata_link': f"https://cmr.earthdata.nasa.gov/search/collections.umm_json?ShortName={metadata['DATASET.SHORT_NAME']}",
         'title': metadata['DATASET.LONG_NAME'],
     }
-    #print('\n... podaac metadata:')
-    #pprint(podaac_metadata)
+    if debug:
+        print('\n... podaac metadata:')
+        pprint(podaac_metadata)
 
     return podaac_metadata
 
@@ -1091,7 +1098,7 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
                 G = ecco.add_global_metadata(global_metadata_for_latlon_datasets, G,\
                                         dataset_dim)
             elif product_type == 'native':
-                print('\n.. adding global metadata for native dataset')
+                print('\n... adding global metadata for native dataset')
                 G = ecco.add_global_metadata(global_metadata_for_native_datasets, G,\
                                         dataset_dim)
 
@@ -1286,6 +1293,9 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
 
             G.to_netcdf(netcdf_output_filename, encoding=encoding)
             G.close()
+            
+            print('\n... checking existence of new file: ', netcdf_output_filename.exists())	
+            print('\n')
 
     return G, ecco_grid
 
