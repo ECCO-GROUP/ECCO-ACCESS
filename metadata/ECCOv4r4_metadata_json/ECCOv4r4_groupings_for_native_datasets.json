@@ -144,7 +144,7 @@
     "name": "ocean three-dimensional momentum tendency",
     "fields":"Um_dPHdx, Vm_dPHdy",
     "product": "native",
-    "filename" : "OCEAN_3D_MOMENTUM_TENDENCY",
+    "filename" : "OCEAN_3D_MOMENTUM_TEND",
     "dimension" : "3D"
    }
 ]
