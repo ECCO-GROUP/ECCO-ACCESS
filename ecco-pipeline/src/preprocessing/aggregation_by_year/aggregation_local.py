@@ -14,10 +14,8 @@ def main(config_path='', output_path='', solr_info='', grids_to_use=[]):
         print('No path for configuration file. Can not run aggregation.')
         return
 
-    # with open(config_path, "r") as stream:
-    #     config = yaml.load(stream, yaml.Loader)
-
-    aggregation.run_aggregation(output_path, config_path=config_path, solr_info=solr_info, grids_to_use=grids_to_use)
+    aggregation.run_aggregation(
+        output_path, config_path=config_path, solr_info=solr_info, grids_to_use=grids_to_use)
 
 
 ##################################################

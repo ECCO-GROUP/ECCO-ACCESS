@@ -31,7 +31,8 @@ def find_bucket_key(s3_path):
 
 
 def split_s3_bucket_key(s3_path):
-    """Split s3 path into bucket and key prefix.
+    """
+    Split s3 path into bucket and key prefix.
     This will also handle the s3:// prefix.
     :return: Tuple of ('bucketname', 'keyname')
     """
@@ -40,8 +41,10 @@ def split_s3_bucket_key(s3_path):
     return find_bucket_key(s3_path)
 
 
-# Creates checksum from filename
 def md5(fname):
+    """
+    Creates checksum from filename
+    """
     hash_md5 = hashlib.md5()
     with open(fname, 'rb') as f:
         for chunk in iter(lambda: f.read(4096), b""):
@@ -49,10 +52,11 @@ def md5(fname):
     return hash_md5.hexdigest()
 
 
-# Queries Solr based on config information and filter query
-# Returns list of Solr entries (docs)
 def solr_query(config, solr_host, fq, solr_collection_name):
-    # solr_collection_name = config['solr_collection_name']
+    """
+    Queries Solr based on config information and filter query
+    Returns list of Solr entries (docs)
+    """
 
     getVars = {'q': '*:*',
                'fq': fq,
@@ -64,10 +68,11 @@ def solr_query(config, solr_host, fq, solr_collection_name):
     return response.json()['response']['docs']
 
 
-# Posts update to Solr with provided update body
-# Optional return of posting status code
 def solr_update(config, solr_host, update_body, solr_collection_name, r=False):
-    # solr_collection_name = config['solr_collection_name']
+    """
+    Posts update to Solr with provided update body
+    Optional return of posting status code
+    """
 
     url = solr_host + solr_collection_name + '/update?commit=true'
 
@@ -77,8 +82,11 @@ def solr_update(config, solr_host, update_body, solr_collection_name, r=False):
         requests.post(url, json=update_body)
 
 
-# Aggregates data into annual files, saves them, and updates Solr
 def run_aggregation(output_dir, s3=None, config_path='', solr_info='', grids_to_use=[]):
+    """
+    Aggregates data into annual files, saves them, and updates Solr
+    """
+
     # =====================================================
     # Read configurations from YAML file
     # =====================================================
@@ -120,18 +128,25 @@ def run_aggregation(output_dir, s3=None, config_path='', solr_info='', grids_to_
             solr_host = config['solr_host_local']
             solr_collection_name = config['solr_collection_name']
 
+    # =====================================================
+    # Pull metadata from Solr
+    # =====================================================
     fq = ['type_s:grid']
-    grids = [grid for grid in solr_query(config, solr_host, fq, solr_collection_name)]
+    grids = [grid for grid in solr_query(
+        config, solr_host, fq, solr_collection_name)]
 
     # Update grids to only use those in grids_to_use
     if grids_to_use:
         grids = [grid for grid in grids if grids['grid_name_s'] in grids_to_use]
 
+    # Query Solr for fields
     fq = ['type_s:field', f'dataset_s:{dataset_name}']
     fields = solr_query(config, solr_host, fq, solr_collection_name)
 
+    # Query Solr for dataset metadata
     fq = ['type_s:dataset', f'dataset_s:{dataset_name}']
-    dataset_metadata = solr_query(config, solr_host, fq, solr_collection_name)[0]
+    dataset_metadata = solr_query(
+        config, solr_host, fq, solr_collection_name)[0]
 
     aggregate_all_years = False
     aggregation_version = str(config['version'])
@@ -160,7 +175,9 @@ def run_aggregation(output_dir, s3=None, config_path='', solr_info='', grids_to_
 
     aggregation_successes = True
 
-    # Iterate through grids
+    # =====================================================
+    # Loop through grids
+    # =====================================================
     for grid in grids:
 
         grid_path = grid['grid_path_s']
@@ -192,7 +209,9 @@ def run_aggregation(output_dir, s3=None, config_path='', solr_info='', grids_to_
         else:
             model_grid = xr.open_dataset(grid_path, decode_times=True)
 
-        # Iterate through years
+        # =====================================================
+        # Loop through years
+        # =====================================================
         for year in years:
 
             # Construct list of dates corresponding to data time scale
@@ -204,7 +223,9 @@ def run_aggregation(output_dir, s3=None, config_path='', solr_info='', grids_to_
                     f'{year}-01', f'{int(year)+1}-01', dtype='datetime64[M]')
                 dates_in_year = [f'{date}-01' for date in dates_in_year]
 
-            # Iterate through dataset fields
+            # =====================================================
+            # Loop through fields
+            # =====================================================
             for field in fields:
 
                 field_name = field['name_s']
@@ -218,6 +239,9 @@ def run_aggregation(output_dir, s3=None, config_path='', solr_info='', grids_to_
 
                 daily_DS_year = []
 
+                # =====================================================
+                # Loop through dates
+                # =====================================================
                 for date in dates_in_year:
                     # variable to store name of data values in dataset
                     data_var = f'{field_name}_interpolated_to_{grid_name}'
@@ -226,7 +250,8 @@ def run_aggregation(output_dir, s3=None, config_path='', solr_info='', grids_to_
                     fq = [f'dataset_s:{dataset_name}', 'type_s:transformation',
                           f'grid_name_s:{grid_name}', f'field_s:{field_name}', f'date_s:{date}*']
 
-                    docs = solr_query(config, solr_host, fq, solr_collection_name)
+                    docs = solr_query(config, solr_host, fq,
+                                      solr_collection_name)
 
                     # If first of month is not found, query with 7 day tolerance only for monthly data
                     if not docs and data_time_scale == 'monthly':
@@ -249,7 +274,8 @@ def run_aggregation(output_dir, s3=None, config_path='', solr_info='', grids_to_
                         for tol_date in tolerance_days:
                             fq = [f'dataset_s:{dataset_name}', 'type_s:transformation',
                                   f'grid_name_s:{grid_name}', f'field_s:{field_name}', f'date_s:{tol_date}*']
-                            docs = solr_query(config, solr_host, fq, solr_collection_name)
+                            docs = solr_query(
+                                config, solr_host, fq, solr_collection_name)
 
                             if docs:
                                 break
@@ -281,7 +307,8 @@ def run_aggregation(output_dir, s3=None, config_path='', solr_info='', grids_to_
                         # Update JSON transformations list
                         fq = [f'dataset_s:{dataset_name}', 'type_s:harvested',
                               f'pre_transformation_file_path_s:"{doc["pre_transformation_file_path_s"]}"']
-                        harvested_metadata = solr_query(config, solr_host, fq, solr_collection_name)
+                        harvested_metadata = solr_query(
+                            config, solr_host, fq, solr_collection_name)
 
                         transformation_metadata = doc
                         transformation_metadata['harvested'] = harvested_metadata
@@ -320,7 +347,6 @@ def run_aggregation(output_dir, s3=None, config_path='', solr_info='', grids_to_
 
                         data_DS = data_DA.to_dataset()
 
-                        # time_bnds stuff to match dataset
                         # add time_bnds coordinate
                         # [start_time, end_time] dimensions
                         # MONTHLY cannot use timedelta64 since it has a variable
@@ -330,9 +356,11 @@ def run_aggregation(output_dir, s3=None, config_path='', solr_info='', grids_to_
                             month = str(np.datetime64(end_time, 'M') + 1)
                             end_time = [str(np.datetime64(month, 'ns'))]
                         elif data_time_scale.upper() == 'DAILY':
-                            end_time = data_DS.time_end.values + np.timedelta64(1, 'D')
+                            end_time = data_DS.time_end.values + \
+                                np.timedelta64(1, 'D')
 
-                        _, ct = ea.make_time_bounds_from_ds64(np.datetime64(end_time[0], 'ns'), 'AVG_MON')
+                        _, ct = ea.make_time_bounds_from_ds64(
+                            np.datetime64(end_time[0], 'ns'), 'AVG_MON')
                         data_DS.time.values[0] = ct
 
                         start_time = data_DS.time_start.values
@@ -359,8 +387,10 @@ def run_aggregation(output_dir, s3=None, config_path='', solr_info='', grids_to_
 
                 daily_DS_year_merged.attrs['aggregation_version'] = config['version']
 
-                daily_DS_year_merged[data_var].attrs['valid_min'] = np.nanmin(daily_DS_year_merged[data_var].values)
-                daily_DS_year_merged[data_var].attrs['valid_max'] = np.nanmax(daily_DS_year_merged[data_var].values)
+                daily_DS_year_merged[data_var].attrs['valid_min'] = np.nanmin(
+                    daily_DS_year_merged[data_var].values)
+                daily_DS_year_merged[data_var].attrs['valid_max'] = np.nanmax(
+                    daily_DS_year_merged[data_var].values)
 
                 remove_keys = []
                 for (key, _) in daily_DS_year_merged[data_var].attrs.items():
@@ -381,11 +411,9 @@ def run_aggregation(output_dir, s3=None, config_path='', solr_info='', grids_to_
                 output_path = f'{output_dir}{dataset_name}/transformed_products/{grid_name}/aggregated/{field_name}/'
 
                 bin_output_dir = output_path + 'bin/'
-
                 Path(bin_output_dir).mkdir(parents=True, exist_ok=True)
 
                 netCDF_output_dir = output_path + 'netCDF/'
-
                 Path(netCDF_output_dir).mkdir(parents=True, exist_ok=True)
 
                 # generalized_aggregate_and_save expects Paths
@@ -394,9 +422,9 @@ def run_aggregation(output_dir, s3=None, config_path='', solr_info='', grids_to_
 
                 # used for Solr docs metadata
                 solr_output_filepaths = {'daily_bin': f'{output_path}bin/{shortest_filename}',
-                                    'daily_netCDF': f'{output_path}netCDF/{shortest_filename}.nc',
-                                    'monthly_bin': f'{output_path}bin/{monthly_filename}',
-                                    'monthly_netCDF': f'{output_path}netCDF/{monthly_filename}.nc'}
+                                         'daily_netCDF': f'{output_path}netCDF/{shortest_filename}.nc',
+                                         'monthly_bin': f'{output_path}bin/{monthly_filename}',
+                                         'monthly_netCDF': f'{output_path}netCDF/{monthly_filename}.nc'}
 
                 uuids = [str(uuid.uuid1()), str(uuid.uuid1())]
 
@@ -449,18 +477,18 @@ def run_aggregation(output_dir, s3=None, config_path='', solr_info='', grids_to_
                     empty_year = True
                     success = False
                     solr_output_filepaths = {'daily_bin': '',
-                                        'daily_netCDF': '',
-                                        'monthly_bin': '',
-                                        'monthly_netCDF': ''}
+                                             'daily_netCDF': '',
+                                             'monthly_bin': '',
+                                             'monthly_netCDF': ''}
 
                 aggregation_successes = aggregation_successes and success
                 empty_year = empty_year and success
 
                 if empty_year:
                     solr_output_filepaths = {'daily_bin': '',
-                                        'daily_netCDF': '',
-                                        'monthly_bin': '',
-                                        'monthly_netCDF': ''}
+                                             'daily_netCDF': '',
+                                             'monthly_bin': '',
+                                             'monthly_netCDF': ''}
 
                 # Query Solr for existing aggregation
                 fq = [f'dataset_s:{dataset_name}', 'type_s:aggregation',
@@ -569,7 +597,8 @@ def run_aggregation(output_dir, s3=None, config_path='', solr_info='', grids_to_
                     else:
                         update_body[0]["notes_s"] = {"set": ''}
 
-                r = solr_update(config, solr_host, update_body, solr_collection_name, r=True)
+                r = solr_update(config, solr_host, update_body,
+                                solr_collection_name, r=True)
 
                 if r.status_code != 200:
                     print(
@@ -578,7 +607,8 @@ def run_aggregation(output_dir, s3=None, config_path='', solr_info='', grids_to_
                 # Query for descendants entries from this year
                 fq = ['type_s:descendants',
                       f'dataset_s:{dataset_name}', f'date_s:{year}*']
-                existing_descendants_docs = solr_query(config, solr_host, fq, solr_collection_name)
+                existing_descendants_docs = solr_query(
+                    config, solr_host, fq, solr_collection_name)
 
                 # if descendants entries already exist, update them
                 if len(existing_descendants_docs) > 0:
@@ -597,7 +627,8 @@ def run_aggregation(output_dir, s3=None, config_path='', solr_info='', grids_to_
                             update_body[0][f'{grid_name}_{field_name}_aggregated_{key}_path_s'] = {
                                 "set": value}
 
-                        r = solr_update(config, solr_host, update_body, solr_collection_name, r=True)
+                        r = solr_update(
+                            config, solr_host, update_body, solr_collection_name, r=True)
 
                         if r.status_code != 200:
                             print(
@@ -629,12 +660,12 @@ def run_aggregation(output_dir, s3=None, config_path='', solr_info='', grids_to_
     failed_aggregations = solr_query(
         config, solr_host, fq, solr_collection_name)
 
-    aggregation_status = f'All aggregations successful'
+    aggregation_status = 'All aggregations successful'
 
     if not successful_aggregations and not failed_aggregations:
-        aggregation_status = f'No aggregations performed'
+        aggregation_status = 'No aggregations performed'
     elif not successful_aggregations:
-        aggregation_status = f'No successful aggregations'
+        aggregation_status = 'No successful aggregations'
     elif failed_aggregations:
         aggregation_status = f'{len(failed_aggregations)} aggregations failed'
 
@@ -647,11 +678,13 @@ def run_aggregation(output_dir, s3=None, config_path='', solr_info='', grids_to_
         }
     ]
 
+    # Remove {grid}_years_updated field from solr dataset entry
     for grid in grids:
         solr_years_updated = f'{grid["grid_name_s"]}_years_updated_ss'
         update_body[0][solr_years_updated] = {"set": []}
 
-    r = solr_update(config, solr_host, update_body, solr_collection_name, r=True)
+    r = solr_update(config, solr_host, update_body,
+                    solr_collection_name, r=True)
 
     if r.status_code == 200:
         print(
