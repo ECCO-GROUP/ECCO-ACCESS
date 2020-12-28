@@ -309,7 +309,7 @@ def osisaf_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False, 
                     granule_dates.append(datetime.strptime(
                         new_date_format, config['date_regex']))
 
-                    # granule metadata setup to be populated for each granule
+                    # Granule metadata used for Solr harvested entries
                     item = {}
                     item['type_s'] = 'harvested'
                     item['date_s'] = new_date_format
@@ -318,7 +318,7 @@ def osisaf_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False, 
                     item['hemisphere_s'] = hemi
                     item['source_s'] = f'ftp://{host}/{url}'
 
-                    # descendants metadta setup to be populated for each granule
+                    # Granule metadata used for initializing Solr descendants entries
                     descendants_item = {}
                     descendants_item['type_s'] = 'descendants'
                     descendants_item['date_s'] = item["date_s"]

@@ -59,7 +59,7 @@ def clean_solr(config, solr_host, grids_to_use, solr_collection_name):
     url = f'{solr_host}{solr_collection_name}/update?commit=true'
     requests.post(url, json={'delete': {'query': fq}})
 
-    # Add start and end years to 'years_updated' field in dataset entry
+    # Add start and end years to '{grid}_years_updated' field in dataset entry
     # Forces the bounding years to be re-aggregated to account for potential
     # removed dates
     start_year = config_start[:4]
@@ -290,6 +290,7 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
                     mod_time = str(now)
                     mod_date_time = now
 
+                # Granule metadata used for Solr harvested entries
                 item = {}
                 item['type_s'] = 'harvested'
                 item['date_s'] = date_start_str
@@ -298,6 +299,7 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
                 item['source_s'] = link
                 item['modified_time_dt'] = mod_date_time.strftime(time_format)
 
+                # Granule metadata used for initializing Solr descendants entries
                 descendants_item = {}
                 descendants_item['type_s'] = 'descendants'
                 descendants_item['date_s'] = date_start_str
@@ -392,7 +394,7 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
 
                         for time in ds_times:
                             new_ds = ds.sel(time=time)
-                            
+
                             if data_time_scale.upper() == 'MONTHLY':
                                 if not time[7:9] == '01':
                                     new_start = f'{time[0:8]}01T00:00:00.000000000'
@@ -404,7 +406,7 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
                             local_fp = f'{target_dir}{year}/{file_name}'
                             time_s = f'{time[:-10]}Z'
 
-                            # granule metadata setup to be populated for each granule
+                            # Granule metadata used for Solr harvested entries
                             item = {}
                             item['type_s'] = 'harvested'
                             item['date_s'] = time_s
@@ -415,7 +417,7 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
                                 time_format)
                             item['download_time_dt'] = chk_time
 
-                            # descendants metadta setup to be populated for each granule
+                            # Granule metadata used for initializing Solr descendants entries
                             descendants_item = {}
                             descendants_item['type_s'] = 'descendants'
                             descendants_item['dataset_s'] = item['dataset_s']

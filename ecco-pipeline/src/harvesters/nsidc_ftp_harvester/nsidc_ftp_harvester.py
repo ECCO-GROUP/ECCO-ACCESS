@@ -299,7 +299,7 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False, s
                     granule_dates.append(datetime.strptime(
                         new_date_format, config['date_regex']))
 
-                    # granule metadata setup to be populated for each granule
+                    # Granule metadata used for Solr harvested entries
                     item = {}
                     item['type_s'] = 'harvested'
                     item['date_s'] = new_date_format
@@ -308,7 +308,7 @@ def nsidc_ftp_harvester(config_path='', output_path='', s3=None, on_aws=False, s
                     item['filename_s'] = newfile
                     item['source_s'] = f'ftp://{host}/{url}'
 
-                    # descendants metadta setup to be populated for each granule
+                    # Granule metadata used for initializing Solr descendants entries
                     descendants_item = {}
                     descendants_item['type_s'] = 'descendants'
                     descendants_item['date_s'] = item["date_s"]
