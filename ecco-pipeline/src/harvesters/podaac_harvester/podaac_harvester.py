@@ -101,7 +101,6 @@ def solr_query(config, solr_host, fq, solr_collection_name):
     Queries Solr database using the filter query passed in.
     Returns list of Solr entries that satisfies the query.
     """
-    # solr_collection_name = config['solr_collection_name']
 
     getVars = {'q': '*:*',
                'fq': fq,
@@ -119,7 +118,6 @@ def solr_update(config, solr_host, update_body, solr_collection_name, r=False):
     that entry contains an id, in which case that entry is updated with new values.
     Optional return of the request status code (ex: 200 for success)
     """
-    # solr_collection_name = config['solr_collection_name']
 
     url = f'{solr_host}{solr_collection_name}/update?commit=true'
 
@@ -594,8 +592,8 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
         ds_meta['harvest_status_s'] = harvest_status
 
         # Update Solr with dataset metadata
-        r = solr_update(config, solr_host, [
-                        ds_meta], solr_collection_name, r=True)
+        r = solr_update(config, solr_host, [ds_meta],
+                        solr_collection_name, r=True)
 
         if r.status_code == 200:
             print('Successfully created Solr dataset document')
