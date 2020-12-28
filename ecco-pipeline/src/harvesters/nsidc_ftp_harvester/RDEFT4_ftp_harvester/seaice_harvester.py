@@ -22,6 +22,8 @@ from urllib.request import urlopen, Request, build_opener, HTTPCookieProcessor
 """
 CMR code comes from downloadable Python script found here: https://nsidc.org/data/RDEFT4
 Harvester code has been modified to include CMR requirements.
+Earthdata credentials are currently hardcoded in the get_credentials() function.
+Credentials could be moved into config yaml or something else more secure. 
 """
 
 CMR_URL = 'https://cmr.earthdata.nasa.gov'
@@ -220,7 +222,6 @@ def cmr_search(short_name, version, time_start, time_end,
                                         time_start=time_start, time_end=time_end,
                                         bounding_box=bounding_box,
                                         polygon=polygon, filename_filter=filename_filter)
-    print('Querying for data:\n\t{0}\n'.format(cmr_query_url))
 
     cmr_scroll_id = None
     ctx = ssl.create_default_context()
@@ -240,10 +241,7 @@ def cmr_search(short_name, version, time_start, time_end,
                     response.info()).items()}
                 cmr_scroll_id = headers['cmr-scroll-id']
                 hits = int(headers['cmr-hits'])
-                if hits > 0:
-                    print('Found {0} matches.'.format(hits))
-                else:
-                    print('Found no matches.')
+
             search_page = response.read()
             search_page = json.loads(search_page.decode('utf-8'))
             url_scroll_results = cmr_filter_urls(search_page)
