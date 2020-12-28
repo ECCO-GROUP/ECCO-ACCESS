@@ -19,6 +19,10 @@ from urllib.error import HTTPError, URLError
 from xml.etree.ElementTree import fromstring
 from urllib.request import urlopen, Request, build_opener, HTTPCookieProcessor
 
+"""
+CMR code comes from downloadable Python script found here: https://nsidc.org/data/RDEFT4
+Harvester code has been modified to include CMR requirements.
+"""
 
 CMR_URL = 'https://cmr.earthdata.nasa.gov'
 URS_URL = 'https://urs.earthdata.nasa.gov'
@@ -258,6 +262,9 @@ def cmr_search(short_name, version, time_start, time_end,
 
 
 def md5(fname):
+    """
+    Creates md5 checksum from file
+    """
     hash_md5 = hashlib.md5()
     with open(fname, 'rb') as f:
         for chunk in iter(lambda: f.read(4096), b""):
@@ -266,6 +273,7 @@ def md5(fname):
 
 
 def getdate(regex, fname):
+
     ex = re.compile(regex)
     match = re.search(ex, fname)
     date = match.group()
@@ -273,6 +281,10 @@ def getdate(regex, fname):
 
 
 def solr_query(config, solr_host, fq, solr_collection_name):
+    """
+    Queries Solr database using the filter query passed in.
+    Returns list of Solr entries that satisfies the query.
+    """
     getVars = {'q': '*:*',
                'fq': fq,
                'rows': 300000}
@@ -283,6 +295,13 @@ def solr_query(config, solr_host, fq, solr_collection_name):
 
 
 def solr_update(config, solr_host, update_body, solr_collection_name, r=False):
+    """
+    Posts an update to Solr database with the update body passed in.
+    For each item in update_body, a new entry is created in Solr, unless
+    that entry contains an id, in which case that entry is updated with new values.
+    Optional return of the request status code (ex: 200 for success)
+    """
+
     url = solr_host + solr_collection_name + '/update?commit=true'
 
     if r:
@@ -292,6 +311,13 @@ def solr_update(config, solr_host, update_body, solr_collection_name, r=False):
 
 
 def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False, solr_info='', grids_to_use=[]):
+    """
+    Uses CMR search to find granules within date range given in harvester_config.yaml.
+    If not on_aws, saves locally, else saves to s3 bucket.
+    Creates (or updates) Solr entries for dataset, harvested granule, fields,
+    and descendants.
+    """
+
     # =====================================================
     # Read harvester_config.yaml and setup variables
     # =====================================================
@@ -313,6 +339,7 @@ def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
     target_dir = f'{output_path}{dataset_name}/harvested_granules/'
     folder = f'/tmp/{dataset_name}/'
 
+    time_format = "%Y-%m-%dT%H:%M:%SZ"
     entries_for_solr = []
     last_success_item = {}
     start_times = []
@@ -426,6 +453,9 @@ def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
 
         url_dict = {}
 
+        # Data filenames contain end of time coverage. To get data covering an
+        # entire calendar month, we only look at files with the last day of the
+        # month in the filename.
         for file_date in iso_dates_at_end_of_month:
             end_of_month_url = [
                 url for url in url_list if file_date in url and file_date < end_time.replace('-', '')[:9]]
@@ -451,7 +481,7 @@ def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
             if not os.path.exists(f'{target_dir}{year}/'):
                 os.makedirs(f'{target_dir}{year}/')
 
-            # Extract modified time from xml file associated with .nc file
+            # Extract metadata from xml file associated with .nc file
             xml_url = f'{url}.xml'
             credentials = get_credentials(xml_url)
             req = Request(xml_url)
@@ -460,10 +490,13 @@ def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
             opener = build_opener(HTTPCookieProcessor())
             data = opener.open(req).read()
             root = fromstring(data)
+
+            # modified time
             modified_time = root.find(
                 'GranuleURMetaData').find('LastUpdate').text.replace(' ', 'T')
             modified_time = f'{modified_time[:-1]}Z'
 
+            # time coverage start and end
             original_start_time = root.find('GranuleURMetaData').find(
                 'RangeDateTime').find('RangeBeginningTime').text
             original_start_date = root.find('GranuleURMetaData').find(
@@ -473,6 +506,7 @@ def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
             original_end_date = root.find('GranuleURMetaData').find(
                 'RangeDateTime').find('RangeEndingDate').text
 
+            # Not currently used to create time bounds
             time_coverage_start = f'{original_start_date}T{original_start_time}'
             time_coverage_end = f'{original_end_date}T{original_end_time}'
 
@@ -600,11 +634,12 @@ def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
                     last_success_item = item
 
     print(f'\nDownloading {dataset_name} complete\n')
+
+    # Only update Solr harvested entries if there are fresh downloads
     if entries_for_solr:
-        # post granule metadata documents for downloaded granules
+        # Update Solr with downloaded granule metadata entries
         r = solr_update(config, solr_host, entries_for_solr,
                         solr_collection_name, r=True)
-
         if r.status_code == 200:
             print('Successfully created or updated Solr harvested documents')
         else:
@@ -631,9 +666,11 @@ def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
     overall_start = min(start_times) if len(start_times) > 0 else None
     overall_end = max(end_times) if len(end_times) > 0 else None
 
+    # Query for Solr dataset level document
     fq = ['type_s:dataset', f'dataset_s:{dataset_name}']
     dataset_query = solr_query(config, solr_host, fq, solr_collection_name)
 
+    # If dataset entry exists on Solr
     update = (len(dataset_query) == 1)
 
     # =====================================================
@@ -656,18 +693,19 @@ def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
         ds_meta['original_dataset_url_s'] = config['original_dataset_url']
         ds_meta['original_dataset_reference_s'] = config['original_dataset_reference']
         ds_meta['original_dataset_doi_s'] = config['original_dataset_doi']
-        if overall_start != None:
-            ds_meta['start_date_dt'] = overall_start.strftime(
-                "%Y-%m-%dT%H:%M:%SZ")
-            ds_meta['end_date_dt'] = overall_end.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        # if no ds entry yet and no qualifying downloads, still create ds entry without download time
+        # Only include start_date and end_date if there was at least one successful download
+        if overall_start != None:
+            ds_meta['start_date_dt'] = overall_start.strftime(time_format)
+            ds_meta['end_date_dt'] = overall_end.strftime(time_format)
+
+        # Only include last_download_dt if there was at least one successful download
         if updating:
             ds_meta['last_download_dt'] = last_success_item['download_time_dt']
 
         ds_meta['harvest_status_s'] = harvest_status
 
-        # Post document
+        # Update Solr with dataset metadata
         r = solr_update(config, solr_host, [ds_meta],
                         solr_collection_name, r=True)
 
@@ -676,8 +714,12 @@ def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
         else:
             print('Failed to create Solr dataset document')
 
-        # TODO: update for changes in yaml (incinerate and rewrite)
-        # modify updating variable to account for updates in config and then incinerate and rewrite
+        # If the dataset entry needs to be created, so do the field entries
+
+        # -----------------------------------------------------
+        # Create Solr dataset field entries
+        # -----------------------------------------------------
+
         # Query for Solr field documents
         fq = ['type_s:field', f'dataset_s:{dataset_name}']
         field_query = solr_query(config, solr_host, fq, solr_collection_name)
@@ -698,15 +740,17 @@ def seaice_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
 
             body.append(field_obj)
 
-        # Update Solr with dataset fields metadata
-        r = solr_update(config, solr_host, body, solr_collection_name, r=True)
+        if body:
+            # Update Solr with dataset fields metadata
+            r = solr_update(config, solr_host, body,
+                            solr_collection_name, r=True)
 
-        if r.status_code == 200:
-            print('Successfully created Solr field documents')
-        else:
-            print('Failed to create Solr field documents')
+            if r.status_code == 200:
+                print('Successfully created Solr field documents')
+            else:
+                print('Failed to create Solr field documents')
 
-    # if record exists, update download time, converage start date, coverage end date
+    # if dataset entry exists, update download time, converage start date, coverage end date
     else:
         # -----------------------------------------------------
         # Update Solr dataset entry
