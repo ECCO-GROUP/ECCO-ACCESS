@@ -17,8 +17,10 @@ from netCDF4 import default_fillvals  # pylint: disable=no-name-in-module
 np.warnings.filterwarnings('ignore')
 
 
-# Creates checksum from filename
 def md5(fname):
+    """
+    Creates md5 checksum from file
+    """
     hash_md5 = hashlib.md5()
     with open(fname, 'rb') as f:
         for chunk in iter(lambda: f.read(4096), b""):
@@ -26,10 +28,11 @@ def md5(fname):
     return hash_md5.hexdigest()
 
 
-# Queries Solr based on config information and filter query
-# Returns list of Solr entries (docs)
 def solr_query(config, solr_host, fq, solr_collection_name):
-    # solr_collection_name = config['solr_collection_name']
+    """
+    Queries Solr based on config information and filter query
+    Returns list of Solr entries (docs)
+    """
 
     getVars = {'q': '*:*',
                'fq': fq,
@@ -40,10 +43,11 @@ def solr_query(config, solr_host, fq, solr_collection_name):
     return response.json()['response']['docs']
 
 
-# Posts update to Solr with provided update body
-# Optional return of posting status code
 def solr_update(config, solr_host, update_body, solr_collection_name, r=False):
-    # solr_collection_name = config['solr_collection_name']
+    """
+    Posts update to Solr with provided update body
+    Optional return of posting status code
+    """
 
     url = solr_host + solr_collection_name + '/update?commit=true'
 
@@ -53,8 +57,10 @@ def solr_update(config, solr_host, update_body, solr_collection_name, r=False):
         requests.post(url, json=update_body)
 
 
-# Calls run_locally and catches any errors
 def run_locally_wrapper(source_file_path, remaining_transformations, output_dir, config_path='', verbose=True, solr_info=''):
+    """
+    Calls run_locally and catches any errors
+    """
     # try:
     return run_locally(source_file_path,
                        remaining_transformations, output_dir, config_path=config_path, verbose=verbose, solr_info=solr_info)
@@ -63,9 +69,12 @@ def run_locally_wrapper(source_file_path, remaining_transformations, output_dir,
     #     print('Unable to run local transformation')
 
 
-# Performs and saves locally all remaining transformations for a given source granule
-# Updates Solr with transformation entries and updates descendants, and dataset entries
 def run_locally(source_file_path, remaining_transformations, output_dir, config_path='', verbose=True, solr_info=''):
+    """
+    Performs and saves locally all remaining transformations for a given source granule
+    Updates Solr with transformation entries and updates descendants, and dataset entries
+    """
+
     # Conditional function definition:
     # verboseprint will use the print function if verbose is true
     # otherwise will use a lambda function that returns None (effectively not printing)
@@ -266,13 +275,13 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
             verboseprint(' - Updating Solr with factors')
             # Query Solr for dataset entry
             query_fq = [f'dataset_s:{dataset_name}', 'type_s:dataset']
-            doc_id = solr_query(config, solr_host, query_fq,
-                                solr_collection_name)[0]['id']
+            dataset_metadata_id = solr_query(config, solr_host, query_fq,
+                                             solr_collection_name)[0]['id']
 
             # Update Solr dataset entry with factors metadata
             update_body = [
                 {
-                    "id": doc_id,
+                    "id": dataset_metadata_id,
                     f'{grid_factors}': {"set": factors_path},
                     f'{grid_name}{hemi}_factors_stored_dt': {"set": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")},
                     f'{grid_factors_version}': {"set": transformation_version}
@@ -381,11 +390,9 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
             Path(output_path).mkdir(parents=True, exist_ok=True)
 
             # save field_DS
-            ea.save_to_disk(field_DS,
-                            output_filename[:-3],
-                            fill_values['binary'], fill_values['netcdf'],
-                            Path(output_path), Path(output_path),
-                            binary_dtype, grid_type, save_binary=False)
+            ea.save_to_disk(field_DS, output_filename[:-3], fill_values['binary'],
+                            fill_values['netcdf'], Path(output_path),
+                            Path(output_path), binary_dtype, grid_type, save_binary=False)
 
             # Query Solr for transformation entry
             query_fq = [f'dataset_s:{dataset_name}', 'type_s:transformation', f'grid_name_s:{grid_name}',
@@ -460,6 +467,11 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
 
 
 def run_using_aws_wrapper(s3, filename):
+    # =====================================================
+    # run_using_aws is not up to date and will not work!
+    # run_in_any_env has been greatly changed and the aws
+    # implementation does not yet reflect those changes!
+    # =====================================================
     try:
         run_using_aws(s3, filename)
     except Exception as e:
@@ -468,6 +480,12 @@ def run_using_aws_wrapper(s3, filename):
 
 
 def run_using_aws(s3, filename):
+    # =====================================================
+    # run_using_aws is not up to date and will not work!
+    # run_in_any_env has been greatly changed and the aws
+    # implementation does not yet reflect those changes!
+    # =====================================================
+
     # =====================================================
     # Set configuration options
     # =====================================================
@@ -822,6 +840,10 @@ def run_using_aws(s3, filename):
 
 
 def run_in_any_env(model_grid, grid_name, grid_type, fields, factors, ds, record_date, dataset_metadata, config, fill_values, verbose=True):
+    """
+    Function that actually performs the transformations. Returns a list of transformed
+    xarray datasets, one dataset for each field being transformed for the given grid.
+    """
     verboseprint = print if verbose else lambda *a, **k: None
     # =====================================================
     # Code to import ecco utils locally...
@@ -854,6 +876,9 @@ def run_in_any_env(model_grid, grid_name, grid_type, fields, factors, ds, record
     pre_transformations = config['pre_transformation_steps']
     post_transformations = config['post_transformation_steps']
 
+    # =====================================================
+    # Pre transformation functions
+    # =====================================================
     if pre_transformations:
         for func_to_run in pre_transformations:
             callable_func = getattr(ea, func_to_run)
@@ -863,7 +888,9 @@ def run_in_any_env(model_grid, grid_name, grid_type, fields, factors, ds, record
                 logger.error(f'Pre-transformation {func_to_run} failed: {e}')
                 return []
 
-    # fields is a list of dictionaries
+    # =====================================================
+    # Loop through fields to transform
+    # =====================================================
     for data_field_info in fields:
         field_name = data_field_info['name_s']
         standard_name = data_field_info['standard_name_s']
@@ -880,6 +907,9 @@ def run_in_any_env(model_grid, grid_name, grid_type, fields, factors, ds, record
                                                                    grid_name)
             success = True
 
+            # =====================================================
+            # Post transformation functions
+            # =====================================================
             if post_transformations:
                 for func_to_run in post_transformations:
                     callable_func = getattr(ea, func_to_run)
@@ -909,12 +939,12 @@ def run_in_any_env(model_grid, grid_name, grid_type, fields, factors, ds, record
             np.where(np.isnan(field_DA.values),
                      fill_values['netcdf'], field_DA.values)
 
-        # make datasets and time_bnds stuff and ''metadata stuff''
+        # Make dataarray into dataset
         field_DS = field_DA.to_dataset()
 
         ds_meta = {}
 
-        # Metadata stuff
+        # Dataset metadata
         if 'title' in model_grid:
             ds_meta['interpolated_grid'] = model_grid.title
         else:
@@ -930,10 +960,8 @@ def run_in_any_env(model_grid, grid_name, grid_type, fields, factors, ds, record
         ds_meta['notes'] = config['notes']
         field_DS = field_DS.assign_attrs(ds_meta)
 
-        # time_bnds stuff
         # add time_bnds coordinate
         # [start_time, end_time] dimensions
-
         start_time = field_DS.time_start.values
         end_time = field_DS.time_end.values
 
