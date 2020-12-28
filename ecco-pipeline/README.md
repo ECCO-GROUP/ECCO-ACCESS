@@ -14,5 +14,6 @@ The current cloud computing functionality of this pipeline has not been tested o
 
 ## More Information
 More detailed information can be found at the following wiki pages:
+  - [Documentation](https://github.com/ECCO-GROUP/ECCO-ACCESS/wiki/Documentation)
   - [Guide to the pipeline](https://github.com/ECCO-GROUP/ECCO-ACCESS/wiki/Preprocessing-Pipeline-Guide)
   - [Guide to the pipeline harvesters](https://github.com/ECCO-GROUP/ECCO-ACCESS/wiki/Preprocessing-Harvester-Guide)
