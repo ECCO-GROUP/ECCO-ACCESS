@@ -65,7 +65,7 @@ def calculate_valid_minmax_for_dataset(dataset_base_dir, method='easy',
 
             for data_var in tmp.data_vars:
                 if method == 'easy':
-                    # trust the values in the valid_min and valid_max attributes 
+                    # trust the values in the valid_min and valid_max attributes
                     data_vars[data_var]['valid_max'].append(tmp[data_var].attrs['valid_max'])
                     data_vars[data_var]['valid_min'].append(tmp[data_var].attrs['valid_min'])
 
@@ -149,7 +149,7 @@ def apply_valid_minmax_for_dataset(dataset_base_dir,\
             print('\n ', data_var)
             pprint(valid_minmax_ds[data_var].values)
 
-        glob_str = grouping.name + "*.nc"
+        glob_str = grouping.name + "*ECCO*.nc"
 
         # find list of files
         files_in_grouping = np.sort(list(grouping.glob(glob_str)))
