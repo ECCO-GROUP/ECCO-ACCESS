@@ -1,5 +1,5 @@
 # Dataset config files containing sensitive information
-/Sea-Level-Indicators/SLI-pipeline/datasets/gmsl_MERGED_TP_J1_OSTM_OST_GMSL_ASCII_V42/harvester_config.yaml
+/SLI-pipeline/datasets/gmsl_MERGED_TP_J1_OSTM_OST_GMSL_ASCII_V42/harvester_config.yaml
 
 .vs*
 *.pyc
