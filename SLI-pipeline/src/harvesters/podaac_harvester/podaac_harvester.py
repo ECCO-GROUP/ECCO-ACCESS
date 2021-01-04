@@ -6,6 +6,7 @@ import shutil
 import hashlib
 import logging
 import requests
+from requests.auth import HTTPBasicAuth
 import numpy as np
 import xarray as xr
 from pathlib import Path
@@ -127,10 +128,9 @@ def solr_update(config, solr_host, update_body, solr_collection_name, r=False):
         requests.post(url, json=update_body)
 
 
-def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False, solr_info='', grids_to_use=[]):
+def podaac_harvester(config_path='', output_path='', s3=None, solr_info='', grids_to_use=[]):
     """
     Pulls data files for PODAAC id and date range given in harvester_config.yaml.
-    If not on_aws, saves locally, else saves to s3 bucket.
     Creates (or updates) Solr entries for dataset, harvested granule, fields,
     and descendants.
     """
@@ -168,31 +168,14 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
     now = datetime.utcnow()
     updating = False
 
-    # =====================================================
-    # Setup AWS Target Bucket
-    # =====================================================
-    if on_aws:
-        target_bucket_name = config['target_bucket_name']
-        target_bucket = s3.Bucket(target_bucket_name)
-        if solr_info:
-            solr_host = solr_info['solr_url']
-            solr_collection_name = solr_info['solr_collection_name']
-        else:
-            solr_host = config['solr_host_aws']
-            solr_collection_name = config['solr_collection_name']
-        clean_solr(config, solr_host, grids_to_use, solr_collection_name)
-        print(
-            f'Downloading {dataset_name} files and uploading to {target_bucket_name}/{dataset_name}\n')
+    if solr_info:
+        solr_host = solr_info['solr_url']
+        solr_collection_name = solr_info['solr_collection_name']
     else:
-        target_bucket = None
-        if solr_info:
-            solr_host = solr_info['solr_url']
-            solr_collection_name = solr_info['solr_collection_name']
-        else:
-            solr_host = config['solr_host_local']
-            solr_collection_name = config['solr_collection_name']
-        clean_solr(config, solr_host, grids_to_use, solr_collection_name)
-        print(f'Downloading {dataset_name} files to {target_dir}\n')
+        solr_host = config['solr_host_local']
+        solr_collection_name = config['solr_collection_name']
+    # clean_solr(config, solr_host, grids_to_use, solr_collection_name)
+    print(f'Downloading {dataset_name} files to {target_dir}\n')
 
     # =====================================================
     # Pull existing entries from Solr
@@ -253,14 +236,19 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
             # Extract granule information from XML entry and attempt to download data file
             try:
                 # Extract download link from XML entry
-                link = elem.find(
-                    "{%(atom)s}link[@title='OPeNDAP URL']" % namespace).attrib['href']
-                link = '.'.join(link.split('.')[:-1])
-                newfile = link.split("/")[-1]
+                try:
+                    link = elem.find(
+                        "{%(atom)s}link[@title='OPeNDAP URL']" % namespace).attrib['href']
+                    link = '.'.join(link.split('.')[:-1])
+                    newfile = link.split("/")[-1]
+                except:
+                    link = elem.find(
+                        "{%(atom)s}link[@title='HTTP URL']" % namespace).attrib['href']
+                    newfile = link.split("/")[-1]
 
                 # Skip granules of unrecognized file format
-                if not any(extension in newfile for extension in ['.nc', '.bz2', '.gz']):
-                    continue
+                # if not any(extension in newfile for extension in ['.nc', '.bz2', '.gz', ]):
+                #     continue
 
                 # Extract start and end dates from XML entry
                 date_start_str = elem.find("{%(time)s}start" % namespace).text
@@ -307,9 +295,9 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
 
                 # If granule doesn't exist or previously failed or has been updated since last harvest
                 updating = (newfile not in docs.keys()) or \
-                           (not docs[newfile]['harvest_success_b']) or \
-                           (datetime.strptime(
-                               docs[newfile]['download_time_dt'], time_format) <= mod_date_time)
+                    (not docs[newfile]['harvest_success_b']) or \
+                    (datetime.strptime(
+                        docs[newfile]['download_time_dt'], time_format) <= mod_date_time)
 
                 # If updating, download file if necessary
                 if updating:
@@ -346,24 +334,6 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
                     # Create checksum for file
                     item['checksum_s'] = md5(local_fp)
                     item['pre_transformation_file_path_s'] = local_fp
-
-                    # =====================================================
-                    # Push data to s3 bucket
-                    # =====================================================
-
-                    if on_aws:
-                        aws_upload = True
-                        output_filename = f'{dataset_name}/{newfile}' if on_aws else newfile
-                        print("=========uploading file to s3=========")
-                        try:
-                            target_bucket.upload_file(
-                                local_fp, output_filename)
-                            item['pre_transformation_file_path_s'] = f's3://{config["target_bucket_name"]}/{output_filename}'
-                        except:
-                            print("======aws upload unsuccessful=======")
-                            item['message_s'] = 'aws upload unsuccessful'
-                        print("======uploading file to s3 DONE=======")
-
                     item['harvest_success_b'] = True
                     item['file_size_l'] = os.path.getsize(local_fp)
 
@@ -440,19 +410,6 @@ def podaac_harvester(config_path='', output_path='', s3=None, on_aws=False, solr
                                 item['pre_transformation_file_path_s'] = ''
                                 item['file_size_l'] = 0
                                 item['checksum_s'] = ''
-
-                            if on_aws:
-                                aws_upload = True
-                                output_filename = f'{dataset_name}/{newfile}' if on_aws else newfile
-                                print("=========uploading file to s3=========")
-                                try:
-                                    target_bucket.upload_file(
-                                        local_fp, output_filename)
-                                    item['pre_transformation_file_path_s'] = f's3://{config["target_bucket_name"]}/{output_filename}'
-                                except:
-                                    print("======aws upload unsuccessful=======")
-                                    item['message_s'] = 'aws upload unsuccessful'
-                                print("======uploading file to s3 DONE=======")
 
                             # Query for existing granule in Solr in order to update it
                             fq = ['type_s:harvested', f'dataset_s:{dataset_name}',

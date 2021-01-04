@@ -15,7 +15,7 @@ from multiprocessing import cpu_count
 
 # Hardcoded output directory path for pipeline files
 # Leave blank to be prompted for an output directory
-output_dir = ''
+output_dir = '/Users/kevinmarlis/Developer/JPL/sealevel_output/'
 
 
 def create_parser():
@@ -55,8 +55,10 @@ def create_parser():
 
     return parser
 
+
 def check_solr_grids(solr_host, solr_collection_name):
-    response = requests.get(f'{solr_host}{solr_collection_name}/select?fq=type_s%3Agrid&q=*%3A*')
+    response = requests.get(
+        f'{solr_host}{solr_collection_name}/select?fq=type_s%3Agrid&q=*%3A*')
     if not response.json()['response']['docs']:
         return True
     else:
