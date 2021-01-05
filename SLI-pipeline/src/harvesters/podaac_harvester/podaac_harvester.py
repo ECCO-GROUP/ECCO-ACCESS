@@ -153,6 +153,8 @@ def podaac_harvester(config_path='', output_path='', s3=None, solr_info='', grid
     host = config['host']
     podaac_id = config['podaac_id']
     data_time_scale = config['data_time_scale']
+    name = config['name']
+    password = config['password']
     target_dir = f'{output_path}{dataset_name}/harvested_granules/'
 
     # If target paths don't exist, make them
@@ -254,11 +256,11 @@ def podaac_harvester(config_path='', output_path='', s3=None, solr_info='', grid
                 date_start_str = elem.find("{%(time)s}start" % namespace).text
                 date_end_str = elem.find("{%(time)s}end" % namespace).text
 
-                # Ignore granules with start time less than wanted start time
-                # PODAAC can grab granule previous to start time if that granule's
-                # end time is the same as the config file's start time
-                if date_start_str.replace('-', '') < start_time and not aggregated:
-                    continue
+                # # Ignore granules with start time less than wanted start time
+                # # PODAAC can grab granule previous to start time if that granule's
+                # # end time is the same as the config file's start time
+                # if date_start_str.replace('-', '') < start_time and not aggregated:
+                #     continue
 
                 # Remove nanoseconds from dates
                 if len(date_start_str) > 19:
@@ -298,7 +300,7 @@ def podaac_harvester(config_path='', output_path='', s3=None, solr_info='', grid
                     (not docs[newfile]['harvest_success_b']) or \
                     (datetime.strptime(
                         docs[newfile]['download_time_dt'], time_format) <= mod_date_time)
-
+                print(updating)
                 # If updating, download file if necessary
                 if updating:
                     year = date_start_str[:4]
@@ -310,19 +312,29 @@ def podaac_harvester(config_path='', output_path='', s3=None, solr_info='', grid
                     # If file doesn't exist locally, download it
                     if not os.path.exists(local_fp):
                         print(f' - Downloading {newfile} to {local_fp}')
-                        if aggregated:
-                            print(
-                                f'    - {newfile} is aggregated. Downloading may be slow.')
+                        # if aggregated:
+                        #     print(
+                        #         f'    - {newfile} is aggregated. Downloading may be slow.')
 
                         urlcleanup()
-                        urlretrieve(link, local_fp)
+                        if password:
+                            r = requests.get(
+                                link, auth=HTTPBasicAuth(name, password))
+                        else:
+                            r = requests.get(link)
+                        open(local_fp, 'wb').write(r.content)
 
                     # If file exists locally, but is out of date, download it
                     elif datetime.fromtimestamp(os.path.getmtime(local_fp)) <= mod_date_time:
                         print(
                             f' - Updating {newfile} and downloading to {local_fp}')
                         urlcleanup()
-                        urlretrieve(link, local_fp)
+                        if password:
+                            r = requests.get(
+                                link, auth=HTTPBasicAuth(name, password))
+                        else:
+                            r = requests.get(link)
+                        open(local_fp, 'wb').write(r.content)
 
                     else:
                         print(
@@ -340,99 +352,99 @@ def podaac_harvester(config_path='', output_path='', s3=None, solr_info='', grid
                     # =====================================================
                     # Handling data in aggregated form
                     # =====================================================
-                    if aggregated:
-                        # Aggregated file has already been downloaded
-                        # Must extract individual granule slices
-                        print(
-                            f' - Extracting individual data granules from aggregated data file')
+                    # if aggregated:
+                    #     # Aggregated file has already been downloaded
+                    #     # Must extract individual granule slices
+                    #     print(
+                    #         f' - Extracting individual data granules from aggregated data file')
 
-                        # Remove old outdated aggregated file from disk
-                        for f in os.listdir(f'{target_dir}{year}/'):
-                            if str(f) != str(newfile):
-                                os.remove(f'{target_dir}{year}/{f}')
+                    #     # Remove old outdated aggregated file from disk
+                    #     for f in os.listdir(f'{target_dir}{year}/'):
+                    #         if str(f) != str(newfile):
+                    #             os.remove(f'{target_dir}{year}/{f}')
 
-                        ds = xr.open_dataset(local_fp)
+                    #     ds = xr.open_dataset(local_fp)
 
-                        # List comprehension extracting times within desired date range
-                        ds_times = [
-                            time for time
-                            in np.datetime_as_string(ds.time.values)
-                            if start_time[:9] <= time.replace('-', '')[:9] <= end_time[:9]
-                        ]
+                    #     # List comprehension extracting times within desired date range
+                    #     ds_times = [
+                    #         time for time
+                    #         in np.datetime_as_string(ds.time.values)
+                    #         if start_time[:9] <= time.replace('-', '')[:9] <= end_time[:9]
+                    #     ]
 
-                        for time in ds_times:
-                            new_ds = ds.sel(time=time)
+                    #     for time in ds_times:
+                    #         new_ds = ds.sel(time=time)
 
-                            if data_time_scale.upper() == 'MONTHLY':
-                                if not time[7:9] == '01':
-                                    new_start = f'{time[0:8]}01T00:00:00.000000000'
-                                    print('NS: ', new_start, 'T: ', time)
-                                    time = new_start
-                            year = time[:4]
+                    #         if data_time_scale.upper() == 'MONTHLY':
+                    #             if not time[7:9] == '01':
+                    #                 new_start = f'{time[0:8]}01T00:00:00.000000000'
+                    #                 print('NS: ', new_start, 'T: ', time)
+                    #                 time = new_start
+                    #         year = time[:4]
 
-                            file_name = f'{dataset_name}_{time.replace("-","")[:8]}.nc'
-                            local_fp = f'{target_dir}{year}/{file_name}'
-                            time_s = f'{time[:-10]}Z'
+                    #         file_name = f'{dataset_name}_{time.replace("-","")[:8]}.nc'
+                    #         local_fp = f'{target_dir}{year}/{file_name}'
+                    #         time_s = f'{time[:-10]}Z'
 
-                            # Granule metadata used for Solr harvested entries
-                            item = {}
-                            item['type_s'] = 'harvested'
-                            item['date_s'] = time_s
-                            item['dataset_s'] = dataset_name
-                            item['filename_s'] = file_name
-                            item['source_s'] = link
-                            item['modified_time_dt'] = mod_date_time.strftime(
-                                time_format)
-                            item['download_time_dt'] = chk_time
+                    #         # Granule metadata used for Solr harvested entries
+                    #         item = {}
+                    #         item['type_s'] = 'harvested'
+                    #         item['date_s'] = time_s
+                    #         item['dataset_s'] = dataset_name
+                    #         item['filename_s'] = file_name
+                    #         item['source_s'] = link
+                    #         item['modified_time_dt'] = mod_date_time.strftime(
+                    #             time_format)
+                    #         item['download_time_dt'] = chk_time
 
-                            # Granule metadata used for initializing Solr descendants entries
-                            descendants_item = {}
-                            descendants_item['type_s'] = 'descendants'
-                            descendants_item['dataset_s'] = item['dataset_s']
-                            descendants_item['date_s'] = item["date_s"]
-                            descendants_item['source_s'] = item['source_s']
+                    #         # Granule metadata used for initializing Solr descendants entries
+                    #         descendants_item = {}
+                    #         descendants_item['type_s'] = 'descendants'
+                    #         descendants_item['dataset_s'] = item['dataset_s']
+                    #         descendants_item['date_s'] = item["date_s"]
+                    #         descendants_item['source_s'] = item['source_s']
 
-                            if not os.path.exists(f'{target_dir}{year}'):
-                                os.makedirs(f'{target_dir}{year}')
+                    #         if not os.path.exists(f'{target_dir}{year}'):
+                    #             os.makedirs(f'{target_dir}{year}')
 
-                            try:
-                                # Save slice as NetCDF
-                                new_ds.to_netcdf(path=local_fp)
+                    #         try:
+                    #             # Save slice as NetCDF
+                    #             new_ds.to_netcdf(path=local_fp)
 
-                                # Create checksum for file
-                                item['checksum_s'] = md5(local_fp)
-                                item['pre_transformation_file_path_s'] = local_fp
-                                item['harvest_success_b'] = True
-                                item['file_size_l'] = os.path.getsize(local_fp)
-                            except:
-                                print(f'    - {file_name} failed to save')
-                                item['harvest_success_b'] = False
-                                item['pre_transformation_file_path_s'] = ''
-                                item['file_size_l'] = 0
-                                item['checksum_s'] = ''
+                    #             # Create checksum for file
+                    #             item['checksum_s'] = md5(local_fp)
+                    #             item['pre_transformation_file_path_s'] = local_fp
+                    #             item['harvest_success_b'] = True
+                    #             item['file_size_l'] = os.path.getsize(local_fp)
+                    #         except:
+                    #             print(f'    - {file_name} failed to save')
+                    #             item['harvest_success_b'] = False
+                    #             item['pre_transformation_file_path_s'] = ''
+                    #             item['file_size_l'] = 0
+                    #             item['checksum_s'] = ''
 
-                            # Query for existing granule in Solr in order to update it
-                            fq = ['type_s:harvested', f'dataset_s:{dataset_name}',
-                                  f'date_s:{time_s[:10]}*']
-                            granule = solr_query(
-                                config, solr_host, fq, solr_collection_name)
+                    #         # Query for existing granule in Solr in order to update it
+                    #         fq = ['type_s:harvested', f'dataset_s:{dataset_name}',
+                    #               f'date_s:{time_s[:10]}*']
+                    #         granule = solr_query(
+                    #             config, solr_host, fq, solr_collection_name)
 
-                            if granule:
-                                item['id'] = granule[0]['id']
+                    #         if granule:
+                    #             item['id'] = granule[0]['id']
 
-                            if time_s in descendants_docs.keys():
-                                descendants_item['id'] = descendants_docs[time_s]['id']
+                    #         if time_s in descendants_docs.keys():
+                    #             descendants_item['id'] = descendants_docs[time_s]['id']
 
-                            entries_for_solr.append(item)
-                            entries_for_solr.append(descendants_item)
+                    #         entries_for_solr.append(item)
+                    #         entries_for_solr.append(descendants_item)
 
-                            start_times.append(datetime.strptime(
-                                time[:-3], '%Y-%m-%dT%H:%M:%S.%f'))
-                            end_times.append(datetime.strptime(
-                                time[:-3], '%Y-%m-%dT%H:%M:%S.%f'))
+                    #         start_times.append(datetime.strptime(
+                    #             time[:-3], '%Y-%m-%dT%H:%M:%S.%f'))
+                    #         end_times.append(datetime.strptime(
+                    #             time[:-3], '%Y-%m-%dT%H:%M:%S.%f'))
 
-                            if item['harvest_success_b']:
-                                last_success_item = item
+                    #         if item['harvest_success_b']:
+                    #             last_success_item = item
 
                 else:
                     print(f' - {newfile} already downloaded and up to date')
@@ -456,17 +468,28 @@ def podaac_harvester(config_path='', output_path='', s3=None, solr_info='', grid
                 descendants_item['harvest_success_b'] = item['harvest_success_b']
                 descendants_item['pre_transformation_file_path_s'] = item['pre_transformation_file_path_s']
 
-                if not aggregated:
-                    entries_for_solr.append(item)
-                    entries_for_solr.append(descendants_item)
+                # if not aggregated:
+                #     entries_for_solr.append(item)
+                #     entries_for_solr.append(descendants_item)
 
-                    start_times.append(datetime.strptime(
-                        date_start_str, date_regex))
-                    end_times.append(datetime.strptime(
-                        date_end_str, date_regex))
+                #     start_times.append(datetime.strptime(
+                #         date_start_str, date_regex))
+                #     end_times.append(datetime.strptime(
+                #         date_end_str, date_regex))
 
-                    if item['harvest_success_b']:
-                        last_success_item = item
+                #     if item['harvest_success_b']:
+                #         last_success_item = item
+
+                entries_for_solr.append(item)
+                entries_for_solr.append(descendants_item)
+
+                start_times.append(datetime.strptime(
+                    date_start_str, date_regex))
+                end_times.append(datetime.strptime(
+                    date_end_str, date_regex))
+
+                if item['harvest_success_b']:
+                    last_success_item = item
 
         # Check if more granules are available on next page
         # Should only need next if more than 30000 granules exist
