@@ -1,0 +1,10 @@
+# =====================================================
+# Dataset
+# =====================================================
+ds_name: "ssha_JASON_3_L2_OST_OGDR_GPS" # Name for dataset
+
+# =====================================================
+# Solr
+# =====================================================
+solr_host_local: http://localhost:8983/solr/ # doesn't change if following standard Solr setup
+solr_collection_name: sealevel_datasets # doesn't change

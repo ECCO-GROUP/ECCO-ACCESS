@@ -1,0 +1,34 @@
+# =====================================================
+# PODAAC
+# =====================================================
+# PODAAC explicitly expects this date format
+start: "20200820T00:00:00Z" # yyyymmddThh:mm:ssZ
+end: "20200908T23:59:59Z" # yyyymmddThh:mm:ssZ
+name: ""
+password: ""
+host: https://podaac.jpl.nasa.gov/ws/search/granule/?format=atom&pretty=false&itemsPerPage=300000 # does not change
+date_regex: "%Y-%m-%dT%H:%M:%SZ" # does not change
+
+# =====================================================
+# Dataset
+# =====================================================
+ds_name: "ssha_JASON_3_L2_OST_OGDR_GPS" # Name for dataset
+harvester_type: "podaac"
+podaac_id: ""
+aggregated: false # if data is available aggregated
+data_time_scale: "time series"
+date_format: "yyyymmdd" # format of date in file name ex: yyyymmdd
+fields: [{ name, long_name, standard_name, units }]
+
+# new_data_attrs:
+original_dataset_title: Jason-3 GPS based orbit and SSHA OGDR
+original_dataset_short_name: JASON_3_L2_OST_OGDR_GPS
+original_dataset_url: https://podaac.jpl.nasa.gov/dataset/JASON_3_L2_OST_OGDR_GPS?ids=Platforms:Processing%20Levels&values=JASON-3::2%20-%20Geophys.%20Variables,%20Sensor%20Coordinates
+original_dataset_reference: https://podaac-tools.jpl.nasa.gov/drive/files/allData/jason3/preview/L2/GPS-OGDR/docs/j3_user_handbook.pdf
+original_dataset_doi: "Not Registered"
+
+# =====================================================
+# Solr
+# =====================================================
+solr_host_local: http://localhost:8983/solr/ # doesn't change if following standard Solr setup
+solr_collection_name: sealevel_datasets # doesn't change
