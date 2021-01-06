@@ -62,10 +62,11 @@ def ssha_processing():
     #     2. surface_type (and other variable names - check files)
     #     3. (and lat/lon/time)
     # 4. Determine start and end time
-    #     1. add time_bnds to aggregated file -> HERE!
+    #     1. add time_bnds to aggregated file
+    #           - need to add encoding -> HERE!
     #     2. give file center time
     # 5. Add metadata to Solr
-    config_path = '/Users/kevinmarlis/Developer/JPL/Sea-Level-Indicators/SLI-pipeline/datasets/ssha_ JASON_3_L2_OST_OGDR_GPS/processing_config.yaml'
+    config_path = '/Users/kevinmarlis/Developer/JPL/Sea-Level-Indicators/SLI-pipeline/datasets/ssha_JASON_3_L2_OST_OGDR_GPS/processing_config.yaml'
     with open(config_path, "r") as stream:
         config = yaml.load(stream, yaml.Loader)
 
@@ -98,17 +99,29 @@ def ssha_processing():
                 start_date, date_regex) <= granule['date_s'] and granule['date_s'] <= datetime.strftime(end_date, date_regex)]
 
             opened_data = []
+            start_times = []
+            end_times = []
+
             # Process the granules
             for index, granule in enumerate(cycle_granules):
                 ds = xr.open_dataset(granule['pre_transformation_file_path_s'])
 
+                ds_start_time = datetime.strptime(
+                    f'{ds.attrs["first_meas_time"][:10]}T{ds.attrs["first_meas_time"][11:]}', '%Y-%m-%dT%H:%M:%S.%f')
+
+                ds_end_time = datetime.strptime(
+                    f'{ds.attrs["last_meas_time"][:10]}T{ds.attrs["last_meas_time"][11:]}', '%Y-%m-%dT%H:%M:%S.%f')
+
+                # start_times.append(ds_start_time)
+                # end_times.append(ds_end_time)
+                start_times.append(ds.time.values[::])
+
                 if index == 0:
-                    start_time = datetime.strptime(
-                        f'{ds.attrs["first_meas_time"][:10]}T{ds.attrs["first_meas_time"][11:]}', '%Y-%m-%dT%H:%M:%S.%f')
+                    overall_start_time = ds_start_time
                 if index == len(cycle_granules) - 1:
-                    end_time = datetime.strptime(
-                        f'{ds.attrs["last_meas_time"][:10]}T{ds.attrs["last_meas_time"][11:]}', '%Y-%m-%dT%H:%M:%S.%f')
-                    center_time = start_time + ((end_time - start_time)/2)
+                    overall_end_time = ds_end_time
+                    overall_center_time = ds_start_time + \
+                        ((ds_end_time - ds_start_time)/2)
 
                 drop_list = [key for key in ds.keys() if key != 'ssha']
                 if 'surface_type' in drop_list:
@@ -122,44 +135,92 @@ def ssha_processing():
                 ds.ssha.values = np.where(np.isnan(ds.ssha.values),
                                           default_fillvals['f8'], ds.ssha.values)
 
+                # Replace non open ocean flags with fill value
                 if 'surface_type' in list(ds.keys()):
-                    # Replace non open ocean flags with fill value
                     ds.ssha.values = np.where(ds.surface_type.values == 0,
                                               ds.ssha.values, default_fillvals['f8'])
                     ds = ds.drop('surface_type')
                 elif 'surface_classification' in list(ds.keys()):
-                    # Replace non open ocean flags with fill value
                     ds.ssha.values = np.where(ds.surface_classification.values == 0,
                                               ds.ssha.values, default_fillvals['f8'])
                     ds = ds.drop('surface_classification')
 
-                opened_data.append(ds)
+                da = ds.ssha
+                opened_data.append(da)
 
             merged_cycle = xr.concat((opened_data), dim='time')
-            # merged_cycle.attrs = {'first_meas_time': start_time,
-            #                       'center_time': center_time,
-            #                       'last_meas_time': end_time}
+            merged_cycle_ds = merged_cycle.to_dataset()
 
-            st = np.array(np.datetime64(start_time))
-            et = np.array(np.datetime64(end_time))
+            # Time bounds
+            start_times = np.concatenate(start_times).ravel()
+            end_times = start_times[1:]
+            end_times = np.append(
+                end_times, end_times[-1] + np.timedelta64(1, 's'))
+            time_bnds = np.array([[i, j]
+                                  for i, j in zip(start_times, end_times)])
 
-            time_bnds = np.array([[st], [et]], dtype='datetime64')
+            merged_cycle_ds = merged_cycle_ds.assign_coords(
+                {'time_bnds': (('time', 'nv'), time_bnds)})
 
-            # ValueError: conflicting sizes for dimension 'time': length 2 on 'time_bnds' and length 854310 on 'time'
-            merged_cycle = merged_cycle.assign_coords(
-                {'time_bnds': (('time', 'nv'), [[st], [et]])})
+            merged_cycle_ds.time.attrs.update(bounds='time_bnds')
 
-            merged_cycle.time.attrs.update(bounds='time_bnds')
-            merged_cycle.to_netcdf('merged.nc')
+            # SSHA Attributes
+            merged_cycle_ds.ssha.attrs['valid_min'] = np.nanmin(
+                merged_cycle_ds.ssha.values)
+            merged_cycle_ds.ssha.attrs['valid_max'] = np.nanmax(
+                [val for val in merged_cycle_ds.ssha.values if val != default_fillvals['f8']])
+
+            # comp = dict(zlib=True, complevel=5,
+            #             _FillValue=default_fillvals['f8'])
+            # encoding = {var: comp for var in ds.data_vars}
+            encoding_each = {'zlib': True,
+                             'complevel': 5,
+                             'shuffle': True,
+                             '_FillValue': default_fillvals['f8']}
+
+            coord_encoding = {}
+            for coord in merged_cycle_ds.coords:
+                coord_encoding[coord] = {'_FillValue': None}
+
+                if 'time' in coord:
+                    coord_encoding[coord] = {'_FillValue': None,
+                                             'dtype': 'int32'}
+                    if coord != 'time_step':
+                        coord_encoding[coord]['units'] = "hours since 1992-01-01 12:00:00"
+                if 'lat' in coord:
+                    coord_encoding[coord] = {'_FillValue': None,
+                                             'dtype': 'float32'}
+                if 'lon' in coord:
+                    coord_encoding[coord] = {'_FillValue': None,
+                                             'dtype': 'float32'}
+
+            var_encoding = {
+                var: encoding_each for var in merged_cycle_ds.data_vars}
+
+            encoding = {**coord_encoding, **var_encoding}
+
+            # print(encoding)
+            # exit()
+
+            # Save to netcdf
+            merged_cycle_ds.to_netcdf('merged.nc', encoding=encoding)
 
             # Update loop variables
             remaining_granules = [
                 granule for granule in remaining_granules if granule not in cycle_granules]
 
-            start_date = datetime.strptime(
-                remaining_granules[0]['date_s'], date_regex)
+            # If there are less than ten days of data, break out of loop
+            if remaining_granules:
+                start_date = datetime.strptime(
+                    remaining_granules[0]['date_s'], date_regex)
 
-            end_date = start_date + timedelta(days=10)
+                last_date = datetime.strptime(
+                    remaining_granules[-1]['date_s'], date_regex)
+
+                end_date = start_date + timedelta(days=10)
+
+                if last_date < end_date:
+                    more_dates_to_parse = False
 
 
 if __name__ == "__main__":
