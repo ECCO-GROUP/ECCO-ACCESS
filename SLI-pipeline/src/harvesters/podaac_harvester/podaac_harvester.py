@@ -152,6 +152,7 @@ def podaac_harvester(config_path='', output_path='', s3=None, solr_info='', grid
     end_time = config['end']
     host = config['host']
     podaac_id = config['podaac_id']
+    shortname = config['original_dataset_short_name']
     data_time_scale = config['data_time_scale']
     name = config['name']
     password = config['password']
@@ -209,7 +210,11 @@ def podaac_harvester(config_path='', output_path='', s3=None, solr_info='', grid
     # =====================================================
     # Setup PODAAC loop variables
     # =====================================================
-    url = f'{host}&datasetId={podaac_id}'
+    if podaac_id:
+        url = f'{host}&datasetId={podaac_id}'
+    else:
+        url = f'{host}&shortName={shortname}'
+
     if not aggregated:
         url += f'&endTime={end_time}&startTime={start_time}'
 
@@ -230,7 +235,6 @@ def podaac_harvester(config_path='', output_path='', s3=None, solr_info='', grid
     while more:
         xml = parse(urlopen(url))
         items = xml.findall('{%(atom)s}entry' % namespace)
-
         # Loop through all granules in XML returned from URL
         for elem in items:
             updating = False
@@ -300,7 +304,7 @@ def podaac_harvester(config_path='', output_path='', s3=None, solr_info='', grid
                     (not docs[newfile]['harvest_success_b']) or \
                     (datetime.strptime(
                         docs[newfile]['download_time_dt'], time_format) <= mod_date_time)
-                print(updating)
+
                 # If updating, download file if necessary
                 if updating:
                     year = date_start_str[:4]
@@ -549,13 +553,13 @@ def podaac_harvester(config_path='', output_path='', s3=None, solr_info='', grid
         ds_meta = {}
         ds_meta['type_s'] = 'dataset'
         ds_meta['dataset_s'] = dataset_name
-        ds_meta['short_name_s'] = config['original_dataset_short_name']
+        ds_meta['short_name_s'] = shortname
         ds_meta['source_s'] = f'{host}&datasetId={podaac_id}'
-        ds_meta['data_time_scale_s'] = config['data_time_scale']
+        ds_meta['data_time_scale_s'] = data_time_scale
         ds_meta['date_format_s'] = config['date_format']
         ds_meta['last_checked_dt'] = chk_time
         ds_meta['original_dataset_title_s'] = config['original_dataset_title']
-        ds_meta['original_dataset_short_name_s'] = config['original_dataset_short_name']
+        ds_meta['original_dataset_short_name_s'] = shortname
         ds_meta['original_dataset_url_s'] = config['original_dataset_url']
         ds_meta['original_dataset_reference_s'] = config['original_dataset_reference']
         ds_meta['original_dataset_doi_s'] = config['original_dataset_doi']

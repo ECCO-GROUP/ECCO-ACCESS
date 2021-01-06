@@ -15,7 +15,6 @@ date_regex: "%Y-%m-%dT%H:%M:%SZ" # does not change
 # =====================================================
 ds_name: "gmsl_MERGED_TP_J1_OSTM_OST_GMSL_ASCII_V42" # Name for dataset
 harvester_type: "podaac"
-podaac_id: "PODAAC-GMSLM-TJ150"
 aggregated: true # if data is available aggregated
 data_time_scale: "time series"
 date_format: "yyyy+fraction" # format of date in file name ex: yyyymmdd
