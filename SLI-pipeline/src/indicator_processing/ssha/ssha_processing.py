@@ -64,6 +64,7 @@ def ssha_processing():
     # 4. Determine start and end time
     #     1. add time_bnds to aggregated file
     #           - need to add encoding -> HERE!
+    #           - time encoding has been weird
     #     2. give file center time
     # 5. Add metadata to Solr
     config_path = '/Users/kevinmarlis/Developer/JPL/Sea-Level-Indicators/SLI-pipeline/datasets/ssha_JASON_3_L2_OST_OGDR_GPS/processing_config.yaml'
@@ -103,7 +104,7 @@ def ssha_processing():
             end_times = []
 
             # Process the granules
-            for index, granule in enumerate(cycle_granules):
+            for granule in cycle_granules:
                 ds = xr.open_dataset(granule['pre_transformation_file_path_s'])
 
                 ds_start_time = datetime.strptime(
@@ -112,16 +113,7 @@ def ssha_processing():
                 ds_end_time = datetime.strptime(
                     f'{ds.attrs["last_meas_time"][:10]}T{ds.attrs["last_meas_time"][11:]}', '%Y-%m-%dT%H:%M:%S.%f')
 
-                # start_times.append(ds_start_time)
-                # end_times.append(ds_end_time)
                 start_times.append(ds.time.values[::])
-
-                if index == 0:
-                    overall_start_time = ds_start_time
-                if index == len(cycle_granules) - 1:
-                    overall_end_time = ds_end_time
-                    overall_center_time = ds_start_time + \
-                        ((ds_end_time - ds_start_time)/2)
 
                 drop_list = [key for key in ds.keys() if key != 'ssha']
                 if 'surface_type' in drop_list:
@@ -148,6 +140,7 @@ def ssha_processing():
                 da = ds.ssha
                 opened_data.append(da)
 
+            # Merge
             merged_cycle = xr.concat((opened_data), dim='time')
             merged_cycle_ds = merged_cycle.to_dataset()
 
@@ -164,15 +157,21 @@ def ssha_processing():
 
             merged_cycle_ds.time.attrs.update(bounds='time_bnds')
 
+            # Center time
+            overall_center_time = start_times[0] + \
+                ((end_times[-1] - start_times[0])/2)
+            ts = datetime.strptime(str(overall_center_time)[
+                                   :19], '%Y-%m-%dT%H:%M:%S')
+            filename_time = datetime.strftime(ts, '%Y%m%dT%H%M%S')
+            filename = f'ssha_{filename_time}.nc'
+
             # SSHA Attributes
             merged_cycle_ds.ssha.attrs['valid_min'] = np.nanmin(
                 merged_cycle_ds.ssha.values)
             merged_cycle_ds.ssha.attrs['valid_max'] = np.nanmax(
                 [val for val in merged_cycle_ds.ssha.values if val != default_fillvals['f8']])
 
-            # comp = dict(zlib=True, complevel=5,
-            #             _FillValue=default_fillvals['f8'])
-            # encoding = {var: comp for var in ds.data_vars}
+            # NetCDF encoding
             encoding_each = {'zlib': True,
                              'complevel': 5,
                              'shuffle': True,
@@ -182,11 +181,11 @@ def ssha_processing():
             for coord in merged_cycle_ds.coords:
                 coord_encoding[coord] = {'_FillValue': None}
 
-                if 'time' in coord:
-                    coord_encoding[coord] = {'_FillValue': None,
-                                             'dtype': 'int32'}
-                    if coord != 'time_step':
-                        coord_encoding[coord]['units'] = "hours since 1992-01-01 12:00:00"
+                # if 'time' in coord:
+                #     coord_encoding[coord] = {'_FillValue': None,
+                #                              'dtype': 'float32'}
+                #     if coord != 'time_step':
+                #         coord_encoding[coord]['units'] = "hours since 1992-01-01 12:00:00"
                 if 'lat' in coord:
                     coord_encoding[coord] = {'_FillValue': None,
                                              'dtype': 'float32'}
@@ -199,11 +198,8 @@ def ssha_processing():
 
             encoding = {**coord_encoding, **var_encoding}
 
-            # print(encoding)
-            # exit()
-
             # Save to netcdf
-            merged_cycle_ds.to_netcdf('merged.nc', encoding=encoding)
+            merged_cycle_ds.to_netcdf(filename, encoding=encoding)
 
             # Update loop variables
             remaining_granules = [
