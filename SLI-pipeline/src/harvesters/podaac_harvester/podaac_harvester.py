@@ -149,7 +149,10 @@ def podaac_harvester(config_path='', output_path='', s3=None, solr_info='', grid
     date_regex = config['date_regex']
     aggregated = config['aggregated']
     start_time = config['start']
-    end_time = config['end']
+    if config['most_recent']:
+        end_time = datetime.utcnow().strftime("%Y%m%dT%H:%M:%SZ")
+    else:
+        end_time = config['end']
     host = config['host']
     podaac_id = config['podaac_id']
     shortname = config['original_dataset_short_name']
