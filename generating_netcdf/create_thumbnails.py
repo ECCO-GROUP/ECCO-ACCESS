@@ -7,10 +7,9 @@ Created on Wed Dec 23 20:06:49 2020
 """
 
 import sys
-sys.path.append('/home/ifenty/git_repos_others/ECCO-GROUP/ECCO-ACCESS/ecco-cloud-utils')
-sys.path.append('/home/ifenty/git_repos_others/ECCO-GROUP/ECCOv4-py')
+sys.path.append('/home5/ifenty/git_repos_others/ECCO-GROUP/ECCO-ACCESS/ecco-cloud-utils')
+sys.path.append('/home5/ifenty/git_repos_others/ECCO-GROUP/ECCOv4-py')
 
-from importlib import reload
 import ecco_v4_py as ecco
 import ecco_cloud_utils as ea
 import copy as copy
@@ -48,17 +47,6 @@ def create_thumbnails(dataset_base_dir,\
                       thumbnail_width_to_height_ratio,\
                       output_dir):
 
-
-    #%%
-    #dataset_base_dir=Path('/home/ifenty/tmp/v4r4_nc_output_20201223/native/mon_mean')
-    #product_type='native'
-    #thumbnail_height = 9.11
-    #thumbnail_width_to_height_ratio = 1.58
-    #output_dir=Path('/home/ifenty/tmp/v4r4_nc_output_20201223/thumbnails/native/mon_mean')
-    #grouping_to_process=0
-    #%%
-
-
     if not output_dir.exists():
         try:
             output_dir.mkdir(parents=True,exist_ok=True)
@@ -89,13 +77,8 @@ def create_thumbnails(dataset_base_dir,\
         # find list of files
         files_in_grouping = np.sort(list(grouping.glob(glob_str)))
 
-        print('\n ----- files ', files_in_grouping)
-
         print('processing ', grouping.name)
         print('\n')
-        # loop through files
-        #for file_i, file in enumerate(files_in_grouping):
-        #    print(file_i, file)
 
         tmp_ds = xr.open_dataset(files_in_grouping[0])
 
@@ -103,7 +86,6 @@ def create_thumbnails(dataset_base_dir,\
         print(shortname_tmp)
 
         tb_filename = shortname_tmp + '.jpg'
-        tb_filenameb = shortname_tmp + '_b.jpg'
 
         data_vars = list(tmp_ds.data_vars)
         print(data_vars)
@@ -126,10 +108,7 @@ def create_thumbnails(dataset_base_dir,\
 
 
         tmp_ds_dims = set(tmp_ds.dims)
-
-
-        # arbitrarily pick the first one
-
+        print('tmp_ds dims ' , tmp_ds_dims)
 
         if product_type == 'native':
 
@@ -142,8 +121,8 @@ def create_thumbnails(dataset_base_dir,\
             elif len(dims_2D.intersection(tmp_ds_dims)) > 0:
                 ds_dim = 2
 
-        else:
-            dims_3D = {'k','k_u','k_l'}
+        elif product_type == 'latlon':
+            dims_3D = {'Z'}
             dims_2D = {'latitude','longitude'}
 
             if len(dims_3D.intersection(tmp_ds_dims)) > 0:
@@ -153,8 +132,7 @@ def create_thumbnails(dataset_base_dir,\
                 ds_dim = 2
 
 
-        print(ds_dim)
-
+        print ('data_var dimension ', ds_dim)
         fname = output_dir / tb_filename
 
         print(data_var, shortname_tmp)
@@ -165,15 +143,17 @@ def create_thumbnails(dataset_base_dir,\
             tmp = tmp_ds[data_var][0,:]
 
 
+        print ('data_var dimension ', tmp.shape)
+
         cmin = np.nanmin(tmp)
         cmax = np.nanmax(tmp)
         print('color lims')
         print(shortname_tmp, cmin, cmax)
 
-
         # default
         cmap = copy.copy(plt.get_cmap('jet'))
-        cmap.set_bad(color='dimgray')
+        if product_type == 'native':
+            cmap.set_bad(color='dimgray')
 
         if ('STRESS' in shortname_tmp) or \
            ('FLUX' in shortname_tmp) or\
@@ -186,34 +166,39 @@ def create_thumbnails(dataset_base_dir,\
                 ('MOMENTUM_TEND' in shortname_tmp):
                 fac = 0.25
 
-            print('even_cax')
             cmin, cmax= even_cax(cmin, cmax, fac)
             print(cmin, cmax)
 
             cmap = copy.copy(cmocean.cm.balance)#plt.get_cmap('bwr'))
-            cmap.set_bad(color='dimgray')
+            if product_type == 'native':
+                cmap.set_bad(color='dimgray')
 
         elif ('TEMP_SALINITY' in shortname_tmp):
             cmap = copy.copy(cmocean.cm.thermal)
-            cmap.set_bad(color='dimgray')
+            if product_type == 'native':
+                cmap.set_bad(color='dimgray')
 
         elif ('MIXED_LAYER' in shortname_tmp):
 
             cmap = copy.copy(cmocean.cm.deep)
-            cmap.set_bad(color='dimgray')
+
+            if product_type == 'native':
+                cmap.set_bad(color='dimgray')
             cmin = 0
             cmax = 250
 
         elif ('SEA_ICE_CONC' in shortname_tmp):
 
             cmap = copy.copy(cmocean.cm.ice)
-            cmap.set_bad(color='dimgray')
+            if product_type == 'native':
+                cmap.set_bad(color='dimgray')
             cmin = 0
             cmax = 1
 
         elif 'DENS_STRAT' in shortname_tmp:
             cmap = copy.copy(cmocean.cm.dense)
-            cmap.set_bad(color='dimgray')
+            if product_type == 'native':
+                cmap.set_bad(color='dimgray')
 
         if product_type == 'native':
 
@@ -233,14 +218,7 @@ def create_thumbnails(dataset_base_dir,\
 
         fig_ref.set_size_inches(thumbnail_width_to_height_ratio*thumbnail_height, thumbnail_height)
 
-#            axs = tb[0].axes
-#            for ax in axs:
-#                print(type(ax))
-#                #ax.set_axis_off()
-#                ax.set_frame_on(True)
-
         print (fname)
-        #plt.savefig(fname, dpi=175, facecolor='w', pad_inches=0, format='jpg')
         plt.savefig(fname, dpi=100, facecolor='w', bbox_inches='tight', pad_inches = 0.05)
 
 
