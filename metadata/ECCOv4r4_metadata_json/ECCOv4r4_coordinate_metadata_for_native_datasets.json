@@ -62,14 +62,14 @@
       "coverage_content_type": "coordinate"
    },
    {
-      "name": "k_u",
+      "name": "k_l",
       "long_name": "grid index in z for variables at lower 'w' location",
       "comment": "First index corresponds to 'w' location at the bottom of the uppermost model tracer cell.",
       "grid_dimension": "3D",
       "coverage_content_type": "coordinate"
    },   
    {
-      "name": "k_l",
+      "name": "k_u",
       "long_name": "grid index in z for variables at upper 'w' location",
       "comment": "First index corresponds to 'w' location at the top of the uppermost model tracer cell.",
       "grid_dimension": "3D",
@@ -172,7 +172,7 @@
       "coverage_content_type": "coordinate"
    },
    {
-      "name": "Zl",
+      "name": "Zu",
       "standard_name": "depth",
       "long_name": "depth of tracer grid cell upper interface",
       "comment": "First element is 0m, the depth of the upper interface of the surface grid cell. Last element is the depth of the upper interface of the deepest grid cell.",
@@ -182,7 +182,7 @@
       "coverage_content_type": "coordinate"
    },
    {
-      "name": "Zu",
+      "name": "Zl",
       "standard_name": "depth",
       "long_name": "depth of tracer grid cell lower interface",
       "comment": "First element is 10m, the depth of lower interface of the surface grid cell. Last element is the depth of the lower interface of the deepest grid cell.",
