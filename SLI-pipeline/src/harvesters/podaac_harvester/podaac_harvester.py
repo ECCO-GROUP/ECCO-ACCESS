@@ -279,8 +279,12 @@ def podaac_harvester(config_path='', output_path='', s3=None, solr_info='', grid
                 # Not all PODAAC datasets contain last modified time
                 try:
                     mod_time = elem.find("{%(atom)s}updated" % namespace).text
-                    mod_date_time = datetime.strptime(mod_time, date_regex)
-
+                    try:
+                        mod_date_time = datetime.strptime(
+                            mod_time, '%Y-%m-%dT%H:%M:%S.%fZ')
+                    except:
+                        mod_date_time = datetime.strptime(
+                            mod_time, '%Y-%m-%dT%H:%M:%SZ')
                 except:
                     mod_time = str(now)
                     mod_date_time = now
