@@ -108,7 +108,7 @@
     "comment": "oceSPflx is salt mass flux per unit area (g m-2 s-1), not salinity flux.",
     "product": "native",
     "filename" : "SEA_ICE_SALT_PLUME_FLUX",
-    "dimension" : "3D"
+    "dimension" : "2D"
    },
    {
     "name" : "ocean potential temperature and salinity",
