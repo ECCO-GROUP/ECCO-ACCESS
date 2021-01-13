@@ -3,6 +3,8 @@
 # =====================================================
 ds_name: "ssha_JASON_3_L2_OST_OGDR_GPS" # Name for dataset
 version: 1.0
+indicator: ssha
+processing: "ssha_processing.py"
 
 # =====================================================
 # Solr

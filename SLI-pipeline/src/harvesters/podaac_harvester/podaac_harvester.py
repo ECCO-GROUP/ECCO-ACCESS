@@ -128,7 +128,7 @@ def solr_update(config, solr_host, update_body, solr_collection_name, r=False):
         requests.post(url, json=update_body)
 
 
-def podaac_harvester(config_path='', output_path='', s3=None, solr_info='', grids_to_use=[]):
+def harvester(config_path='', output_path='', s3=None, solr_info=''):
     """
     Pulls data files for PODAAC id and date range given in harvester_config.yaml.
     Creates (or updates) Solr entries for dataset, harvested granule, fields,

@@ -21,14 +21,8 @@ output_dir = '/Users/kevinmarlis/Developer/JPL/sealevel_output/'
 def create_parser():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--grids_to_solr', default=False, action='store_true',
-                        help='updates Solr with grids in grids_config')
-
     parser.add_argument('--output_dir', default=False, action='store_true',
                         help='runs prompt to select pipeline output directory')
-
-    parser.add_argument('--add_dataset', default=False, action='store_true',
-                        help='adds new dataset')
 
     parser.add_argument('--single_processing', default=False, action='store_true',
                         help='turns off the use of multiprocessing during transformation')
@@ -50,24 +44,12 @@ def create_parser():
                         help='Uses provided Solr host url and collection name for all Solr entries. if no args given, defaults to \
                             hard coded Solr host url and collection name in configuration files. Otherwise takes two args: Solr host url and collection name')
 
-    parser.add_argument('--grids_to_use', default=False, nargs='*',
-                        help='Names of grids to use during the pipeline')
-
     return parser
-
-
-def check_solr_grids(solr_host, solr_collection_name):
-    response = requests.get(
-        f'{solr_host}{solr_collection_name}/select?fq=type_s%3Agrid&q=*%3A*')
-    if not response.json()['response']['docs']:
-        return True
-    else:
-        return False
 
 
 def harvested_entry_validation(args=[]):
     solr_host = 'http://localhost:8983/solr/'
-    solr_collection_name = 'ecco_datasets'
+    solr_collection_name = 'sealevel_datasets'
 
     if args:
         solr_host = args[0]
@@ -152,7 +134,7 @@ def print_log(log_path):
                     print(f'\t\t\033[91m{message}\033[0m')
 
 
-def run_harvester(datasets, path_to_harvesters, output_dir, solr_info, grids_to_use):
+def run_harvester(datasets, path_to_harvesters, output_dir, solr_info):
     print('\n=========================================================')
     print(
         '================== \033[36mRunning harvesters\033[0m ===================')
@@ -180,17 +162,12 @@ def run_harvester(datasets, path_to_harvesters, output_dir, solr_info, grids_to_
                 path_to_code = Path(
                     f'{path_to_harvesters}/{harvester_type}_harvester/')
 
-                if 'RDEFT4' in ds:
-                    path_to_code = Path(
-                        f'{path_to_harvesters}/{harvester_type}_harvester/RDEFT4_ftp_harvester/'
-                    )
-                    harvester = 'seaice_harvester_local'
-                elif harvester_type == 'podaac':
-                    harvester = 'podaac_harvester_local'
-                elif harvester_type == 'osisaf_ftp':
-                    harvester = 'osisaf_ftp_harvester_local'
-                elif harvester_type == 'nsidc_ftp':
-                    harvester = 'nsidc_ftp_harvester_local'
+                if harvester_type == 'podaac':
+                    harvester = 'podaac_harvester'
+                # elif harvester_type == 'osisaf_ftp':
+                #     harvester = 'osisaf_ftp_harvester_local'
+                # elif harvester_type == 'nsidc_ftp':
+                #     harvester = 'nsidc_ftp_harvester_local'
 
                 sys.path.insert(1, str(path_to_code))
 
@@ -199,10 +176,9 @@ def run_harvester(datasets, path_to_harvesters, output_dir, solr_info, grids_to_
                 except:
                     ret_import = importlib.import_module(harvester)
 
-                ret_import.main(config_path=config_path,
-                                output_path=output_dir,
-                                solr_info=solr_info,
-                                grids_to_use=grids_to_use)
+                ret_import.harvester(config_path=config_path,
+                                     output_path=output_dir,
+                                     solr_info=solr_info)
                 sys.path.remove(str(path_to_code))
 
             harv_logger.info(f'Harvest successful')
@@ -214,48 +190,7 @@ def run_harvester(datasets, path_to_harvesters, output_dir, solr_info, grids_to_
         print('=========================================================')
 
 
-def run_transformation(datasets, path_to_preprocessing, output_dir, multiprocessing, user_cpus, wipe, solr_info, grids_to_use):
-    print('\n=========================================================')
-    print(
-        '=============== \033[36mRunning transformations\033[0m =================')
-    print('=========================================================\n')
-    for ds in datasets:
-        trans_logger = logging.getLogger(f'pipeline.{ds}.transformation')
-        try:
-            print(f'\033[93mRunning transformation for {ds}\033[0m')
-            print('=========================================================')
-
-            config_path = Path(
-                f'{Path(__file__).resolve().parents[2]}/datasets/{ds}/transformation_config.yaml'
-            )
-
-            path_to_code = Path(
-                f'{path_to_preprocessing}/grid_transformation/')
-
-            transformer = 'grid_transformation_local'
-
-            sys.path.insert(1, str(path_to_code))
-
-            try:
-                ret_import = importlib.reload(ret_import)
-            except:
-                ret_import = importlib.import_module(transformer)
-
-            ret_import.main(config_path=config_path, output_path=output_dir,
-                            multiprocessing=multiprocessing, user_cpus=user_cpus, wipe=wipe,
-                            solr_info=solr_info, grids_to_use=grids_to_use)
-            sys.path.remove(str(path_to_code))
-
-            trans_logger.info(f'Transformation successful')
-            print('\033[92mTransformation successful\033[0m')
-        except Exception as e:
-            sys.path.remove(str(path_to_code))
-            trans_logger.error(f'Transform failed: {e}')
-            print('\033[91mTransformation failed\033[0m')
-        print('=========================================================')
-
-
-def run_aggregation(datasets, path_to_preprocessing, output_dir, solr_info, grids_to_use):
+def run_aggregation(datasets, path_to_preprocessing, output_dir, solr_info):
     print('\n=========================================================')
     print(
         '================ \033[36mRunning aggregations\033[0m ===================')
@@ -266,27 +201,31 @@ def run_aggregation(datasets, path_to_preprocessing, output_dir, solr_info, grid
             print(f'\033[93mRunning aggregation for {ds}\033[0m')
             print('=========================================================')
             config_path = Path(
-                f'{Path(__file__).resolve().parents[2]}/datasets/{ds}/aggregation_config.yaml'
+                f'{Path(__file__).resolve().parents[2]}/datasets/{ds}/processing_config.yaml'
             )
 
-            path_to_code = Path(
-                f'{path_to_preprocessing}/aggregation_by_year/')
+            with open(config_path, 'r') as stream:
+                config = yaml.load(stream, yaml.Loader)
 
-            aggregation = 'aggregation_local'
+            indicator = config['indicator']
+
+            path_to_code = Path(
+                f'{path_to_preprocessing}/{indicator}/')
 
             sys.path.insert(1, str(path_to_code))
 
             try:
                 ret_import = importlib.reload(ret_import)
             except:
-                ret_import = importlib.import_module(aggregation)
+                ret_import = importlib.import_module('processing')
 
-            ret_import.main(config_path=config_path, output_path=output_dir,
-                            solr_info=solr_info, grids_to_use=grids_to_use)
+            ret_import.processing(config_path=config_path, output_path=output_dir,
+                                  solr_info=solr_info)
             sys.path.remove(str(path_to_code))
             agg_logger.info(f'Aggregation successful')
             print('\033[92mAggregation successful\033[0m')
         except Exception as e:
+            print(e)
             sys.path.remove(str(path_to_code))
             agg_logger.info(f'Aggregation failed: {e}')
             print('\033[91mAggregation failed\033[0m')
@@ -298,15 +237,15 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     print('\n=================================================')
-    print('========== ECCO PREPROCESSING PIPELINE ==========')
+    print('========= SEA LEVEL INDICATORS PIPELINE =========')
     print('=================================================')
 
     # path to harvester and preprocessing folders
     pipeline_path = Path(__file__).resolve()
 
     path_to_harvesters = Path(f'{pipeline_path.parents[1]}/harvesters')
-    path_to_preprocessing = Path(f'{pipeline_path.parents[1]}/preprocessing')
-    path_to_grids = Path(f'{pipeline_path.parents[2]}/grids_to_solr')
+    path_to_preprocessing = Path(
+        f'{pipeline_path.parents[1]}/indicator_processing')
     path_to_datasets = Path(f'{pipeline_path.parents[2]}/datasets')
 
     # ------------------- Harvested Entry Validation -------------------
@@ -319,51 +258,6 @@ if __name__ == '__main__':
             'solr_url': args.developer_solr[0], 'solr_collection_name': args.developer_solr[1]}
     else:
         solr_info = ''
-
-    # ------------------- Grids to Use -------------------
-    if isinstance(args.grids_to_use, list):
-        grids_to_use = args.grids_to_use
-        verify_grids = True
-    else:
-        grids_to_use = []
-        verify_grids = False
-
-    # ------------------- Grids to Solr -------------------
-    if solr_info:
-        solr_host = solr_info['solr_url']
-        solr_collection_name = solr_info['solr_collection_name']
-    else:
-        solr_host = 'http://localhost:8983/solr/'
-        solr_collection_name = 'ecco_datasets'
-    if args.grids_to_solr or verify_grids or check_solr_grids(solr_host, solr_collection_name):
-        try:
-            print(f'\n\033[93mRunning grids_to_solr\033[0m')
-            print('=========================================================')
-            grids_to_solr = 'grids_to_solr'
-            sys.path.insert(1, str(path_to_grids))
-            try:
-                ret_import = importlib.reload(
-                    ret_import                  # pylint: disable=used-before-assignment
-                )
-            except:
-                ret_import = importlib.import_module(grids_to_solr)
-
-            grids_not_in_solr = ret_import.main(
-                path=str(path_to_grids), grids_to_use=grids_to_use, verify=verify_grids)
-            sys.path.remove(str(path_to_grids))
-
-            if grids_not_in_solr:
-                for name in grids_not_in_solr:
-                    print(
-                        f'Grid "{name}" not in Solr. Ensure it\'s file name is present in grids_config.yaml and run pipeline with the --grids_to_solr argument')
-                sys.exit()
-
-            print('\033[92mgrids_to_solr successful\033[0m')
-        except Exception as e:
-            print(e)
-            sys.path.remove(str(path_to_grids))
-            print('\033[91mgrids_to_solr failed\033[0m')
-        print('=========================================================')
 
     # ------------------- Output directory -------------------
     if args.output_dir or not output_dir:
@@ -383,25 +277,6 @@ if __name__ == '__main__':
             sys.exit()
     print(f'\nUsing output directory: {output_dir}')
 
-   # ------------------- Add new dataset -------------------
-    if args.add_dataset:
-        try:
-            path_to_tools = Path(__file__).resolve().parents[0]
-            sys.path.insert(1, str(path_to_tools))
-            try:
-                ret_import = importlib.reload(
-                    ret_import                      # pylint: disable=used-before-assignment
-                )
-            except:
-                ret_import = importlib.import_module('create_directories')
-            ret_import.main()
-            sys.path.remove(str(path_to_tools))
-            print('\033[92mcreate_directories successful\033[0m')
-        except Exception as e:
-            sys.path.remove(str(path_to_tools))
-            print('\033[91mcreate_directories failed\033[0m')
-        print('=========================================================')
-
     # ------------------- Multiprocessing -------------------
     multiprocessing = not args.single_processing
     user_cpus = args.multiprocesses
@@ -414,9 +289,9 @@ if __name__ == '__main__':
     # ------------------- Run pipeline -------------------
     while True:
         print('\n------------- OPTIONS -------------')
-        print('1) Run all')
-        print('2) Harvesters only')
-        print('3) Up to aggregation')
+        print('1) Harvest and aggregate all datasets')
+        print('2) Harvest all datasets')
+        print('3) Aggregate all datasets')
         print('4) Dataset input')
         print('5) Y/N for datasets')
         chosen_option = input('Enter option number: ')
@@ -457,25 +332,17 @@ if __name__ == '__main__':
     # Run all
     if chosen_option == '1':
         for ds in datasets:
-            run_harvester([ds], path_to_harvesters,
-                          output_dir, solr_info, grids_to_use)
-            run_transformation([ds], path_to_preprocessing,
-                               output_dir, multiprocessing, user_cpus, wipe, solr_info, grids_to_use)
-            run_aggregation([ds], path_to_preprocessing,
-                            output_dir, solr_info, grids_to_use)
+            run_harvester([ds], path_to_harvesters, output_dir, solr_info)
+            run_aggregation([ds], path_to_preprocessing, output_dir, solr_info)
 
     # Run harvester
     elif chosen_option == '2':
-        run_harvester(datasets, path_to_harvesters,
-                      output_dir, solr_info, grids_to_use)
+        run_harvester(datasets, path_to_harvesters, output_dir, solr_info)
 
-    # Run up through transformation
+    # Run aggregation
     elif chosen_option == '3':
         for ds in datasets:
-            run_harvester([ds], path_to_harvesters,
-                          output_dir, solr_info, grids_to_use)
-            run_transformation([ds], path_to_preprocessing,
-                               output_dir, multiprocessing, user_cpus, wipe, solr_info, grids_to_use)
+            run_aggregation([ds], path_to_preprocessing, output_dir, solr_info)
 
     # Manually enter dataset and pipeline step(s)
     elif chosen_option == '4':
@@ -495,8 +362,7 @@ if __name__ == '__main__':
         wanted_ds = ds_dict[int(ds_index)]
         print(f'\nUsing {wanted_ds} dataset')
 
-        steps = ['harvest', 'transform', 'aggregate',
-                 'harvest and transform', 'transform and aggregate', 'all']
+        steps = ['harvest', 'aggregate', 'all']
         steps_dict = {i: step for i, step in enumerate(steps, start=1)}
         while True:
             print(f'\nAvailable steps:\n')
@@ -514,20 +380,15 @@ if __name__ == '__main__':
 
         if 'harvest' in wanted_steps:
             run_harvester([wanted_ds], path_to_harvesters,
-                          output_dir, solr_info, grids_to_use)
-        if 'transform' in wanted_steps:
-            run_transformation([wanted_ds], path_to_preprocessing,
-                               output_dir, multiprocessing, user_cpus, wipe, solr_info, grids_to_use)
+                          output_dir, solr_info)
         if 'aggregate' in wanted_steps:
             run_aggregation([wanted_ds], path_to_preprocessing,
-                            output_dir, solr_info, grids_to_use)
+                            output_dir, solr_info)
         if wanted_steps == 'all':
             run_harvester([wanted_ds], path_to_harvesters,
-                          output_dir, solr_info, grids_to_use)
-            run_transformation([wanted_ds], path_to_preprocessing,
-                               output_dir, multiprocessing, user_cpus, wipe, solr_info, grids_to_use)
+                          output_dir, solr_info)
             run_aggregation([wanted_ds], path_to_preprocessing,
-                            output_dir, solr_info, grids_to_use)
+                            output_dir, solr_info)
 
     # Yes/no for each dataset
     elif chosen_option == '5':
@@ -540,12 +401,9 @@ if __name__ == '__main__':
                 else:
                     break
             if yes_no == 'Y':
-                run_harvester([ds], path_to_harvesters,
-                              output_dir, solr_info, grids_to_use)
-                run_transformation([ds], path_to_preprocessing,
-                                   output_dir, multiprocessing, user_cpus, wipe, solr_info, grids_to_use)
+                run_harvester([ds], path_to_harvesters, output_dir, solr_info)
                 run_aggregation([ds], path_to_preprocessing,
-                                output_dir, solr_info, grids_to_use)
+                                output_dir, solr_info)
             elif yes_no == 'E':
                 break
             else:  # yes_no == 'N'

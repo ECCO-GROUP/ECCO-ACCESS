@@ -70,8 +70,8 @@ def solr_update(config, solr_host, update_body, solr_collection_name, r=False):
         requests.post(url, json=update_body)
 
 
-def ssha_processing():
-    config_path = '/Users/kevinmarlis/Developer/JPL/Sea-Level-Indicators/SLI-pipeline/datasets/ssha_JASON_3_L2_OST_OGDR_GPS/processing_config.yaml'
+def processing(config_path='', output_path='', solr_info=''):
+    # config_path = '/Users/kevinmarlis/Developer/JPL/Sea-Level-Indicators/SLI-pipeline/datasets/ssha_JASON_3_L2_OST_OGDR_GPS/processing_config.yaml'
     with open(config_path, "r") as stream:
         config = yaml.load(stream, yaml.Loader)
 
@@ -340,4 +340,4 @@ def ssha_processing():
 
 
 if __name__ == "__main__":
-    ssha_processing()
+    processing()
