@@ -4,7 +4,7 @@
 # PODAAC explicitly expects this date format
 start: "20200829T00:00:00Z" # yyyymmddThh:mm:ssZ
 end: "20170921T23:59:59Z" # yyyymmddThh:mm:ssZ
-most_recent: True # Set to true if harvester should get up to date data
+most_recent: True # Overrides end date to be current date at time of execution
 name: ""
 password: ""
 host: https://podaac.jpl.nasa.gov/ws/search/granule/?format=atom&pretty=false&itemsPerPage=300000 # does not change
