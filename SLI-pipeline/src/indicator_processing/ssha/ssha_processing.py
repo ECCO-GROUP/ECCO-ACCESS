@@ -104,6 +104,16 @@ def ssha_processing():
     earliest_granule = remaining_granules[0]
     latest_granule = remaining_granules[-1]
 
+    # Query for all existing cycles in Solr
+    fq = ['type_s:cycle', f'dataset_s:{dataset_name}']
+    solr_cycles = solr_query(config, solr_host, fq, solr_collection_name)
+
+    cycles = {}
+
+    if solr_cycles:
+        for cycle in solr_cycles:
+            cycles[cycle['start_date_s']] = cycle
+
     more_dates_to_parse = True
 
     # Get start and end date of 10 day period.
@@ -115,15 +125,31 @@ def ssha_processing():
     var = 'gps_ssha'
 
     while more_dates_to_parse:
-        if datetime.strftime(end_date, date_regex) < latest_granule['date_s']:
 
-            start_date_str = datetime.strftime(start_date, date_regex)
-            end_date_str = datetime.strftime(end_date, date_regex)
+        start_date_str = datetime.strftime(start_date, date_regex)
+        end_date_str = datetime.strftime(end_date, date_regex)
+
+        cycle_granules = [granule for granule in remaining_granules if
+                          start_date_str <= granule['date_s'] and
+                          granule['date_s'] <= end_date_str]
+
+        updating = False
+
+        for granule in cycle_granules:
+            if granule['date_s'] in cycles.keys():
+                prior_time = cycles[start_date_str]['aggregation_time_s']
+                prior_success = cycles[start_date_str]['aggregation_success_b']
+
+                if not prior_success or prior_time < granule['modified_time_dt']:
+                    updating = True
+                    break
+            else:
+                updating = True
+                break
+
+        if updating:
 
             print(f'Aggregating cycle {start_date_str} to {end_date_str}')
-
-            cycle_granules = [granule for granule in remaining_granules if
-                              start_date_str <= granule['date_s'] and granule['date_s'] <= end_date_str]
 
             opened_data = []
             start_times = []
@@ -242,21 +268,43 @@ def ssha_processing():
             # Save to netcdf
             merged_cycle_ds.to_netcdf(save_path, encoding=encoding)
 
+            # Add cycle to Solr
+            item = {}
+            item['type_s'] = 'cycle'
+            item['dataset_s'] = dataset_name
+            item['start_date_s'] = start_date_str
+            item['end_date_s'] = end_date_str
+            item['filename_s'] = filename
+            item['filepath_s'] = save_path
+            item['checksum_s'] = md5(save_path)
+            item['file_size_l'] = os.path.getsize(save_path)
+            item['aggregation_success_b'] = True
+            item['aggregation_time_s'] = datetime.utcnow().strftime(
+                "%Y%m%dT%H:%M:%SZ")
+            if start_date_str in cycles.keys():
+                item['id'] = cycles[start_date_str]['id']
+
+            r = solr_update(config, solr_host, [
+                            item], solr_collection_name, r=True)
+            if r.status_code == 200:
+                print('Successfully created or updated Solr harvested documents')
+            else:
+                print('Failed to create Solr harvested documents')
+
             # Update loop variables
-            remaining_granules = [
-                granule for granule in remaining_granules if granule not in cycle_granules]
+            remaining_granules = [granule for granule in remaining_granules
+                                  if granule not in cycle_granules]
 
             # If there are less than ten days of data, break out of loop
             if remaining_granules:
-                start_date = datetime.strptime(
-                    remaining_granules[0]['date_s'], date_regex)
-
-                last_date = datetime.strptime(
-                    remaining_granules[-1]['date_s'], date_regex)
+                start_date = start_date + timedelta(days=10)
 
                 end_date = start_date + timedelta(days=10)
 
-                if last_date < end_date:
+                last_remaining_date = datetime.strptime(
+                    remaining_granules[-1]['date_s'], date_regex)
+
+                if last_remaining_date < end_date:
                     more_dates_to_parse = False
 
 
