@@ -136,9 +136,8 @@ def processing(config_path='', output_path='', solr_info=''):
                           start_date_str <= granule['date_s'] and
                           granule['date_s'] <= end_date_str]
 
-        if len(cycle_granules) < 120:
-            print(
-                f'Not enough granules for complete cycle {start_date_str} to {end_date_str}')
+        if not cycle_granules:
+            print(f'No granules for cycle {start_date_str} to {end_date_str}')
             continue
 
         updating = False
