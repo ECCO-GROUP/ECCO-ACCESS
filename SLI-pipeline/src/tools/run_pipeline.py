@@ -277,14 +277,14 @@ if __name__ == '__main__':
             sys.exit()
     print(f'\nUsing output directory: {output_dir}')
 
-    # ------------------- Multiprocessing -------------------
-    multiprocessing = not args.single_processing
-    user_cpus = args.multiprocesses
+    # # ------------------- Multiprocessing -------------------
+    # multiprocessing = not args.single_processing
+    # user_cpus = args.multiprocesses
 
-    if multiprocessing:
-        print(f'Using {user_cpus} processes for multiprocess transformations')
-    else:
-        print('Using single process transformations')
+    # if multiprocessing:
+    #     print(f'Using {user_cpus} processes for multiprocess transformations')
+    # else:
+    #     print('Using single process transformations')
 
     # ------------------- Run pipeline -------------------
     while True:
