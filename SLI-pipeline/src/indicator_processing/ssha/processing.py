@@ -119,7 +119,7 @@ def processing(config_path='', output_path='', solr_info=''):
     # Generate list of cycle date tuples (start, end)
     cycle_dates = []
     current_date = datetime.utcnow()
-    start_date = datetime.strptime('2000-01-01T00:00:00Z', date_regex)
+    start_date = datetime.strptime('2016-01-01T00:00:00Z', date_regex)
     delta = timedelta(days=10)
     curr = start_date
     while curr < current_date:
