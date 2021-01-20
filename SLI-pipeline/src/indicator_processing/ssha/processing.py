@@ -135,8 +135,10 @@ def processing(config_path='', output_path='', solr_info=''):
         cycle_granules = [granule for granule in remaining_granules if
                           start_date_str <= granule['date_s'] and
                           granule['date_s'] <= end_date_str]
-        if not cycle_granules:
-            print(f'No granules for cycle {start_date_str} to {end_date_str}')
+
+        if len(cycle_granules) < 120:
+            print(
+                f'Not enough granules for complete cycle {start_date_str} to {end_date_str}')
             continue
 
         updating = False
@@ -180,9 +182,18 @@ def processing(config_path='', output_path='', solr_info=''):
                     ds = xr.open_dataset(
                         granule['pre_transformation_file_path_s'])
                     if 'lon' in ds.coords:
-                        ds = ds.rename({'lon': 'longitude'})
+
+                        ds[var] = ds[var].assign_coords(
+                            {'longitude': ds.lon})
+                        ds[var].encoding['coordinates'] = 'longitude latitude'
+                        ds = ds.reset_coords(['lon'], drop=True)
+
                     if 'lat' in ds.coords:
-                        ds = ds.rename({'lat': 'latitude'})
+                        ds[var] = ds[var].assign_coords(
+                            {'latitude': ds.lat})
+                        ds = ds.reset_coords(['lat'], drop=True)
+                        ds[var].encoding['coordinates'] = 'longitude latitude'
+
                     else:
                         uses_groups = True
 
@@ -210,6 +221,7 @@ def processing(config_path='', output_path='', solr_info=''):
                             if uses_groups:
                                 if np.isnan(ds_flags[flag].values).all():
                                     continue
+
                                 ds[var].values = np.where(ds_flags[flag].values == 0,
                                                           ds[var].values, default_fillvals['f8'])
                             else:
@@ -296,7 +308,8 @@ def processing(config_path='', output_path='', solr_info=''):
                 file_size = os.path.getsize(save_path)
                 aggregation_success = True
 
-            except:
+            except Exception as e:
+                print(e)
                 filename = ''
                 save_path = ''
                 checksum = ''
@@ -314,7 +327,7 @@ def processing(config_path='', output_path='', solr_info=''):
             item['file_size_l'] = file_size
             item['aggregation_success_b'] = aggregation_success
             item['aggregation_time_s'] = datetime.utcnow().strftime(
-                "%Y%m%dT%H:%M:%SZ")
+                "%Y-%m-%dT%H:%M:%SZ")
             item['aggregation_version_f'] = version
             if start_date_str in cycles.keys():
                 item['id'] = cycles[start_date_str]['id']
