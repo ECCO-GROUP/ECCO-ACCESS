@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 
 # Creates plots of all cycles in a given directory
-def plotting(output_dir, files):
+def plotting(output_dir, files, var):
 
     for filename in files:
         filename = filename.split('/')[-1]
@@ -17,21 +17,13 @@ def plotting(output_dir, files):
         filepath = output_dir + filename
         output_file = f'{filename[:-2]}png'
         output_path = f'{output_dir}plots/{output_file}'
-        var = 'gps_ssha'
 
         if not os.path.exists(f'{output_dir}plots/'):
             os.makedirs(f'{output_dir}plots/')
 
         ds = xr.open_dataset(filepath)
 
-        start = ds.time.values[0]
-        end = ds.time.values[-1]
-
         da = ds[var]
-
-        mean = da.mean(skipna=True).values
-        mean_plus = mean + 0.3
-        mean_minus = mean - 0.3
 
         lons = da.longitude.values.ravel()
         lats = da.latitude.values.ravel()
@@ -42,13 +34,6 @@ def plotting(output_dir, files):
         vals_subset = vals[np.where(np.logical_and(lats > -40, lats < 40))]
         v_mean = np.nanmean(vals_subset)
         vals_anom = vals - v_mean
-
-        # Downsample to just values within +- 0.5m within mean
-        # range_indeces = np.where(np.logical_and(
-        #     vals >= mean_minus, vals <= mean_plus))
-        # vals_anom = vals_anom[range_indeces]
-        # lons = lons[range_indeces]
-        # lats = lats[range_indeces]
 
         # Downsample to 100000 values
         if vals_anom.shape[0] > 100000:
@@ -77,19 +62,8 @@ def plotting(output_dir, files):
 if __name__ == "__main__":
     output_dir = '/Users/kevinmarlis/Developer/JPL/sealevel_output/ssha_JASON_3_L2_OST_OGDR_GPS/aggregated_products/'
     files = [f for f in os.listdir(output_dir) if '.nc' in f]
-
-    # cycle_id = 'bdf6aef4-1e37-4843-bb4e-610b151c069f'
-    # fq = ['dataset_s:ssha*', 'type_s:harvested', f'cycle_id_s:{cycle_id}']
-    # getVars = {'q': '*:*',
-    #            'fq': fq,
-    #            'rows': 300000}
-
-    # url = f'http://localhost:8983/solr/sealevel_datasets/select?'
-    # response = requests.get(url, params=getVars)
-    # harvested_docs = response.json()['response']['docs']
-
-    # files = [doc['granule_file_path_s'] for doc in harvested_docs]
-
     files.sort()
 
-    plotting(output_dir, files)
+    var = 'gps_ssha'
+
+    plotting(output_dir, files, var)
