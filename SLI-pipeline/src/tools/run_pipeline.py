@@ -101,8 +101,8 @@ def print_log(log_path):
 
     # Must add info level items first
     for d in log_dict:
-        ds = d['name'].replace('pipeline.', '').replace('.harvester', '').replace(
-            '.transformation', '').replace('.aggregation', '')
+        ds = d['name'].replace('pipeline.', '').replace(
+            '.harvester', '').replace('.aggregation', '')
         preprocessing_step = d['name'].replace(
             'pipeline.', '').replace(f'{ds}.', '')
         if len(ds) > 0:
@@ -111,8 +111,8 @@ def print_log(log_path):
                                                                  d["message"]))
     # Then add errors
     for d in log_dict:
-        ds = d['name'].replace('pipeline.', '').replace('.harvester', '').replace(
-            '.transformation', '').replace('.aggregation', '')
+        ds = d['name'].replace('pipeline.', '').replace(
+            '.harvester', '').replace('.aggregation', '')
         preprocessing_step = d['name'].replace(
             'pipeline.', '').replace(f'{ds}.', '')
         if len(ds) > 0:
@@ -293,10 +293,9 @@ if __name__ == '__main__':
         print('2) Harvest all datasets')
         print('3) Aggregate all datasets')
         print('4) Dataset input')
-        print('5) Y/N for datasets')
         chosen_option = input('Enter option number: ')
 
-        if chosen_option in ['1', '2', '3', '4', '5']:
+        if chosen_option in ['1', '2', '3', '4']:
             break
         else:
             print(
@@ -324,8 +323,7 @@ if __name__ == '__main__':
     ch.setFormatter(ch_formatter)
     logger.addHandler(ch)
 
-    datasets = os.listdir(path_to_datasets)
-    datasets = [ds for ds in datasets if ds != '.DS_Store']
+    datasets = [ds for ds in os.listdir(path_to_datasets) if ds != '.DS_Store']
 
     wipe = args.wipe_transformations
 
@@ -337,7 +335,8 @@ if __name__ == '__main__':
 
     # Run harvester
     elif chosen_option == '2':
-        run_harvester(datasets, path_to_harvesters, output_dir, solr_info)
+        for ds in datasets:
+            run_harvester([ds], path_to_harvesters, output_dir, solr_info)
 
     # Run aggregation
     elif chosen_option == '3':
@@ -389,24 +388,5 @@ if __name__ == '__main__':
                           output_dir, solr_info)
             run_aggregation([wanted_ds], path_to_preprocessing,
                             output_dir, solr_info)
-
-    # Yes/no for each dataset
-    elif chosen_option == '5':
-        for ds in datasets:
-            while True:
-                yes_no = input(f'\nRun pipeline for {ds}? (Y/N): ').upper()
-                if yes_no not in ['Y', 'N', 'E']:
-                    print(
-                        f'Unknown option entered, "{yes_no}", please enter a valid option')
-                else:
-                    break
-            if yes_no == 'Y':
-                run_harvester([ds], path_to_harvesters, output_dir, solr_info)
-                run_aggregation([ds], path_to_preprocessing,
-                                output_dir, solr_info)
-            elif yes_no == 'E':
-                break
-            else:  # yes_no == 'N'
-                continue
 
     print_log(logger_path)
