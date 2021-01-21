@@ -140,6 +140,10 @@ def processing(config_path='', output_path='', solr_info=''):
             print(f'No granules for cycle {start_date_str} to {end_date_str}')
             continue
 
+        if len(cycle_granules) < 60:
+            print(
+                f'Not enough granules for cycle {start_date_str} to {end_date_str}: {len(cycle_granules)}')
+
         updating = False
 
         # If any single granule in a cycle satisfies any of the following conditions:
@@ -148,18 +152,21 @@ def processing(config_path='', output_path='', solr_info=''):
         # - has a different version than what is in the config
         # reaggregate the entire cycle
         if cycles:
-            existing_cycle = cycles[start_date_str]
-            prior_time = existing_cycle['aggregation_time_s']
-            prior_success = existing_cycle['aggregation_success_b']
-            prior_version = existing_cycle['aggregation_version_f']
+            if start_date_str in cycles.keys():
+                existing_cycle = cycles[start_date_str]
+                prior_time = existing_cycle['aggregation_time_s']
+                prior_success = existing_cycle['aggregation_success_b']
+                prior_version = existing_cycle['aggregation_version_f']
 
-            if not prior_success or prior_version != version:
-                updating = True
-
-            for granule in cycle_granules:
-                if prior_time < granule['modified_time_dt']:
+                if not prior_success or prior_version != version:
                     updating = True
-                    continue
+
+                for granule in cycle_granules:
+                    if prior_time < granule['modified_time_dt']:
+                        updating = True
+                        continue
+            else:
+                updating = True
         else:
             updating = True
 
@@ -335,6 +342,24 @@ def processing(config_path='', output_path='', solr_info=''):
                             item], solr_collection_name, r=True)
             if r.status_code == 200:
                 print('\tSuccessfully created or updated Solr cycle documents')
+
+                # Give harvested documents the id of the corresponding cycle document
+                if aggregation_success:
+                    if 'id' in item.keys():
+                        cycle_id = item['id']
+                    else:
+                        fq = [
+                            'type_s:cycle', f'dataset_s:{dataset_name}', f'filename_s:{filename}']
+                        cycle_doc = solr_query(
+                            config, solr_host, fq, solr_collection_name)
+                        cycle_id = cycle_doc[0]['id']
+
+                    for granule in cycle_granules:
+                        granule['cycle_id_s'] = cycle_id
+
+                    r = solr_update(
+                        config, solr_host, cycle_granules, solr_collection_name, r=True)
+
             else:
                 print('\tFailed to create Solr cycle documents')
         else:
