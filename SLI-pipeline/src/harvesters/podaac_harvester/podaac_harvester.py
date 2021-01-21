@@ -19,9 +19,8 @@ log = logging.getLogger(__name__)
 
 def clean_solr(config, solr_host, grids_to_use, solr_collection_name):
     """
-    Remove harvested, transformed, and descendant entries in Solr for dates
-    outside of config date range. Also remove related aggregations, and force
-    aggregation rerun for those years.
+    Remove harvested entries in Solr for dates outside of config date range. 
+    Also remove related aggregations, and force aggregation rerun for those years.
     """
     dataset_name = config['ds_name']
     config_start = config['start']
@@ -60,14 +59,11 @@ def clean_solr(config, solr_host, grids_to_use, solr_collection_name):
     url = f'{solr_host}{solr_collection_name}/update?commit=true'
     requests.post(url, json={'delete': {'query': fq}})
 
-    # Add start and end years to '{grid}_years_updated' field in dataset entry
     # Forces the bounding years to be re-aggregated to account for potential
     # removed dates
     start_year = config_start[:4]
     end_year = config_end[:4]
-    update_body = [{
-        "id": dataset_metadata['id']
-    }]
+    update_body = [{"id": dataset_metadata['id']}]
 
     for grid in grids:
         solr_grid_years = f'{grid}_years_updated_ss'
@@ -131,8 +127,7 @@ def solr_update(config, solr_host, update_body, solr_collection_name, r=False):
 def harvester(config_path='', output_path='', s3=None, solr_info=''):
     """
     Pulls data files for PODAAC id and date range given in harvester_config.yaml.
-    Creates (or updates) Solr entries for dataset, harvested granule, fields,
-    and descendants.
+    Creates (or updates) Solr entries for dataset and harvested granules.
     """
 
     # =====================================================
@@ -147,7 +142,6 @@ def harvester(config_path='', output_path='', s3=None, solr_info=''):
 
     dataset_name = config['ds_name']
     date_regex = config['date_regex']
-    aggregated = config['aggregated']
     start_time = config['start']
     if config['most_recent']:
         end_time = datetime.utcnow().strftime("%Y%m%dT%H:%M:%SZ")
@@ -156,7 +150,6 @@ def harvester(config_path='', output_path='', s3=None, solr_info=''):
     host = config['host']
     podaac_id = config['podaac_id']
     shortname = config['original_dataset_short_name']
-    data_time_scale = config['data_time_scale']
     name = config['name']
     password = config['password']
     target_dir = f'{output_path}{dataset_name}/harvested_granules/'
@@ -187,7 +180,6 @@ def harvester(config_path='', output_path='', s3=None, solr_info=''):
     # Pull existing entries from Solr
     # =====================================================
     docs = {}
-    descendants_docs = {}
 
     # Query for existing harvested docs
     fq = ['type_s:harvested', f'dataset_s:{dataset_name}']
@@ -199,17 +191,6 @@ def harvester(config_path='', output_path='', s3=None, solr_info=''):
         for doc in harvested_docs:
             docs[doc['filename_s']] = doc
 
-    # Query for existing descendants docs
-    fq = ['type_s:descendants', f'dataset_s:{dataset_name}']
-    existing_descendants_docs = solr_query(
-        config, solr_host, fq, solr_collection_name)
-
-    # Dictionary of existing descendants docs
-    # descendant doc date : solr entry for that doc
-    if len(existing_descendants_docs) > 0:
-        for doc in existing_descendants_docs:
-            descendants_docs[doc['date_s']] = doc
-
     # =====================================================
     # Setup PODAAC loop variables
     # =====================================================
@@ -218,8 +199,7 @@ def harvester(config_path='', output_path='', s3=None, solr_info=''):
     else:
         url = f'{host}&shortName={shortname}'
 
-    if not aggregated:
-        url += f'&endTime={end_time}&startTime={start_time}'
+    url += f'&endTime={end_time}&startTime={start_time}'
 
     namespace = {"podaac": "http://podaac.jpl.nasa.gov/opensearch/",
                  "opensearch": "http://a9.com/-/spec/opensearch/1.1/",
@@ -255,19 +235,9 @@ def harvester(config_path='', output_path='', s3=None, solr_info=''):
                         "{%(atom)s}link[@title='HTTP URL']" % namespace).attrib['href']
                     newfile = link.split("/")[-1]
 
-                # Skip granules of unrecognized file format
-                # if not any(extension in newfile for extension in ['.nc', '.bz2', '.gz', ]):
-                #     continue
-
                 # Extract start and end dates from XML entry
                 date_start_str = elem.find("{%(time)s}start" % namespace).text
                 date_end_str = elem.find("{%(time)s}end" % namespace).text
-
-                # # Ignore granules with start time less than wanted start time
-                # # PODAAC can grab granule previous to start time if that granule's
-                # # end time is the same as the config file's start time
-                # if date_start_str.replace('-', '') < start_time and not aggregated:
-                #     continue
 
                 # Remove nanoseconds from dates
                 if len(date_start_str) > 19:
@@ -298,14 +268,6 @@ def harvester(config_path='', output_path='', s3=None, solr_info=''):
                 item['source_s'] = link
                 item['modified_time_dt'] = mod_date_time.strftime(time_format)
 
-                # Granule metadata used for initializing Solr descendants entries
-                descendants_item = {}
-                descendants_item['type_s'] = 'descendants'
-                descendants_item['date_s'] = date_start_str
-                descendants_item['dataset_s'] = dataset_name
-                descendants_item['filename_s'] = newfile
-                descendants_item['source_s'] = link
-
                 # If granule doesn't exist or previously failed or has been updated since last harvest
                 updating = (newfile not in docs.keys()) or \
                     (not docs[newfile]['harvest_success_b']) or \
@@ -323,9 +285,6 @@ def harvester(config_path='', output_path='', s3=None, solr_info=''):
                     # If file doesn't exist locally, download it
                     if not os.path.exists(local_fp):
                         print(f' - Downloading {newfile} to {local_fp}')
-                        # if aggregated:
-                        #     print(
-                        #         f'    - {newfile} is aggregated. Downloading may be slow.')
 
                         urlcleanup()
                         if password:
@@ -356,106 +315,9 @@ def harvester(config_path='', output_path='', s3=None, solr_info=''):
 
                     # Create checksum for file
                     item['checksum_s'] = md5(local_fp)
-                    item['pre_transformation_file_path_s'] = local_fp
+                    item['granule_file_path_s'] = local_fp
                     item['harvest_success_b'] = True
                     item['file_size_l'] = os.path.getsize(local_fp)
-
-                    # =====================================================
-                    # Handling data in aggregated form
-                    # =====================================================
-                    # if aggregated:
-                    #     # Aggregated file has already been downloaded
-                    #     # Must extract individual granule slices
-                    #     print(
-                    #         f' - Extracting individual data granules from aggregated data file')
-
-                    #     # Remove old outdated aggregated file from disk
-                    #     for f in os.listdir(f'{target_dir}{year}/'):
-                    #         if str(f) != str(newfile):
-                    #             os.remove(f'{target_dir}{year}/{f}')
-
-                    #     ds = xr.open_dataset(local_fp)
-
-                    #     # List comprehension extracting times within desired date range
-                    #     ds_times = [
-                    #         time for time
-                    #         in np.datetime_as_string(ds.time.values)
-                    #         if start_time[:9] <= time.replace('-', '')[:9] <= end_time[:9]
-                    #     ]
-
-                    #     for time in ds_times:
-                    #         new_ds = ds.sel(time=time)
-
-                    #         if data_time_scale.upper() == 'MONTHLY':
-                    #             if not time[7:9] == '01':
-                    #                 new_start = f'{time[0:8]}01T00:00:00.000000000'
-                    #                 print('NS: ', new_start, 'T: ', time)
-                    #                 time = new_start
-                    #         year = time[:4]
-
-                    #         file_name = f'{dataset_name}_{time.replace("-","")[:8]}.nc'
-                    #         local_fp = f'{target_dir}{year}/{file_name}'
-                    #         time_s = f'{time[:-10]}Z'
-
-                    #         # Granule metadata used for Solr harvested entries
-                    #         item = {}
-                    #         item['type_s'] = 'harvested'
-                    #         item['date_s'] = time_s
-                    #         item['dataset_s'] = dataset_name
-                    #         item['filename_s'] = file_name
-                    #         item['source_s'] = link
-                    #         item['modified_time_dt'] = mod_date_time.strftime(
-                    #             time_format)
-                    #         item['download_time_dt'] = chk_time
-
-                    #         # Granule metadata used for initializing Solr descendants entries
-                    #         descendants_item = {}
-                    #         descendants_item['type_s'] = 'descendants'
-                    #         descendants_item['dataset_s'] = item['dataset_s']
-                    #         descendants_item['date_s'] = item["date_s"]
-                    #         descendants_item['source_s'] = item['source_s']
-
-                    #         if not os.path.exists(f'{target_dir}{year}'):
-                    #             os.makedirs(f'{target_dir}{year}')
-
-                    #         try:
-                    #             # Save slice as NetCDF
-                    #             new_ds.to_netcdf(path=local_fp)
-
-                    #             # Create checksum for file
-                    #             item['checksum_s'] = md5(local_fp)
-                    #             item['pre_transformation_file_path_s'] = local_fp
-                    #             item['harvest_success_b'] = True
-                    #             item['file_size_l'] = os.path.getsize(local_fp)
-                    #         except:
-                    #             print(f'    - {file_name} failed to save')
-                    #             item['harvest_success_b'] = False
-                    #             item['pre_transformation_file_path_s'] = ''
-                    #             item['file_size_l'] = 0
-                    #             item['checksum_s'] = ''
-
-                    #         # Query for existing granule in Solr in order to update it
-                    #         fq = ['type_s:harvested', f'dataset_s:{dataset_name}',
-                    #               f'date_s:{time_s[:10]}*']
-                    #         granule = solr_query(
-                    #             config, solr_host, fq, solr_collection_name)
-
-                    #         if granule:
-                    #             item['id'] = granule[0]['id']
-
-                    #         if time_s in descendants_docs.keys():
-                    #             descendants_item['id'] = descendants_docs[time_s]['id']
-
-                    #         entries_for_solr.append(item)
-                    #         entries_for_solr.append(descendants_item)
-
-                    #         start_times.append(datetime.strptime(
-                    #             time[:-3], '%Y-%m-%dT%H:%M:%S.%f'))
-                    #         end_times.append(datetime.strptime(
-                    #             time[:-3], '%Y-%m-%dT%H:%M:%S.%f'))
-
-                    #         if item['harvest_success_b']:
-                    #             last_success_item = item
 
                 else:
                     print(f' - {newfile} already downloaded and up to date')
@@ -467,32 +329,13 @@ def harvester(config_path='', output_path='', s3=None, solr_info=''):
                     print(f'    - {newfile} failed to download')
 
                     item['harvest_success_b'] = False
-                    item['pre_transformation_file_path_s'] = ''
+                    item['granule_file_path_s'] = ''
                     item['file_size_l'] = 0
 
             if updating:
                 item['download_time_dt'] = chk_time
 
-                if date_start_str in descendants_docs.keys():
-                    descendants_item['id'] = descendants_docs[date_start_str]['id']
-
-                descendants_item['harvest_success_b'] = item['harvest_success_b']
-                descendants_item['pre_transformation_file_path_s'] = item['pre_transformation_file_path_s']
-
-                # if not aggregated:
-                #     entries_for_solr.append(item)
-                #     entries_for_solr.append(descendants_item)
-
-                #     start_times.append(datetime.strptime(
-                #         date_start_str, date_regex))
-                #     end_times.append(datetime.strptime(
-                #         date_end_str, date_regex))
-
-                #     if item['harvest_success_b']:
-                #         last_success_item = item
-
                 entries_for_solr.append(item)
-                entries_for_solr.append(descendants_item)
 
                 start_times.append(datetime.strptime(
                     date_start_str, date_regex))
@@ -562,8 +405,6 @@ def harvester(config_path='', output_path='', s3=None, solr_info=''):
         ds_meta['dataset_s'] = dataset_name
         ds_meta['short_name_s'] = shortname
         ds_meta['source_s'] = f'{host}&datasetId={podaac_id}'
-        ds_meta['data_time_scale_s'] = data_time_scale
-        ds_meta['date_format_s'] = config['date_format']
         ds_meta['last_checked_dt'] = chk_time
         ds_meta['original_dataset_title_s'] = config['original_dataset_title']
         ds_meta['original_dataset_short_name_s'] = shortname
@@ -590,42 +431,6 @@ def harvester(config_path='', output_path='', s3=None, solr_info=''):
             print('Successfully created Solr dataset document')
         else:
             print('Failed to create Solr dataset document')
-
-        # If the dataset entry needs to be created, so do the field entries
-
-        # -----------------------------------------------------
-        # Create Solr dataset field entries
-        # -----------------------------------------------------
-
-        # Query for Solr field documents
-        fq = ['type_s:field', f'dataset_s:{dataset_name}']
-        field_query = solr_query(config, solr_host, fq, solr_collection_name)
-
-        body = []
-        for field in config['fields']:
-            field_obj = {}
-            field_obj['type_s'] = {'set': 'field'}
-            field_obj['dataset_s'] = {'set': dataset_name}
-            field_obj['name_s'] = {'set': field['name']}
-            field_obj['long_name_s'] = {'set': field['long_name']}
-            field_obj['standard_name_s'] = {'set': field['standard_name']}
-            field_obj['units_s'] = {'set': field['units']}
-
-            for solr_field in field_query:
-                if field['name'] == solr_field['name_s']:
-                    field_obj['id'] = {'set': solr_field['id']}
-
-            body.append(field_obj)
-
-        if body:
-            # Update Solr with dataset fields metadata
-            r = solr_update(config, solr_host, body,
-                            solr_collection_name, r=True)
-
-            if r.status_code == 200:
-                print('Successfully created Solr field documents')
-            else:
-                print('Failed to create Solr field documents')
 
     # if dataset entry exists, update download time, converage start date, coverage end date
     else:
