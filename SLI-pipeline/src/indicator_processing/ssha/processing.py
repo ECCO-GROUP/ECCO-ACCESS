@@ -185,8 +185,7 @@ def processing(config_path='', output_path='', solr_info=''):
                     uses_groups = False
 
                     # netCDF granules from 2020-10-29 on contain groups
-                    ds = xr.open_dataset(
-                        granule['pre_transformation_file_path_s'])
+                    ds = xr.open_dataset(granule['granule_file_path_s'])
                     if 'lon' in ds.coords:
 
                         ds[var] = ds[var].assign_coords(
@@ -203,9 +202,9 @@ def processing(config_path='', output_path='', solr_info=''):
                     else:
                         uses_groups = True
 
-                        ds = xr.open_dataset(granule['pre_transformation_file_path_s'],
+                        ds = xr.open_dataset(granule['granule_file_path_s'],
                                              group='data_01/ku')
-                        ds_flags = xr.open_dataset(granule['pre_transformation_file_path_s'],
+                        ds_flags = xr.open_dataset(granule['granule_file_path_s'],
                                                    group='data_01')
 
                     if uses_groups:
