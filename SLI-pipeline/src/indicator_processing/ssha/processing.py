@@ -7,24 +7,7 @@ import logging
 import numpy as np
 import xarray as xr
 from datetime import datetime, timedelta
-
 from netCDF4 import default_fillvals  # pylint: disable=no-name-in-module
-
-# 1. Get all harvested granule entries
-# 2. Break into 10 days worth of granule chunks
-# 3. Extract out and merge
-#     1. SSHA
-#     2. surface_type (and other variable names - check files)
-#     3. (and lat/lon/time)
-# 4. Determine start and end time
-#     1. add time_bnds to aggregated file
-#           - need to add encoding -> HERE!
-#           - time encoding has been weird
-#     2. give file center time
-# 5. Add metadata to Solr
-# 6. Incorporate into pipeline
-
-# Add in other vars (see ~line 99)
 
 
 def md5(fname):
@@ -71,7 +54,7 @@ def solr_update(config, solr_host, update_body, solr_collection_name, r=False):
 
 
 def processing(config_path='', output_path='', solr_info=''):
-    # config_path = '/Users/kevinmarlis/Developer/JPL/Sea-Level-Indicators/SLI-pipeline/datasets/ssha_JASON_3_L2_OST_OGDR_GPS/processing_config.yaml'
+
     with open(config_path, "r") as stream:
         config = yaml.load(stream, yaml.Loader)
 
@@ -81,16 +64,23 @@ def processing(config_path='', output_path='', solr_info=''):
     solr_collection_name = config['solr_collection_name']
     date_regex = '%Y-%m-%dT%H:%M:%SZ'
 
-    # 1.  rad_surface_type_flag (rad_surf_type) = 0 (open ocean)
-    # 2.  surface_classification_flag (surface_type) = 0 (open ocean)
-    # 3.  alt_qual (alt_quality_flag)= 0 (good)
-    # 4.  rad_qual (rad_quality_flag) = 0 (good)
-    # 5.  geo_qual (geophysical_quality_flag)= 0 (good)
-    # 6.  meteo_map_availability_flag (ecmwf_meteo_map_avail) = 0 ('2_maps_nominal')
-    # 7.  rain_flag = 0 (no rain)
-    # 8.  rad_rain_flag = 0 (no rain)
-    # 9.  ice_flag = 0 (no ice)
-    # 10. rad_sea_ice_flag = 0 (no ice)
+    """
+    Flags
+    - DS field names change after a certain date
+    - All possible flag names are used by checking if each flag
+      is in the keys of a DS
+    1.  rad_surface_type_flag (rad_surf_type) = 0 (open ocean)
+    2.  surface_classification_flag (surface_type) = 0 (open ocean)
+    3.  alt_qual (alt_quality_flag)= 0 (good)
+    4.  rad_qual (rad_quality_flag) = 0 (good)
+    5.  geo_qual (geophysical_quality_flag)= 0 (good)
+    6.  meteo_map_availability_flag (ecmwf_meteo_map_avail) = 0 ('2_maps_nominal')
+    7.  rain_flag = 0 (no rain)
+    8.  rad_rain_flag = 0 (no rain)
+    9.  ice_flag = 0 (no ice)
+    10. rad_sea_ice_flag = 0 (no ice)
+    """
+
     flags = ['rad_surface_type_flag', 'surface_classification_flag', 'alt_qual',
              'rad_qual', 'geo_qual', 'meteo_map_availability_flag', 'rain_flag',
              'rad_rain_flag', 'ice_flag', 'rad_sea_ice_flag', 'rad_surf_type',
@@ -220,7 +210,7 @@ def processing(config_path='', output_path='', solr_info=''):
                     ds[var].values = np.where(np.isnan(ds[var].values),
                                               default_fillvals['f8'], ds[var].values)
 
-                    # Loop through flags and replace with nans
+                    # Mask out flagged data
                     for flag in flags:
                         if flag in ds_keys:
                             if uses_groups:
@@ -234,10 +224,6 @@ def processing(config_path='', output_path='', solr_info=''):
                                     continue
                                 ds[var].values = np.where(ds[flag].values == 0,
                                                           ds[var].values, default_fillvals['f8'])
-
-                            if np.all(ds[var].values == default_fillvals['f8']):
-                                print(flag)
-                                exit()
 
                     ds = ds.drop([key for key in ds.keys() if key != var])
 
@@ -373,7 +359,3 @@ def processing(config_path='', output_path='', solr_info=''):
             print(
                 f'Insufficient data for complete {start_date + delta} to {end_date + delta} cycle')
             break
-
-
-if __name__ == "__main__":
-    processing()
