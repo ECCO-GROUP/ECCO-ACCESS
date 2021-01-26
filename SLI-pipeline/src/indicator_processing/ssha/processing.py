@@ -53,6 +53,134 @@ def solr_update(config, solr_host, update_body, solr_collection_name, r=False):
         requests.post(url, json=update_body)
 
 
+def testing(ds, var):
+    tests = [means_test, rms_test, std_test, offset_test, amplitude_test]
+    var = 'gps_ssha'
+
+    bitslist = []
+
+    #
+    for func in tests:
+        # call test
+        result = func(ds, var)
+        bitslist.append(result)
+
+    # Convert bits list to integer
+    out = 0
+    for bit in bitslist:
+        out = (out << 1) | bit
+    return out
+
+
+def means_test(ds, var):
+    threshold = 0.5
+
+    mean = np.nanmean(ds[var].values)
+    return 1 if abs(mean) > threshold else 0
+
+
+def rms_test(ds, var):
+    threshold = 0.5
+    non_nan_vals = ds[var].values[~np.isnan(ds[var].values)]
+    rms = np.sqrt(np.mean(non_nan_vals**2))
+    return 1 if rms > threshold else 0
+
+
+def std_test(ds, var):
+    threshold = 0.0
+
+    std = np.std(ds[var].values)
+    return 1 if abs(std) > threshold else 0
+
+
+def offset_test(ds, var):
+    offset_threshold = 3.0
+
+    time_da = ds.time
+    ssha_da = ds.ssha
+    gps_ssha_da = ds.gps_ssha
+
+    OFFSET, _, _, _ = gps_error_amplitude(time_da, ssha_da, gps_ssha_da)
+    return 1 if abs(OFFSET) > offset_threshold else 0
+
+
+def amplitude_test(ds, var):
+    amplitude_threshold = 30.0
+
+    time_da = ds.time
+    ssha_da = ds.ssha
+    gps_ssha_da = ds.gps_ssha
+
+    _, AMPLITUDE, _, _ = gps_error_amplitude(time_da, ssha_da, gps_ssha_da)
+    return 1 if abs(AMPLITUDE) > amplitude_threshold else 0
+
+
+def decode_test_results(results):
+    output = [int(x) for x in '{:08b}'.format(int(results))]
+    return output
+
+
+# time_da, ssha_da, and gps_ssha_da are xarray DataArray objects
+def gps_error_amplitude(time_da, ssha_da, gps_ssha_da):
+    # least squares fit for an OFFSET and AMPLITUDE of
+    # delta orbit altitude between the GPS orbit altitude
+    # and DORIS orbit altitude
+    # ssh = orbit_altitude - range - corrections
+    #
+    # in Shailen's SSH files, there is both 'gps_ssha', and 'ssha'
+    #
+    # gps_ssha - ssha = delta orbit_altitude
+    #    because range and corrections are the same for both ssha fields
+    #
+    # therefore we seek a solution the following equation
+    # y = C0 +  C1 cos(omega t) + C2 sin(omega t)
+    #
+    # where
+    # y      : delta GPS orbit altitude
+    # C0     : OFFSET
+    # C1, C2 : AMPLITUDES of cosine and sine terms comprising a phase shifted oscillation
+    # omega  : period of one orbit resolution in seconds
+    # t      : time in seconds
+    # calculate delta orbit altitude
+    delta_orbit_altitude = gps_ssha_da.values - ssha_da.values
+    # calculate time (in seconds) from the first to last observations in
+    # record
+    td = (time_da.values - time_da[0].values)/1e9
+    td = td.astype('float')
+    # plt.plot(td, delta_orbit_altitude, 'b.')
+    # plt.xlabel('time delta (s)')
+    # plt.grid()
+    # plt.title('delta orbit altitude [m]')
+    # calculate omega * t
+    omega = 2.*np.pi/6745.756
+    omega_t = omega * td
+    # pull values of omega_t and the delta_orbit_altitude only where
+    # the delta_orbit_altitude is not nan (i.e., not missing)
+    omega_t_nn = omega_t[~np.isnan(delta_orbit_altitude)]
+    delta_orbit_altitude_nn = delta_orbit_altitude[~np.isnan(
+        delta_orbit_altitude)]
+    # plt.figure()
+    # plt.plot(omega_t_nn, delta_orbit_altitude_nn,'r');plt.xlabel('omega t');plt.grid()
+    # Least squares solution will take the form:
+    # c = inv(A.T A) A.T  delta_orbit_altitude.T
+    # where *.T indicates transpose
+    # inv indicates matrix inverse
+    # the three columns of the A matrix
+    CONST_TERM = np.ones(len(omega_t_nn))
+    COS_TERM = np.cos(omega_t_nn)
+    SIN_TERM = np.sin(omega_t_nn)
+    # construct A matrix
+    A = np.column_stack((CONST_TERM, COS_TERM, SIN_TERM))
+    c = np.matmul(np.matmul(np.linalg.inv(np.matmul(A.T, A)),
+                            A.T), delta_orbit_altitude_nn.T)
+    OFFSET = c[0]
+    AMPLITUDE = np.sqrt(c[1]**2 + c[2]**2)
+    # estimated time series
+    y_e = c[0] + c[1]*np.cos(omega_t) + c[2] * np.sin(omega_t)
+    # the c vector will have 3 elements
+    return OFFSET, AMPLITUDE, delta_orbit_altitude, y_e
+
+
 def processing(config_path='', output_path='', solr_info=''):
 
     with open(config_path, "r") as stream:
@@ -119,6 +247,7 @@ def processing(config_path='', output_path='', solr_info=''):
     var = 'gps_ssha'
 
     for (start_date, end_date) in cycle_dates:
+
         start_date_str = datetime.strftime(start_date, date_regex)
         end_date_str = datetime.strftime(end_date, date_regex)
 
@@ -206,9 +335,13 @@ def processing(config_path='', output_path='', solr_info=''):
 
                     start_times.append(ds.time.values[::])
 
-                    # Replace nans with fill value
-                    ds[var].values = np.where(np.isnan(ds[var].values),
-                                              default_fillvals['f8'], ds[var].values)
+                    # Run tests, returns byte results convert to int
+                    results = testing(ds, var)
+
+                    results_array = np.full(
+                        len(ds[var]), results, dtype='float64')
+                    ds['test_results'] = xr.DataArray(
+                        results_array, ds[var].coords, ds[var].dims)
 
                     # Mask out flagged data
                     for flag in flags:
@@ -225,13 +358,17 @@ def processing(config_path='', output_path='', solr_info=''):
                                 ds[var].values = np.where(ds[flag].values == 0,
                                                           ds[var].values, default_fillvals['f8'])
 
-                    ds = ds.drop([key for key in ds.keys() if key != var])
+                    # Replace nans with fill value
+                    ds[var].values = np.where(np.isnan(ds[var].values),
+                                              default_fillvals['f8'], ds[var].values)
+
+                    ds = ds.drop([key for key in ds.keys()
+                                  if key not in [var, 'test_results']])
 
                     opened_data.append(ds)
 
                 # Merge
                 merged_cycle_ds = xr.concat((opened_data), dim='time')
-
                 # Time bounds
                 start_times = np.concatenate(start_times).ravel()
                 end_times = start_times[1:]
@@ -268,6 +405,15 @@ def processing(config_path='', output_path='', solr_info=''):
                 coord_encoding = {}
                 for coord in merged_cycle_ds.coords:
                     coord_encoding[coord] = {'_FillValue': None}
+
+                    if 'ssha' in coord:
+                        coord_encoding[coord] = {
+                            '_FillValue': default_fillvals['f8']}
+
+                    if 'test_results' in coord:
+                        coord_encoding[coord] = {
+                            '_FillValue': -1,
+                            'dtype': 'float64', }
 
                     if 'time' in coord:
                         coord_encoding[coord] = {'_FillValue': None,
