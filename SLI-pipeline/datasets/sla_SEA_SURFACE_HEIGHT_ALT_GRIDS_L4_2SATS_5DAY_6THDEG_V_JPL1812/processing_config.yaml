@@ -1,0 +1,12 @@
+# =====================================================
+# Dataset
+# =====================================================
+ds_name: "sla_SEA_SURFACE_HEIGHT_ALT_GRIDS_L4_2SATS_5DAY_6THDEG_V_JPL1812" # Name for dataset
+version: 1.0
+indicator: sla
+
+# =====================================================
+# Solr
+# =====================================================
+solr_host_local: http://localhost:8983/solr/ # doesn't change if following standard Solr setup
+solr_collection_name: sealevel_datasets # doesn't change

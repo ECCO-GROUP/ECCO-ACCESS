@@ -1,0 +1,31 @@
+# =====================================================
+# PODAAC
+# =====================================================
+# PODAAC explicitly expects this date format
+start: "20160101T00:00:00Z" # yyyymmddThh:mm:ssZ
+end: "20190201T00:00:00Z" # yyyymmddThh:mm:ssZ
+most_recent: False # Overrides end date to be current date at time of execution
+name: ""
+password: ""
+host: https://podaac.jpl.nasa.gov/ws/search/granule/?format=atom&pretty=false&itemsPerPage=300000 # does not change
+date_regex: "%Y-%m-%dT%H:%M:%SZ" # does not change
+
+# =====================================================
+# Dataset
+# =====================================================
+ds_name: "sla_SEA_SURFACE_HEIGHT_ALT_GRIDS_L4_2SATS_5DAY_6THDEG_V_JPL1812" # Name for dataset
+harvester_type: "podaac"
+podaac_id: "PODAAC-SLREF-CDRV2"
+
+# new_data_attrs:
+original_dataset_title: MEaSUREs Gridded Sea Surface Height Anomalies Version 1812
+original_dataset_short_name: SEA_SURFACE_HEIGHT_ALT_GRIDS_L4_2SATS_5DAY_6THDEG_V_JPL1812
+original_dataset_url: https://podaac.jpl.nasa.gov/dataset/SEA_SURFACE_HEIGHT_ALT_GRIDS_L4_2SATS_5DAY_6THDEG_V_JPL1812
+original_dataset_reference: https://podaac-tools.jpl.nasa.gov/drive/files/allData/merged_alt/L4/docs/alti-gridding-jpl-PODAAC-UserGuide_20200227.pdf
+original_dataset_doi: 10.5067/SLREF-CDRV2
+
+# =====================================================
+# Solr
+# =====================================================
+solr_host_local: http://localhost:8983/solr/ # doesn't change if following standard Solr setup
+solr_collection_name: sealevel_datasets # doesn't change
