@@ -5,28 +5,34 @@ import xarray as xr
 import numpy as np
 import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
+import matplotlib
 
 
 # Creates plots of all cycles in a given directory
-def plotting(output_dir, files, var):
-
+def plotting(files_dir, files, var):
     for filename in files:
         filename = filename.split('/')[-1]
 
         print(f'Plotting {filename}')
-        filepath = output_dir + filename
+        filepath = files_dir + filename
         output_file = f'{filename[:-2]}png'
-        output_path = f'{output_dir}plots/{output_file}'
+        output_dir = f'{files_dir}plots/'
+        output_path = f'{output_dir}{output_file}'
 
-        if not os.path.exists(f'{output_dir}plots/'):
-            os.makedirs(f'{output_dir}plots/')
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
 
         ds = xr.open_dataset(filepath)
 
         da = ds[var]
 
-        lons = da.longitude.values.ravel()
-        lats = da.latitude.values.ravel()
+        try:
+            lons = da.longitude.values.ravel()
+            lats = da.latitude.values.ravel()
+        except:
+            lons = da.lon.values.ravel()
+            lats = da.lat.values.ravel()
+
         vals = da.values.ravel()
 
         # for the purposes of removing a mean, remove the mean from the SSH points
@@ -48,7 +54,7 @@ def plotting(output_dir, files, var):
             1, 1, 1, projection=ccrs.Robinson(central_longitude=-66))
         ax.set_global()
         ax.coastlines()
-        sax = ax.scatter(lons, lats, c=vals_anom, vmin=-0.3, vmax=0.3, cmap='jet',
+        sax = ax.scatter(lons, lats, c=vals_anom, vmin=-.3, vmax=0.3, cmap='jet',
                          s=.5, transform=ccrs.PlateCarree())
 
         fig.colorbar(sax, ax=ax)
@@ -60,10 +66,16 @@ def plotting(output_dir, files, var):
 
 
 if __name__ == "__main__":
-    output_dir = '/Users/kevinmarlis/Developer/JPL/sealevel_output/ssha_JASON_3_L2_OST_OGDR_GPS/aggregated_products/'
-    files = [f for f in os.listdir(output_dir) if '.nc' in f]
+    plot_aggregated = True
+
+    if plot_aggregated:
+        files_dir = '/Users/kevinmarlis/Developer/JPL/sealevel_output/ssha_JASON_3_L2_OST_OGDR_GPS/aggregated_products/'
+    else:
+        files_dir = '/Users/kevinmarlis/Developer/JPL/sealevel_output/ssha_JASON_3_L2_OST_OGDR_GPS/harvested_granules/2016/'
+
+    files = [f for f in os.listdir(files_dir) if '.nc' in f]
     files.sort()
 
-    var = 'gps_ssha'
+    var = 'ssha'
 
-    plotting(output_dir, files, var)
+    plotting(files_dir, files, var)
