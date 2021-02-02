@@ -16,7 +16,7 @@ def plotting(files_dir, files, var):
         print(f'Plotting {filename}')
         filepath = files_dir + filename
         output_file = f'{filename[:-2]}png'
-        output_dir = f'{files_dir}plots/'
+        output_dir = f'{files_dir}plots/filtered_gps_ssha/'
         output_path = f'{output_dir}{output_file}'
 
         if not os.path.exists(output_dir):
@@ -27,19 +27,27 @@ def plotting(files_dir, files, var):
         da = ds[var]
 
         try:
-            lons = da.longitude.values.ravel()
-            lats = da.latitude.values.ravel()
+            lons = da.longitude.values[np.where(np.logical_and(
+                abs(ds['offset'].values) < 0.3, abs(ds['amplitude'].values) < 0.3))].ravel()
+            lats = da.latitude.values[np.where(np.logical_and(
+                abs(ds['offset'].values) < 0.3, abs(ds['amplitude'].values) < 0.3))].ravel()
         except:
-            lons = da.lon.values.ravel()
-            lats = da.lat.values.ravel()
+            lons = da.lon.values[np.where(np.logical_and(
+                abs(ds['offset'].values) < 0.3, abs(ds['amplitude'].values) < 0.3))].ravel()
+            lats = da.lat.values[np.where(np.logical_and(
+                abs(ds['offset'].values) < 0.3, abs(ds['amplitude'].values) < 0.3))].ravel()
 
         vals = da.values.ravel()
 
+        filtered_vals = vals[np.where(np.logical_and(
+            abs(ds['offset'].values) < 0.3, abs(ds['amplitude'].values) < 0.3))]
+
         # for the purposes of removing a mean, remove the mean from the SSH points
         # between 40S and 40N
-        vals_subset = vals[np.where(np.logical_and(lats > -40, lats < 40))]
+        vals_subset = filtered_vals[np.where(
+            np.logical_and(lats > -40, lats < 40))]
         v_mean = np.nanmean(vals_subset)
-        vals_anom = vals - v_mean
+        vals_anom = filtered_vals - v_mean
 
         # Downsample to 100000 values
         if vals_anom.shape[0] > 100000:
@@ -76,6 +84,6 @@ if __name__ == "__main__":
     files = [f for f in os.listdir(files_dir) if '.nc' in f]
     files.sort()
 
-    var = 'ssha'
+    var = 'gps_ssha'
 
     plotting(files_dir, files, var)
