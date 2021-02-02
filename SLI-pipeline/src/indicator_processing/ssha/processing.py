@@ -54,65 +54,40 @@ def solr_update(config, solr_host, update_body, solr_collection_name, r=False):
 
 
 def testing(ds, var):
-    tests = [means_test, rms_test, std_test, offset_test, amplitude_test]
-    var = 'gps_ssha'
+    time_da = ds.time
+    ssha_da = ds.ssha
+    gps_ssha_da = ds.gps_ssha
 
-    bitslist = []
-
-    #
-    for func in tests:
-        # call test
-        result = func(ds, var)
-        bitslist.append(result)
-
-    # Convert bits list to integer
-    out = 0
-    for bit in bitslist:
-        out = (out << 1) | bit
-    return out
-
-
-def means_test(ds, var):
-    threshold = 0.5
+    vals = ds[var].values
+    non_nan_vals = vals[~np.isnan(vals)]
 
     mean = np.nanmean(ds[var].values)
-    return 1 if abs(mean) > threshold else 0
-
-
-def rms_test(ds, var):
-    threshold = 0.5
-    non_nan_vals = ds[var].values[~np.isnan(ds[var].values)]
     rms = np.sqrt(np.mean(non_nan_vals**2))
-    return 1 if rms > threshold else 0
+    std = np.std(non_nan_vals)
 
+    OFFSET, AMPLITUDE, _, _ = delta_orbit_altitude_offset_amplitude(
+        time_da, ssha_da, gps_ssha_da)
 
-def std_test(ds, var):
-    threshold = 0.0
+    for (test, result) in [('mean', mean), ('rms', rms), ('std', std), ('offset', OFFSET), ('amplitude', AMPLITUDE)]:
 
-    std = np.std(ds[var].values)
-    return 1 if abs(std) > threshold else 0
+        test_array = np.full(len(ds[var]), result, dtype='float64')
+        ds[test] = xr.DataArray(test_array, ds[var].coords, ds[var].dims)
+        ds[test].attrs['comment'] = f'Results from {test} test on individual granules that make up a cycle.'
+    return ds
 
+    # bitslist = []
 
-def offset_test(ds, var):
-    offset_threshold = 3.0
+    # #
+    # for func in tests:
+    #     # call test
+    #     result = func(ds, var)
+    #     bitslist.append(result)
 
-    time_da = ds.time
-    ssha_da = ds.ssha
-    gps_ssha_da = ds.gps_ssha
-
-    OFFSET, _, _, _ = gps_error_amplitude(time_da, ssha_da, gps_ssha_da)
-    return 1 if abs(OFFSET) > offset_threshold else 0
-
-
-def amplitude_test(ds, var):
-    amplitude_threshold = 30.0
-
-    time_da = ds.time
-    ssha_da = ds.ssha
-    gps_ssha_da = ds.gps_ssha
-
-    _, AMPLITUDE, _, _ = gps_error_amplitude(time_da, ssha_da, gps_ssha_da)
-    return 1 if abs(AMPLITUDE) > amplitude_threshold else 0
+    # # Convert bits list to integer
+    # out = 0
+    # for bit in bitslist:
+    #     out = (out << 1) | bit
+    # return out
 
 
 def decode_test_results(results):
@@ -120,8 +95,8 @@ def decode_test_results(results):
     return output
 
 
-# time_da, ssha_da, and gps_ssha_da are xarray DataArray objects
-def gps_error_amplitude(time_da, ssha_da, gps_ssha_da):
+def delta_orbit_altitude_offset_amplitude(time_da, ssha_da, gps_ssha_da):
+    # time_da, ssha_da, and gps_ssha_da are xarray DataArray objects
     # least squares fit for an OFFSET and AMPLITUDE of
     # delta orbit altitude between the GPS orbit altitude
     # and DORIS orbit altitude
@@ -145,9 +120,12 @@ def gps_error_amplitude(time_da, ssha_da, gps_ssha_da):
     delta_orbit_altitude = gps_ssha_da.values - ssha_da.values
     # calculate time (in seconds) from the first to last observations in
     # record
-    td = (time_da.values - time_da[0].values)/1e9
-    td = td.astype('float')
-    # plt.plot(td, delta_orbit_altitude, 'b.')
+    if type(time_da.values[0]) == np.datetime64:
+        td = (time_da.values - time_da[0].values)/1e9
+        td = td.astype('float')
+    else:
+        td = time_da.values
+    # plt.plot(td, delta_orbit_altitude, 'k.')
     # plt.xlabel('time delta (s)')
     # plt.grid()
     # plt.title('delta orbit altitude [m]')
@@ -159,8 +137,6 @@ def gps_error_amplitude(time_da, ssha_da, gps_ssha_da):
     omega_t_nn = omega_t[~np.isnan(delta_orbit_altitude)]
     delta_orbit_altitude_nn = delta_orbit_altitude[~np.isnan(
         delta_orbit_altitude)]
-    # plt.figure()
-    # plt.plot(omega_t_nn, delta_orbit_altitude_nn,'r');plt.xlabel('omega t');plt.grid()
     # Least squares solution will take the form:
     # c = inv(A.T A) A.T  delta_orbit_altitude.T
     # where *.T indicates transpose
@@ -245,6 +221,7 @@ def processing(config_path='', output_path='', solr_info=''):
         curr += delta
 
     var = 'gps_ssha'
+    tests = ['mean', 'rms', 'std', 'offset', 'amplitude']
 
     for (start_date, end_date) in cycle_dates:
 
@@ -335,13 +312,16 @@ def processing(config_path='', output_path='', solr_info=''):
 
                     start_times.append(ds.time.values[::])
 
+                    # Remove outliers before running tests
+                    ds[var].values = np.where(abs(ds[var].values) > 10,
+                                              default_fillvals['f8'], ds[var].values)
                     # Run tests, returns byte results convert to int
-                    results = testing(ds, var)
+                    ds = testing(ds, var)
 
-                    results_array = np.full(
-                        len(ds[var]), results, dtype='float64')
-                    ds['test_results'] = xr.DataArray(
-                        results_array, ds[var].coords, ds[var].dims)
+                    # results_array = np.full(
+                    #     len(ds[var]), results, dtype='float64')
+                    # ds['test_results'] = xr.DataArray(
+                    #     results_array, ds[var].coords, ds[var].dims)
 
                     # Mask out flagged data
                     for flag in flags:
@@ -361,26 +341,27 @@ def processing(config_path='', output_path='', solr_info=''):
                     # Replace nans with fill value
                     ds[var].values = np.where(np.isnan(ds[var].values),
                                               default_fillvals['f8'], ds[var].values)
-
+                    keep_keys = tests + [var]
                     ds = ds.drop([key for key in ds.keys()
-                                  if key not in [var, 'test_results']])
-
+                                  if key not in keep_keys])
                     opened_data.append(ds)
 
                 # Merge
                 merged_cycle_ds = xr.concat((opened_data), dim='time')
+
                 # Time bounds
                 start_times = np.concatenate(start_times).ravel()
                 end_times = start_times[1:]
                 end_times = np.append(
                     end_times, end_times[-1] + np.timedelta64(1, 's'))
-                time_bnds = np.array([[i, j]
-                                      for i, j in zip(start_times, end_times)])
 
-                merged_cycle_ds = merged_cycle_ds.assign_coords(
-                    {'time_bnds': (('time', 'nv'), time_bnds)})
+                # time_bnds = np.array([[i, j]
+                #                       for i, j in zip(start_times, end_times)])
 
-                merged_cycle_ds.time.attrs.update(bounds='time_bnds')
+                # merged_cycle_ds = merged_cycle_ds.assign_coords(
+                #     {'time_bnds': (('time', 'nv'), time_bnds)})
+
+                # merged_cycle_ds.time.attrs.update(bounds='time_bnds')
 
                 # Center time
                 overall_center_time = start_times[0] + \
@@ -396,6 +377,15 @@ def processing(config_path='', output_path='', solr_info=''):
                 merged_cycle_ds[var].attrs['valid_max'] = np.nanmax(
                     merged_cycle_ds[var].values)
 
+                # Global attributes
+                merged_cycle_ds.attrs['time_start'] = str(start_times[0])[:19]
+                merged_cycle_ds.attrs['time_center'] = str(
+                    overall_center_time)[:19]
+                merged_cycle_ds.attrs['time_end'] = str(end_times[-1])[:19]
+
+                merged_cycle_ds.time.attrs['long_name'] = 'time'
+
+                # print(merged_cycle_ds)
                 # NetCDF encoding
                 encoding_each = {'zlib': True,
                                  'complevel': 5,
@@ -410,11 +400,6 @@ def processing(config_path='', output_path='', solr_info=''):
                         coord_encoding[coord] = {
                             '_FillValue': default_fillvals['f8']}
 
-                    if 'test_results' in coord:
-                        coord_encoding[coord] = {
-                            '_FillValue': -1,
-                            'dtype': 'float64', }
-
                     if 'time' in coord:
                         coord_encoding[coord] = {'_FillValue': None,
                                                  'dtype': 'float64',
@@ -423,8 +408,7 @@ def processing(config_path='', output_path='', solr_info=''):
                                                  'contiguous': False,
                                                  'calendar': 'gregorian',
                                                  'shuffle': False}
-                        if coord != 'time_step':
-                            coord_encoding[coord]['units'] = "seconds since 2000-01-01 00:00:00.0"
+
                     if 'lat' in coord:
                         coord_encoding[coord] = {'_FillValue': None,
                                                  'dtype': 'float32'}
@@ -469,8 +453,8 @@ def processing(config_path='', output_path='', solr_info=''):
             if start_date_str in cycles.keys():
                 item['id'] = cycles[start_date_str]['id']
 
-            r = solr_update(config, solr_host, [
-                            item], solr_collection_name, r=True)
+            r = solr_update(config, solr_host, [item],
+                            solr_collection_name, r=True)
             if r.status_code == 200:
                 print('\tSuccessfully created or updated Solr cycle documents')
 
@@ -489,7 +473,7 @@ def processing(config_path='', output_path='', solr_info=''):
                         granule['cycle_id_s'] = cycle_id
 
                     r = solr_update(
-                        config, solr_host, cycle_granules, solr_collection_name, r=True)
+                        config, solr_host, cycle_granules, solr_collection_name)
 
             else:
                 print('\tFailed to create Solr cycle documents')
