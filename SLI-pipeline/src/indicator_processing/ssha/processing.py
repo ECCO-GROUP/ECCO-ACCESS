@@ -68,9 +68,11 @@ def testing(ds, var):
     OFFSET, AMPLITUDE, _, _ = delta_orbit_altitude_offset_amplitude(
         time_da, ssha_da, gps_ssha_da)
 
-    for (test, result) in [('mean', mean), ('rms', rms), ('std', std), ('offset', OFFSET), ('amplitude', AMPLITUDE)]:
+    tests = [('mean', mean), ('rms', rms), ('std', std),
+             ('offset', OFFSET), ('amplitude', AMPLITUDE)]
 
-        test_array = np.full(len(ds[var]), result, dtype='float64')
+    for (test, result) in tests:
+        test_array = np.full(len(ds[var]), result, dtype='float32')
         ds[test] = xr.DataArray(test_array, ds[var].coords, ds[var].dims)
         ds[test].attrs['comment'] = f'Results from {test} test on individual granules that make up a cycle.'
     return ds
@@ -313,15 +315,11 @@ def processing(config_path='', output_path='', solr_info=''):
                     start_times.append(ds.time.values[::])
 
                     # Remove outliers before running tests
-                    ds[var].values = np.where(abs(ds[var].values) > 10,
-                                              default_fillvals['f8'], ds[var].values)
+                    ds[var].values[np.greater(
+                        abs(ds[var].values), 1.5, where=~np.isnan(ds[var].values))] = np.nan
+
                     # Run tests, returns byte results convert to int
                     ds = testing(ds, var)
-
-                    # results_array = np.full(
-                    #     len(ds[var]), results, dtype='float64')
-                    # ds['test_results'] = xr.DataArray(
-                    #     results_array, ds[var].coords, ds[var].dims)
 
                     # Mask out flagged data
                     for flag in flags:
@@ -331,19 +329,24 @@ def processing(config_path='', output_path='', solr_info=''):
                                     continue
 
                                 ds[var].values = np.where(ds_flags[flag].values == 0,
-                                                          ds[var].values, default_fillvals['f8'])
+                                                          ds[var].values,
+                                                          default_fillvals['f8'])
                             else:
                                 if np.isnan(ds[flag].values).all():
                                     continue
                                 ds[var].values = np.where(ds[flag].values == 0,
-                                                          ds[var].values, default_fillvals['f8'])
+                                                          ds[var].values,
+                                                          default_fillvals['f8'])
 
                     # Replace nans with fill value
                     ds[var].values = np.where(np.isnan(ds[var].values),
-                                              default_fillvals['f8'], ds[var].values)
+                                              default_fillvals['f8'],
+                                              ds[var].values)
+
                     keep_keys = tests + [var]
                     ds = ds.drop([key for key in ds.keys()
                                   if key not in keep_keys])
+
                     opened_data.append(ds)
 
                 # Merge
@@ -355,20 +358,13 @@ def processing(config_path='', output_path='', solr_info=''):
                 end_times = np.append(
                     end_times, end_times[-1] + np.timedelta64(1, 's'))
 
-                # time_bnds = np.array([[i, j]
-                #                       for i, j in zip(start_times, end_times)])
-
-                # merged_cycle_ds = merged_cycle_ds.assign_coords(
-                #     {'time_bnds': (('time', 'nv'), time_bnds)})
-
-                # merged_cycle_ds.time.attrs.update(bounds='time_bnds')
-
                 # Center time
                 overall_center_time = start_times[0] + \
                     ((end_times[-1] - start_times[0])/2)
-                ts = datetime.strptime(str(overall_center_time)[
-                    :19], '%Y-%m-%dT%H:%M:%S')
-                filename_time = datetime.strftime(ts, '%Y%m%dT%H%M%S')
+                center_time = datetime.strptime(
+                    str(overall_center_time)[:19], '%Y-%m-%dT%H:%M:%S')
+                filename_time = datetime.strftime(center_time, '%Y%m%dT%H%M%S')
+
                 filename = f'ssha_{filename_time}.nc'
 
                 # SSHA Attributes
@@ -377,24 +373,33 @@ def processing(config_path='', output_path='', solr_info=''):
                 merged_cycle_ds[var].attrs['valid_max'] = np.nanmax(
                     merged_cycle_ds[var].values)
 
-                # Global attributes
+                # Time Attributes
+                merged_cycle_ds.time.attrs['long_name'] = 'time'
+
+                # Global Attributes
+                merged_cycle_ds.attrs = {}
+                merged_cycle_ds.attrs['title'] = 'Ten day aggregated GPSOGDR - Reduced dataset'
                 merged_cycle_ds.attrs['time_start'] = str(start_times[0])[:19]
                 merged_cycle_ds.attrs['time_center'] = str(
                     overall_center_time)[:19]
                 merged_cycle_ds.attrs['time_end'] = str(end_times[-1])[:19]
+                merged_cycle_ds.attrs['original_dataset_title'] = 'Jason-3 GPS based orbit and SSHA OGDR'
+                merged_cycle_ds.attrs['original_dataset_short_name'] = 'JASON_3_L2_OST_OGDR_GPS'
+                merged_cycle_ds.attrs['original_dataset_url'] = 'https://podaac.jpl.nasa.gov/dataset/JASON_3_L2_OST_OGDR_GPS?ids=Platforms:Processing%20Levels&values=JASON-3::2%20-%20Geophys.%20Variables,%20Sensor%20Coordinates'
+                merged_cycle_ds.attrs['original_dataset_reference'] = 'https://podaac-tools.jpl.nasa.gov/drive/files/allData/jason3/preview/L2/GPS-OGDR/docs/j3_user_handbook.pdf'
 
-                merged_cycle_ds.time.attrs['long_name'] = 'time'
-
-                # print(merged_cycle_ds)
                 # NetCDF encoding
                 encoding_each = {'zlib': True,
                                  'complevel': 5,
+                                 'dtype': 'float32',
                                  'shuffle': True,
                                  '_FillValue': default_fillvals['f8']}
 
                 coord_encoding = {}
                 for coord in merged_cycle_ds.coords:
-                    coord_encoding[coord] = {'_FillValue': None}
+                    coord_encoding[coord] = {'_FillValue': None,
+                                             'dtype': 'float32',
+                                             'complevel': 6}
 
                     if 'ssha' in coord:
                         coord_encoding[coord] = {
@@ -402,9 +407,7 @@ def processing(config_path='', output_path='', solr_info=''):
 
                     if 'time' in coord:
                         coord_encoding[coord] = {'_FillValue': None,
-                                                 'dtype': 'float64',
                                                  'zlib': True,
-                                                 'complevel': 6,
                                                  'contiguous': False,
                                                  'calendar': 'gregorian',
                                                  'shuffle': False}
@@ -463,8 +466,8 @@ def processing(config_path='', output_path='', solr_info=''):
                     if 'id' in item.keys():
                         cycle_id = item['id']
                     else:
-                        fq = [
-                            'type_s:cycle', f'dataset_s:{dataset_name}', f'filename_s:{filename}']
+                        fq = ['type_s:cycle', f'dataset_s:{dataset_name}',
+                              f'filename_s:{filename}']
                         cycle_doc = solr_query(
                             config, solr_host, fq, solr_collection_name)
                         cycle_id = cycle_doc[0]['id']
