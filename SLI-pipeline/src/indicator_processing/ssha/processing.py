@@ -379,14 +379,26 @@ def processing(config_path='', output_path='', solr_info=''):
                 # Global Attributes
                 merged_cycle_ds.attrs = {}
                 merged_cycle_ds.attrs['title'] = 'Ten day aggregated GPSOGDR - Reduced dataset'
-                merged_cycle_ds.attrs['time_start'] = str(start_times[0])[:19]
-                merged_cycle_ds.attrs['time_center'] = str(
+
+                merged_cycle_ds.attrs['cycle_start'] = start_date_str
+                merged_cycle_ds.attrs['cycle_center'] = start_date + \
+                    ((end_date - start_date) / 2)
+                merged_cycle_ds.attrs['cycle_end'] = end_date_str
+
+                merged_cycle_ds.attrs['data_time_start'] = str(start_times[0])[
+                    :19]
+                merged_cycle_ds.attrs['data_time_center'] = str(
                     overall_center_time)[:19]
-                merged_cycle_ds.attrs['time_end'] = str(end_times[-1])[:19]
+                merged_cycle_ds.attrs['data_time_end'] = str(
+                    end_times[-1])[:19]
+
                 merged_cycle_ds.attrs['original_dataset_title'] = 'Jason-3 GPS based orbit and SSHA OGDR'
                 merged_cycle_ds.attrs['original_dataset_short_name'] = 'JASON_3_L2_OST_OGDR_GPS'
                 merged_cycle_ds.attrs['original_dataset_url'] = 'https://podaac.jpl.nasa.gov/dataset/JASON_3_L2_OST_OGDR_GPS?ids=Platforms:Processing%20Levels&values=JASON-3::2%20-%20Geophys.%20Variables,%20Sensor%20Coordinates'
                 merged_cycle_ds.attrs['original_dataset_reference'] = 'https://podaac-tools.jpl.nasa.gov/drive/files/allData/jason3/preview/L2/GPS-OGDR/docs/j3_user_handbook.pdf'
+
+                print(merged_cycle_ds)
+                exit()
 
                 # NetCDF encoding
                 encoding_each = {'zlib': True,
@@ -431,6 +443,7 @@ def processing(config_path='', output_path='', solr_info=''):
                 checksum = md5(save_path)
                 file_size = os.path.getsize(save_path)
                 aggregation_success = True
+                granule_count = len(opened_data)
 
             except Exception as e:
                 print(e)
@@ -438,6 +451,7 @@ def processing(config_path='', output_path='', solr_info=''):
                 save_path = ''
                 checksum = ''
                 file_size = 0
+                granule_count = 0
 
             # Add cycle to Solr
             item = {}
@@ -445,6 +459,7 @@ def processing(config_path='', output_path='', solr_info=''):
             item['dataset_s'] = dataset_name
             item['start_date_s'] = start_date_str
             item['end_date_s'] = end_date_str
+            item['granules_in_cycle_i'] = granule_count
             item['filename_s'] = filename
             item['filepath_s'] = save_path
             item['checksum_s'] = checksum
