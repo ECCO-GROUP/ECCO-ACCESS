@@ -9,14 +9,15 @@ import matplotlib
 
 
 # Creates plots of all cycles in a given directory
-def plotting(files_dir, files, var):
+def plotting(files_dir, files, var, thresholds={}):
     for filename in files:
+
         filename = filename.split('/')[-1]
 
         print(f'Plotting {filename}')
         filepath = files_dir + filename
         output_file = f'{filename[:-2]}png'
-        output_dir = f'{files_dir}plots/filtered_gps_ssha/'
+        output_dir = f'{files_dir}plots/filtered_{var}/'
         output_path = f'{output_dir}{output_file}'
 
         if not os.path.exists(output_dir):
@@ -26,26 +27,28 @@ def plotting(files_dir, files, var):
 
         da = ds[var]
 
+        thresholded_values = []
+        for test, threshold in thresholds.items():
+            thresholded_values.append(abs(ds[test].values) < threshold)
+
         try:
-            lons = da.longitude.values[np.where(np.logical_and(
-                abs(ds['offset'].values) < 0.3, abs(ds['amplitude'].values) < 0.3))].ravel()
-            lats = da.latitude.values[np.where(np.logical_and(
-                abs(ds['offset'].values) < 0.3, abs(ds['amplitude'].values) < 0.3))].ravel()
+            lons = da.longitude.values[np.logical_and.reduce(
+                thresholded_values)].ravel()
+            lats = da.latitude.values[np.logical_and.reduce(
+                thresholded_values)].ravel()
         except:
-            lons = da.lon.values[np.where(np.logical_and(
-                abs(ds['offset'].values) < 0.3, abs(ds['amplitude'].values) < 0.3))].ravel()
-            lats = da.lat.values[np.where(np.logical_and(
-                abs(ds['offset'].values) < 0.3, abs(ds['amplitude'].values) < 0.3))].ravel()
+            lons = da.lon.values[np.logical_and.reduce(
+                thresholded_values)].ravel()
+            lats = da.lat.values[np.logical_and.reduce(
+                thresholded_values)].ravel()
 
         vals = da.values.ravel()
 
-        filtered_vals = vals[np.where(np.logical_and(
-            abs(ds['offset'].values) < 0.3, abs(ds['amplitude'].values) < 0.3))]
+        filtered_vals = vals[np.logical_and.reduce(thresholded_values)]
 
         # for the purposes of removing a mean, remove the mean from the SSH points
         # between 40S and 40N
-        vals_subset = filtered_vals[np.where(
-            np.logical_and(lats > -40, lats < 40))]
+        vals_subset = filtered_vals[np.logical_and(lats > -40, lats < 40)]
         v_mean = np.nanmean(vals_subset)
         vals_anom = filtered_vals - v_mean
 
@@ -74,16 +77,16 @@ def plotting(files_dir, files, var):
 
 
 if __name__ == "__main__":
-    plot_aggregated = True
 
-    if plot_aggregated:
-        files_dir = '/Users/kevinmarlis/Developer/JPL/sealevel_output/ssha_JASON_3_L2_OST_OGDR_GPS/aggregated_products/'
-    else:
-        files_dir = '/Users/kevinmarlis/Developer/JPL/sealevel_output/ssha_JASON_3_L2_OST_OGDR_GPS/harvested_granules/2016/'
-
+    files_dir = '/Users/kevinmarlis/Developer/JPL/sealevel_output/ssha_JASON_3_L2_OST_OGDR_GPS/aggregated_products/'
     files = [f for f in os.listdir(files_dir) if '.nc' in f]
     files.sort()
 
     var = 'gps_ssha'
 
-    plotting(files_dir, files, var)
+    thresholds = {
+        'offset': 0.075,
+        'amplitude': 0.1
+    }
+
+    plotting(files_dir, files, var, thresholds)
