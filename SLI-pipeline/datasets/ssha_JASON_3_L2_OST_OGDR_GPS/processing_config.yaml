@@ -2,7 +2,7 @@
 # Dataset
 # =====================================================
 ds_name: "ssha_JASON_3_L2_OST_OGDR_GPS" # Name for dataset
-version: 3.0
+version: 7.0
 indicator: ssha
 
 # =====================================================
