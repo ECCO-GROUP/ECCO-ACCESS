@@ -208,10 +208,6 @@ def processing(config_path='', output_path='', solr_info=''):
         for cycle in solr_cycles:
             cycles[cycle['start_date_s']] = cycle
 
-    # Cycles are defined as starting at 2000-01-01 00:00:00.0, and lasting
-    # 10 days. Cycle periods are generated, and granules are matched into a
-    # specific cycle to be aggregated.
-
     # Generate list of cycle date tuples (start, end)
     cycle_dates = []
     current_date = datetime.utcnow()
@@ -270,7 +266,7 @@ def processing(config_path='', output_path='', solr_info=''):
 
         if updating:
             aggregation_success = False
-            print(f'Aggregating cycle {start_date_str} to {end_date_str}')
+            print(f'Processing cycle {start_date_str} to {end_date_str}')
 
             opened_data = []
             start_times = []
@@ -367,7 +363,7 @@ def processing(config_path='', output_path='', solr_info=''):
 
                 filename = f'ssha_{filename_time}.nc'
 
-                # SSHA Attributes
+                # Var Attributes
                 merged_cycle_ds[var].attrs['valid_min'] = np.nanmin(
                     merged_cycle_ds[var].values)
                 merged_cycle_ds[var].attrs['valid_max'] = np.nanmax(
@@ -396,9 +392,6 @@ def processing(config_path='', output_path='', solr_info=''):
                 merged_cycle_ds.attrs['original_dataset_short_name'] = 'JASON_3_L2_OST_OGDR_GPS'
                 merged_cycle_ds.attrs['original_dataset_url'] = 'https://podaac.jpl.nasa.gov/dataset/JASON_3_L2_OST_OGDR_GPS?ids=Platforms:Processing%20Levels&values=JASON-3::2%20-%20Geophys.%20Variables,%20Sensor%20Coordinates'
                 merged_cycle_ds.attrs['original_dataset_reference'] = 'https://podaac-tools.jpl.nasa.gov/drive/files/allData/jason3/preview/L2/GPS-OGDR/docs/j3_user_handbook.pdf'
-
-                print(merged_cycle_ds)
-                exit()
 
                 # NetCDF encoding
                 encoding_each = {'zlib': True,
@@ -436,7 +429,12 @@ def processing(config_path='', output_path='', solr_info=''):
 
                 encoding = {**coord_encoding, **var_encoding}
 
-                save_path = f'/Users/kevinmarlis/Developer/JPL/sealevel_output/ssha_JASON_3_L2_OST_OGDR_GPS/aggregated_products/{filename}'
+                save_dir = f'{output_path}{dataset_name}/aggregated_products/'
+                save_path = f'{save_dir}{filename}'
+
+                # If paths don't exist, make them
+                if not os.path.exists(save_dir):
+                    os.makedirs(save_dir)
 
                 # Save to netcdf
                 merged_cycle_ds.to_netcdf(save_path, encoding=encoding)
