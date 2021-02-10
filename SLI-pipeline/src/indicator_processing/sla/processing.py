@@ -64,29 +64,6 @@ def processing(config_path='', output_path='', solr_info=''):
     solr_collection_name = config['solr_collection_name']
     date_regex = '%Y-%m-%dT%H:%M:%SZ'
 
-    """
-    Flags
-    - DS field names change after a certain date
-    - All possible flag names are used by checking if each flag
-      is in the keys of a DS
-    1.  rad_surface_type_flag (rad_surf_type) = 0 (open ocean)
-    2.  surface_classification_flag (surface_type) = 0 (open ocean)
-    3.  alt_qual (alt_quality_flag)= 0 (good)
-    4.  rad_qual (rad_quality_flag) = 0 (good)
-    5.  geo_qual (geophysical_quality_flag)= 0 (good)
-    6.  meteo_map_availability_flag (ecmwf_meteo_map_avail) = 0 ('2_maps_nominal')
-    7.  rain_flag = 0 (no rain)
-    8.  rad_rain_flag = 0 (no rain)
-    9.  ice_flag = 0 (no ice)
-    10. rad_sea_ice_flag = 0 (no ice)
-    """
-
-    flags = ['rad_surface_type_flag', 'surface_classification_flag', 'alt_qual',
-             'rad_qual', 'geo_qual', 'meteo_map_availability_flag', 'rain_flag',
-             'rad_rain_flag', 'ice_flag', 'rad_sea_ice_flag', 'rad_surf_type',
-             'surface_type', 'alt_quality_flag', 'rad_quality_flag',
-             'geophysical_quality_flag', 'ecmwf_meteo_map_avail']
-
     # Query for all dataset granules
     fq = ['type_s:harvested', f'dataset_s:{dataset_name}']
     remaining_granules = solr_query(
@@ -102,21 +79,17 @@ def processing(config_path='', output_path='', solr_info=''):
         for cycle in solr_cycles:
             cycles[cycle['start_date_s']] = cycle
 
-    # Cycles are defined as starting at 2000-01-01 00:00:00.0, and lasting
-    # 10 days. Cycle periods are generated, and granules are matched into a
-    # specific cycle to be aggregated.
-
     # Generate list of cycle date tuples (start, end)
     cycle_dates = []
-    current_date = datetime.utcnow()
     start_date = datetime.strptime('2016-01-01T00:00:00Z', date_regex)
-    delta = timedelta(days=10)
+    end_date = datetime.strptime('1992-01-01T00:00:00Z', date_regex)
+    delta = timedelta(days=-5)
     curr = start_date
-    while curr < current_date:
-        cycle_dates.append((curr, curr + delta))
+    while curr > end_date:
+        cycle_dates.append((curr + delta, curr))
         curr += delta
-
-    var = 'gps_ssha'
+    cycle_dates.reverse()
+    var = 'SLA'
 
     for (start_date, end_date) in cycle_dates:
         start_date_str = datetime.strftime(start_date, date_regex)
@@ -129,10 +102,6 @@ def processing(config_path='', output_path='', solr_info=''):
         if not cycle_granules:
             print(f'No granules for cycle {start_date_str} to {end_date_str}')
             continue
-
-        if len(cycle_granules) < 60:
-            print(
-                f'Not enough granules for cycle {start_date_str} to {end_date_str}: {len(cycle_granules)}')
 
         updating = False
 
@@ -162,142 +131,69 @@ def processing(config_path='', output_path='', solr_info=''):
 
         if updating:
             aggregation_success = False
-            print(f'Aggregating cycle {start_date_str} to {end_date_str}')
-
-            opened_data = []
-            start_times = []
-            end_times = []
+            ds = xr.open_dataset(cycle_granules[0]['granule_file_path_s'])
+            print(f'Processing cycle {start_date_str} to {end_date_str}')
 
             try:
 
-                # Process the granules
-                for granule in cycle_granules:
-                    uses_groups = False
-
-                    # netCDF granules from 2020-10-29 on contain groups
-                    ds = xr.open_dataset(granule['granule_file_path_s'])
-                    if 'lon' in ds.coords:
-
-                        ds[var] = ds[var].assign_coords(
-                            {'longitude': ds.lon})
-                        ds[var].encoding['coordinates'] = 'longitude latitude'
-                        ds = ds.reset_coords(['lon'], drop=True)
-
-                    if 'lat' in ds.coords:
-                        ds[var] = ds[var].assign_coords(
-                            {'latitude': ds.lat})
-                        ds = ds.reset_coords(['lat'], drop=True)
-                        ds[var].encoding['coordinates'] = 'longitude latitude'
-
-                    else:
-                        uses_groups = True
-
-                        ds = xr.open_dataset(granule['granule_file_path_s'],
-                                             group='data_01/ku')
-                        ds_flags = xr.open_dataset(granule['granule_file_path_s'],
-                                                   group='data_01')
-
-                    if uses_groups:
-                        ds_keys = list(ds_flags.keys())
-                        ds = ds.assign_coords(
-                            {"longitude": ds_flags.longitude})
-                    else:
-                        ds_keys = list(ds.keys())
-
-                    start_times.append(ds.time.values[::])
-
-                    # Replace nans with fill value
-                    ds[var].values = np.where(np.isnan(ds[var].values),
-                                              default_fillvals['f8'], ds[var].values)
-
-                    # Mask out flagged data
-                    for flag in flags:
-                        if flag in ds_keys:
-                            if uses_groups:
-                                if np.isnan(ds_flags[flag].values).all():
-                                    continue
-
-                                ds[var].values = np.where(ds_flags[flag].values == 0,
-                                                          ds[var].values, default_fillvals['f8'])
-                            else:
-                                if np.isnan(ds[flag].values).all():
-                                    continue
-                                ds[var].values = np.where(ds[flag].values == 0,
-                                                          ds[var].values, default_fillvals['f8'])
-
-                    ds = ds.drop([key for key in ds.keys() if key != var])
-
-                    opened_data.append(ds)
-
-                # Merge
-                merged_cycle_ds = xr.concat((opened_data), dim='time')
-
-                # Time bounds
-                start_times = np.concatenate(start_times).ravel()
-                end_times = start_times[1:]
-                end_times = np.append(
-                    end_times, end_times[-1] + np.timedelta64(1, 's'))
-                time_bnds = np.array([[i, j]
-                                      for i, j in zip(start_times, end_times)])
-
-                merged_cycle_ds = merged_cycle_ds.assign_coords(
-                    {'time_bnds': (('time', 'nv'), time_bnds)})
-
-                merged_cycle_ds.time.attrs.update(bounds='time_bnds')
-
                 # Center time
-                overall_center_time = start_times[0] + \
-                    ((end_times[-1] - start_times[0])/2)
-                ts = datetime.strptime(str(overall_center_time)[
-                    :19], '%Y-%m-%dT%H:%M:%S')
-                filename_time = datetime.strftime(ts, '%Y%m%dT%H%M%S')
-                filename = f'ssha_{filename_time}.nc'
 
-                # SSHA Attributes
-                merged_cycle_ds[var].attrs['valid_min'] = np.nanmin(
-                    merged_cycle_ds[var].values)
-                merged_cycle_ds[var].attrs['valid_max'] = np.nanmax(
-                    merged_cycle_ds[var].values)
+                overall_center_time = start_date + ((end_date - start_date)/2)
+
+                filename_time = datetime.strftime(
+                    overall_center_time, '%Y%m%dT%H%M%S')
+                filename = f'sla_{filename_time}.nc'
+
+                # Var Attributes
+                ds[var].attrs['valid_min'] = np.nanmin(ds[var].values)
+                ds[var].attrs['valid_max'] = np.nanmax(ds[var].values)
 
                 # NetCDF encoding
-                encoding_each = {'zlib': True,
-                                 'complevel': 5,
-                                 'shuffle': True,
-                                 '_FillValue': default_fillvals['f8']}
+                # encoding_each = {'zlib': True,
+                #                  'complevel': 5,
+                #                  'shuffle': True,
+                #                  '_FillValue': default_fillvals['f8']}
 
-                coord_encoding = {}
-                for coord in merged_cycle_ds.coords:
-                    coord_encoding[coord] = {'_FillValue': None}
+                # coord_encoding = {}
+                # for coord in ds.coords:
+                #     coord_encoding[coord] = {'_FillValue': None}
 
-                    if 'time' in coord:
-                        coord_encoding[coord] = {'_FillValue': None,
-                                                 'dtype': 'float64',
-                                                 'zlib': True,
-                                                 'complevel': 6,
-                                                 'contiguous': False,
-                                                 'calendar': 'gregorian',
-                                                 'shuffle': False}
-                        if coord != 'time_step':
-                            coord_encoding[coord]['units'] = "seconds since 2000-01-01 00:00:00.0"
-                    if 'lat' in coord:
-                        coord_encoding[coord] = {'_FillValue': None,
-                                                 'dtype': 'float32'}
-                    if 'lon' in coord:
-                        coord_encoding[coord] = {'_FillValue': None,
-                                                 'dtype': 'float32'}
+                #     if 'time' in coord:
+                #         coord_encoding[coord] = {'_FillValue': None,
+                #                                  'dtype': 'float64',
+                #                                  'zlib': True,
+                #                                  'complevel': 6,
+                #                                  'contiguous': False,
+                #                                  'calendar': 'gregorian',
+                #                                  'shuffle': False}
+                #         if coord != 'time_step':
+                #             coord_encoding[coord]['units'] = "seconds since 2000-01-01 00:00:00.0"
+                #     if 'lat' in coord:
+                #         coord_encoding[coord] = {'_FillValue': None,
+                #                                  'dtype': 'float32'}
+                #     if 'lon' in coord:
+                #         coord_encoding[coord] = {'_FillValue': None,
+                #                                  'dtype': 'float32'}
 
-                var_encoding = {
-                    var: encoding_each for var in merged_cycle_ds.data_vars}
+                # var_encoding = {
+                #     var: encoding_each for var in ds.data_vars}
 
-                encoding = {**coord_encoding, **var_encoding}
+                # encoding = {**coord_encoding, **var_encoding}
 
-                save_path = f'/Users/kevinmarlis/Developer/JPL/sealevel_output/ssha_JASON_3_L2_OST_OGDR_GPS/aggregated_products/{filename}'
+                save_dir = f'{output_path}{dataset_name}/aggregated_products/'
+                save_path = f'{save_dir}{filename}'
+
+                # If paths don't exist, make them
+                if not os.path.exists(save_dir):
+                    os.makedirs(save_dir)
 
                 # Save to netcdf
-                merged_cycle_ds.to_netcdf(save_path, encoding=encoding)
+                # ds.to_netcdf(save_path, encoding=encoding)
+                ds.to_netcdf(save_path)
                 checksum = md5(save_path)
                 file_size = os.path.getsize(save_path)
                 aggregation_success = True
+                exit()
 
             except Exception as e:
                 print(e)
@@ -354,8 +250,8 @@ def processing(config_path='', output_path='', solr_info=''):
         remaining_granules = [granule for granule in remaining_granules
                               if granule not in cycle_granules]
 
-        # Quit before most recent cycle (insufficient data)
-        if current_date < end_date + delta:
-            print(
-                f'Insufficient data for complete {start_date + delta} to {end_date + delta} cycle')
-            break
+        # # Quit before most recent cycle (insufficient data)
+        # if current_date < end_date + delta:
+        #     print(
+        #         f'Insufficient data for complete {start_date + delta} to {end_date + delta} cycle')
+        #     break
