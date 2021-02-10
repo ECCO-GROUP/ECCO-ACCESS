@@ -1,3 +1,4 @@
+import xarray as xr
 filepath = '/Users/kevinmarlis/Developer/JPL/sealevel_output/gmsl_MERGED_TP_J1_OSTM_OST_GMSL_ASCII_V42/harvested_granules/1992/GMSL_TPJAOS_5.0_199209_202009.txt'
 
 my_list = []
