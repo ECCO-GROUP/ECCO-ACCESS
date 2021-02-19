@@ -56,7 +56,7 @@ def solr_update(config, solr_host, update_body, solr_collection_name, r=False):
 def testing(ds, var):
     time_da = ds.time
     ssha_da = ds.ssha
-    gps_ssha_da = ds.gps_ssha
+    var_da = ds[var]
 
     vals = ds[var].values
     non_nan_vals = vals[~np.isnan(vals)]
@@ -65,36 +65,21 @@ def testing(ds, var):
     rms = np.sqrt(np.mean(non_nan_vals**2))
     std = np.std(non_nan_vals)
 
-    OFFSET, AMPLITUDE, _, _ = delta_orbit_altitude_offset_amplitude(
-        time_da, ssha_da, gps_ssha_da)
-
-    tests = [('mean', mean), ('rms', rms), ('std', std),
-             ('offset', OFFSET), ('amplitude', AMPLITUDE)]
+    try:
+        OFFSET, AMPLITUDE, _, _ = delta_orbit_altitude_offset_amplitude(
+            time_da, ssha_da, var_da)
+    except Exception as e:
+        print(e)
+        OFFSET = 100
+        AMPLITUDE = 100
+    tests = [('Mean', mean), ('RMS', rms), ('STD', std),
+             ('Offset', OFFSET), ('Amplitude', AMPLITUDE)]
 
     for (test, result) in tests:
         test_array = np.full(len(ds[var]), result, dtype='float32')
         ds[test] = xr.DataArray(test_array, ds[var].coords, ds[var].dims)
-        ds[test].attrs['comment'] = f'Results from {test} test on individual granules that make up a cycle.'
+        ds[test].attrs['comment'] = f'{test} test value from original granule in cycle.'
     return ds
-
-    # bitslist = []
-
-    # #
-    # for func in tests:
-    #     # call test
-    #     result = func(ds, var)
-    #     bitslist.append(result)
-
-    # # Convert bits list to integer
-    # out = 0
-    # for bit in bitslist:
-    #     out = (out << 1) | bit
-    # return out
-
-
-def decode_test_results(results):
-    output = [int(x) for x in '{:08b}'.format(int(results))]
-    return output
 
 
 def delta_orbit_altitude_offset_amplitude(time_da, ssha_da, gps_ssha_da):
@@ -168,7 +153,7 @@ def processing(config_path='', output_path='', solr_info=''):
     version = config['version']
     solr_host = config['solr_host_local']
     solr_collection_name = config['solr_collection_name']
-    date_regex = '%Y-%m-%dT%H:%M:%SZ'
+    date_regex = '%Y-%m-%dT%H:%M:%S'
 
     """
     Flags
@@ -211,32 +196,37 @@ def processing(config_path='', output_path='', solr_info=''):
     # Generate list of cycle date tuples (start, end)
     cycle_dates = []
     current_date = datetime.utcnow()
-    start_date = datetime.strptime('2016-01-01T00:00:00Z', date_regex)
+    start_date = datetime.strptime('1992-01-01T00:00:00', date_regex)
     delta = timedelta(days=10)
     curr = start_date
     while curr < current_date:
-        cycle_dates.append((curr, curr + delta))
+        if datetime.strftime(curr, date_regex) > '2016':
+            cycle_dates.append((curr, curr + delta))
         curr += delta
 
     var = 'gps_ssha'
-    tests = ['mean', 'rms', 'std', 'offset', 'amplitude']
+    tests = ['Mean', 'RMS', 'STD', 'Offset', 'Amplitude']
 
     for (start_date, end_date) in cycle_dates:
 
         start_date_str = datetime.strftime(start_date, date_regex)
         end_date_str = datetime.strftime(end_date, date_regex)
 
-        cycle_granules = [granule for granule in remaining_granules if
-                          start_date_str <= granule['date_s'] and
-                          granule['date_s'] <= end_date_str]
+        query_start = datetime.strftime(start_date, '%Y-%m-%dT%H:%M:%SZ')
+        query_end = datetime.strftime(end_date, '%Y-%m-%dT%H:%M:%SZ')
+        fq = ['type_s:harvested',
+              f'dataset_s:{dataset_name}', f'date_s:[{query_start} TO {query_end}]']
+
+        cycle_granules = solr_query(
+            config, solr_host, fq, solr_collection_name)
 
         if not cycle_granules:
             print(f'No granules for cycle {start_date_str} to {end_date_str}')
             continue
 
-        if len(cycle_granules) < 60:
-            print(
-                f'Not enough granules for cycle {start_date_str} to {end_date_str}: {len(cycle_granules)}')
+        # if len(cycle_granules) < 60:
+        #     print(
+        #         f'Not enough granules for cycle {start_date_str} to {end_date_str}: {len(cycle_granules)}')
 
         updating = False
 
@@ -280,19 +270,12 @@ def processing(config_path='', output_path='', solr_info=''):
 
                     # netCDF granules from 2020-10-29 on contain groups
                     ds = xr.open_dataset(granule['granule_file_path_s'])
+
                     if 'lon' in ds.coords:
-
-                        ds[var] = ds[var].assign_coords(
-                            {'longitude': ds.lon})
-                        ds[var].encoding['coordinates'] = 'longitude latitude'
-                        ds = ds.reset_coords(['lon'], drop=True)
-
-                    if 'lat' in ds.coords:
-                        ds[var] = ds[var].assign_coords(
-                            {'latitude': ds.lat})
-                        ds = ds.reset_coords(['lat'], drop=True)
-                        ds[var].encoding['coordinates'] = 'longitude latitude'
-
+                        ds = ds.rename({'lon': 'Longitude'})
+                        ds = ds.rename({'lat': 'Latitude'})
+                        ds[var].encoding['coordinates'] = 'Longitude Latitude'
+                        ds_keys = list(ds.keys())
                     else:
                         uses_groups = True
 
@@ -301,12 +284,17 @@ def processing(config_path='', output_path='', solr_info=''):
                         ds_flags = xr.open_dataset(granule['granule_file_path_s'],
                                                    group='data_01')
 
-                    if uses_groups:
+                        ds_flags = ds_flags.rename({'longitude': 'Longitude'})
+                        ds_flags = ds_flags.rename({'latitude': 'Latitude'})
+
                         ds_keys = list(ds_flags.keys())
+
                         ds = ds.assign_coords(
-                            {"longitude": ds_flags.longitude})
-                    else:
-                        ds_keys = list(ds.keys())
+                            {"Longitude": ds_flags.Longitude})
+                        ds = ds.assign_coords(
+                            {"Latitude": ds_flags.Latitude})
+
+                        ds[var].encoding['coordinates'] = 'Longitude Latitude'
 
                     start_times.append(ds.time.values[::])
 
@@ -377,8 +365,8 @@ def processing(config_path='', output_path='', solr_info=''):
                 merged_cycle_ds.attrs['title'] = 'Ten day aggregated GPSOGDR - Reduced dataset'
 
                 merged_cycle_ds.attrs['cycle_start'] = start_date_str
-                merged_cycle_ds.attrs['cycle_center'] = start_date + \
-                    ((end_date - start_date) / 2)
+                merged_cycle_ds.attrs['cycle_center'] = datetime.strftime(
+                    start_date + ((end_date - start_date) / 2), date_regex)
                 merged_cycle_ds.attrs['cycle_end'] = end_date_str
 
                 merged_cycle_ds.attrs['data_time_start'] = str(start_times[0])[
@@ -392,6 +380,11 @@ def processing(config_path='', output_path='', solr_info=''):
                 merged_cycle_ds.attrs['original_dataset_short_name'] = 'JASON_3_L2_OST_OGDR_GPS'
                 merged_cycle_ds.attrs['original_dataset_url'] = 'https://podaac.jpl.nasa.gov/dataset/JASON_3_L2_OST_OGDR_GPS?ids=Platforms:Processing%20Levels&values=JASON-3::2%20-%20Geophys.%20Variables,%20Sensor%20Coordinates'
                 merged_cycle_ds.attrs['original_dataset_reference'] = 'https://podaac-tools.jpl.nasa.gov/drive/files/allData/jason3/preview/L2/GPS-OGDR/docs/j3_user_handbook.pdf'
+
+                # Unify var, dims, coords
+                merged_cycle_ds = merged_cycle_ds.rename({var: 'SSHA'})
+                merged_cycle_ds = merged_cycle_ds.rename_dims({'time': 'Time'})
+                merged_cycle_ds = merged_cycle_ds.rename({'time': 'Time'})
 
                 # NetCDF encoding
                 encoding_each = {'zlib': True,
@@ -456,6 +449,7 @@ def processing(config_path='', output_path='', solr_info=''):
             item['type_s'] = 'cycle'
             item['dataset_s'] = dataset_name
             item['start_date_s'] = start_date_str
+            item['center_date_s'] = filename_time
             item['end_date_s'] = end_date_str
             item['granules_in_cycle_i'] = granule_count
             item['filename_s'] = filename
@@ -464,7 +458,7 @@ def processing(config_path='', output_path='', solr_info=''):
             item['file_size_l'] = file_size
             item['aggregation_success_b'] = aggregation_success
             item['aggregation_time_s'] = datetime.utcnow().strftime(
-                "%Y-%m-%dT%H:%M:%SZ")
+                "%Y-%m-%dT%H:%M:%S")
             item['aggregation_version_f'] = version
             if start_date_str in cycles.keys():
                 item['id'] = cycles[start_date_str]['id']
@@ -495,10 +489,6 @@ def processing(config_path='', output_path='', solr_info=''):
                 print('\tFailed to create Solr cycle documents')
         else:
             print(f'No updates for cycle {start_date_str} to {end_date_str}')
-
-        # Update loop variables
-        remaining_granules = [granule for granule in remaining_granules
-                              if granule not in cycle_granules]
 
         # Quit before most recent cycle (insufficient data)
         if current_date < end_date + delta:
