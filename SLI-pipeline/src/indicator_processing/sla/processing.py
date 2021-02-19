@@ -6,7 +6,7 @@ import hashlib
 import logging
 import numpy as np
 import xarray as xr
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from netCDF4 import default_fillvals  # pylint: disable=no-name-in-module
 
 
@@ -62,7 +62,7 @@ def processing(config_path='', output_path='', solr_info=''):
     version = config['version']
     solr_host = config['solr_host_local']
     solr_collection_name = config['solr_collection_name']
-    date_regex = '%Y-%m-%dT%H:%M:%SZ'
+    date_regex = '%Y-%m-%dT%H:%M:%S'
 
     # Query for all dataset granules
     fq = ['type_s:harvested', f'dataset_s:{dataset_name}']
@@ -81,14 +81,14 @@ def processing(config_path='', output_path='', solr_info=''):
 
     # Generate list of cycle date tuples (start, end)
     cycle_dates = []
-    start_date = datetime.strptime('2016-01-01T00:00:00Z', date_regex)
-    end_date = datetime.strptime('1992-01-01T00:00:00Z', date_regex)
-    delta = timedelta(days=-5)
+    start_date = datetime.strptime('1992-01-01T00:00:00', date_regex)
+    end_date = datetime.strptime('2020-01-01T00:00:00', date_regex)
+    delta = timedelta(days=5)
     curr = start_date
-    while curr > end_date:
-        cycle_dates.append((curr + delta, curr))
+    while curr < end_date:
+        cycle_dates.append((curr, curr + delta))
         curr += delta
-    cycle_dates.reverse()
+
     var = 'SLA'
 
     for (start_date, end_date) in cycle_dates:
@@ -134,12 +134,28 @@ def processing(config_path='', output_path='', solr_info=''):
             ds = xr.open_dataset(cycle_granules[0]['granule_file_path_s'])
             print(f'Processing cycle {start_date_str} to {end_date_str}')
 
+            overall_center_time = start_date + ((end_date - start_date)/2)
+            overall_center_time_str = datetime.strftime(
+                overall_center_time, '%Y-%m-%dT%H:%M:%S')
+
             try:
 
+                # Global Attributes
+                ds.attrs = {}
+                ds.attrs['title'] = 'Sea Level Anormaly Estimate based on Altimeter Data'
+
+                ds.attrs['cycle_start'] = start_date_str
+                ds.attrs['cycle_center'] = overall_center_time_str
+                ds.attrs['cycle_end'] = end_date_str
+
+                ds.attrs['data_time_start'] = np.datetime_as_string(
+                    ds.Time_bounds.values[0][0], unit='s')
+                ds.attrs['data_time_center'] = np.datetime_as_string(
+                    ds.Time.values[0], unit='s')
+                ds.attrs['data_time_end'] = np.datetime_as_string(
+                    ds.Time_bounds.values[0][1], unit='s')
+
                 # Center time
-
-                overall_center_time = start_date + ((end_date - start_date)/2)
-
                 filename_time = datetime.strftime(
                     overall_center_time, '%Y%m%dT%H%M%S')
                 filename = f'sla_{filename_time}.nc'
@@ -148,26 +164,33 @@ def processing(config_path='', output_path='', solr_info=''):
                 ds[var].attrs['valid_min'] = np.nanmin(ds[var].values)
                 ds[var].attrs['valid_max'] = np.nanmax(ds[var].values)
 
-                # NetCDF encoding
+                # Rename var to 'SSHA'
+                ds = ds.rename({var: 'SSHA'})
+
                 # encoding_each = {'zlib': True,
                 #                  'complevel': 5,
+                #                  'dtype': 'float32',
                 #                  'shuffle': True,
                 #                  '_FillValue': default_fillvals['f8']}
 
                 # coord_encoding = {}
                 # for coord in ds.coords:
-                #     coord_encoding[coord] = {'_FillValue': None}
+                #     print(coord)
+                #     coord_encoding[coord] = {'_FillValue': None,
+                #                              'dtype': 'float32',
+                #                              'complevel': 6}
 
-                #     if 'time' in coord:
+                #     if 'SSHA' in coord:
+                #         coord_encoding[coord] = {
+                #             '_FillValue': default_fillvals['f8']}
+
+                #     if 'Time' in coord:
                 #         coord_encoding[coord] = {'_FillValue': None,
-                #                                  'dtype': 'float64',
                 #                                  'zlib': True,
-                #                                  'complevel': 6,
                 #                                  'contiguous': False,
                 #                                  'calendar': 'gregorian',
                 #                                  'shuffle': False}
-                #         if coord != 'time_step':
-                #             coord_encoding[coord]['units'] = "seconds since 2000-01-01 00:00:00.0"
+
                 #     if 'lat' in coord:
                 #         coord_encoding[coord] = {'_FillValue': None,
                 #                                  'dtype': 'float32'}
@@ -175,8 +198,7 @@ def processing(config_path='', output_path='', solr_info=''):
                 #         coord_encoding[coord] = {'_FillValue': None,
                 #                                  'dtype': 'float32'}
 
-                # var_encoding = {
-                #     var: encoding_each for var in ds.data_vars}
+                # var_encoding = {var: encoding_each for var in ds.data_vars}
 
                 # encoding = {**coord_encoding, **var_encoding}
 
@@ -193,7 +215,6 @@ def processing(config_path='', output_path='', solr_info=''):
                 checksum = md5(save_path)
                 file_size = os.path.getsize(save_path)
                 aggregation_success = True
-                exit()
 
             except Exception as e:
                 print(e)
@@ -207,6 +228,7 @@ def processing(config_path='', output_path='', solr_info=''):
             item['type_s'] = 'cycle'
             item['dataset_s'] = dataset_name
             item['start_date_s'] = start_date_str
+            item['center_date_s'] = overall_center_time_str
             item['end_date_s'] = end_date_str
             item['filename_s'] = filename
             item['filepath_s'] = save_path
@@ -214,7 +236,7 @@ def processing(config_path='', output_path='', solr_info=''):
             item['file_size_l'] = file_size
             item['aggregation_success_b'] = aggregation_success
             item['aggregation_time_s'] = datetime.utcnow().strftime(
-                "%Y-%m-%dT%H:%M:%SZ")
+                "%Y-%m-%dT%H:%M:%S")
             item['aggregation_version_f'] = version
             if start_date_str in cycles.keys():
                 item['id'] = cycles[start_date_str]['id']
