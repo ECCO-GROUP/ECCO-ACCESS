@@ -214,8 +214,8 @@ def processing(config_path='', output_path='', solr_info=''):
 
         query_start = datetime.strftime(start_date, '%Y-%m-%dT%H:%M:%SZ')
         query_end = datetime.strftime(end_date, '%Y-%m-%dT%H:%M:%SZ')
-        fq = ['type_s:harvested',
-              f'dataset_s:{dataset_name}', f'date_s:[{query_start} TO {query_end}]']
+        fq = ['type_s:harvested', f'dataset_s:{dataset_name}',
+              f'date_s:[{query_start} TO {query_end}]']
 
         cycle_granules = solr_query(
             config, solr_host, fq, solr_collection_name)
@@ -403,7 +403,7 @@ def processing(config_path='', output_path='', solr_info=''):
                         coord_encoding[coord] = {
                             '_FillValue': default_fillvals['f8']}
 
-                    if 'time' in coord:
+                    if 'Time' in coord:
                         coord_encoding[coord] = {'_FillValue': None,
                                                  'zlib': True,
                                                  'contiguous': False,
