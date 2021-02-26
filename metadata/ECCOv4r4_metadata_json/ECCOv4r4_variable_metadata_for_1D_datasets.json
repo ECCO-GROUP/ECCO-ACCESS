@@ -9,7 +9,7 @@
          "GCMD_keywords" : "",
          "grid_dimension":"1D",
          "coverage_content_type": "modelResult"
-      },      
+      },
       {
          "name": "global_mean_sea_level_anomaly",
          "long_name": "Global mean of SSH",
@@ -41,5 +41,16 @@
          "comments_2": "Note: ECCOv4 uses a volume-conserving Boussinesq formulation of the MITgcm with a free-surface boundary condition with real freshwater flux forcing. Changes in ocean mass due to evaporation, precipitation, runoff, and sea-ice growth/melt are reflected in model sea level. However, as a consequence of the Boussinsq formulation, changes to seawater density due to net buoyancy fluxes (e.g., global mean surface heating/cooling) do not change model sea level anomaly (ETAN) via seawater expansion/contraction. Changes in global ocean density therefore induce a spurious change in model ocean bottom pressure (PHIBOT) via 'virtual mass fluxes'. The 'Greatbatch correction' is a time varying, globally-uniform correction to account for changes in global mean density in Boussinesq models. This correction is used to calculate dynamic sea surface height (SSH) and ocean bottom pressure (OBP). Importantly, there is no dynamical significance to the Greatbatch correction but it is required to account for steric changes in global sea level. See Greatbatch, 1994. J. of Geophys. Res. Oceans, doi.org/10.1029/94JC00847",
          "grid_dimension":"1D",
          "coverage_content_type": "modelResult"
+      },
+      {
+         "name": "Pa_global",
+         "long_name": "Global mean atmospheric surface pressure over the ocean and sea-ice",
+         "units": "N m-2",
+         "standard_name": "air_pressure_at_sea_level",
+         "GCMD_keywords" : "EARTH SCIENCE > ATMOSPHERE > ATMOSPHERIC PRESSURE > SEA LEVEL PRESSURE, EARTH SCIENCE > ATMOSPHERE > ATMOSPHERIC PRESSURE > SURFACE PRESSURE",
+         "comments_1": "",
+         "comments_2": "",
+         "grid_dimension":"1D",
+         "coverage_content_type": "modelResult"
       }
-]     
+]

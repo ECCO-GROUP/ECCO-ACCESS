@@ -4,8 +4,8 @@ Created on Fri May 10 17:27:09 2019
 @author: ifenty"""
 
 import sys
-sys.path.append('/home5/ifenty/git_repos_others/ECCO-GROUP/ECCO-ACCESS/ecco-cloud-utils')
-sys.path.append('/home5/ifenty/git_repos_others/ECCO-GROUP/ECCOv4-py')
+sys.path.append('/home/ifenty/git_repos_others/ECCO-GROUP/ECCO-ACCESS/ecco-cloud-utils')
+sys.path.append('/home/ifenty/git_repos_others/ECCO-GROUP/ECCOv4-py')
 
 from importlib import reload
 import ecco_v4_py as ecco
@@ -770,13 +770,13 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
             if tb[1].astype('datetime64[D]') == ecco_end_time.astype('datetime64[D]'):
                 print('end time match ')
                 time_delta = np.timedelta64(12,'h')
-                rec_avg_start = tb[0] + time_delta 
+                rec_avg_start = tb[0] + time_delta
                 rec_avg_end   = tb[1]
-                rec_avg_delta = rec_avg_end - rec_avg_start 
+                rec_avg_delta = rec_avg_end - rec_avg_start
                 rec_avg_middle = rec_avg_start + rec_avg_delta/2
                 #print(rec_avg_start, rec_avg_middle, rec_avg_end)
 
-                tb[0] = rec_avg_start 
+                tb[0] = rec_avg_start
                 record_center_time = rec_avg_middle
                 #print('NEW  cur_ts, i, tb, ct ', str(cur_ts).zfill(10), str(cur_ts_i).zfill(4), tb, record_center_time)
 
@@ -910,7 +910,7 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
 
                     F_DS = F_DA.to_dataset()
 
-                    #   add time bounds object 
+                    #   add time bounds object
                     if 'AVG' in output_freq_code:
                         tb_ds, ct_ds = \
                             ecco.make_time_bounds_and_center_times_from_ecco_dataset(F_DS,\
@@ -992,7 +992,7 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
 
                     F_DS.time_bnds.values[0][0] = record_start_time
                     F_DS.time_bnds.values[0][1] = record_end_time
-                    F_DS.time.values[0] = record_center_time 
+                    F_DS.time.values[0] = record_center_time
 
                     #print('----after')
                     #print(F_DS.time)
@@ -1293,8 +1293,8 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
 
             G.to_netcdf(netcdf_output_filename, encoding=encoding)
             G.close()
-            
-            print('\n... checking existence of new file: ', netcdf_output_filename.exists())	
+
+            print('\n... checking existence of new file: ', netcdf_output_filename.exists())
             print('\n')
 
     return G, ecco_grid
@@ -1356,36 +1356,36 @@ if __name__ == "__main__":
     #sys.exit()
     reload(ecco)
 
-    #mapping_factors_dir = Path('/home/ifenty/tmp/ecco-v4-podaac-mapping-factors')
-    #output_dir_base = Path('/home/ifenty/tmp/v4r4_nc_output_20201215_native')
+    mapping_factors_dir = Path('/home/ifenty/tmp/ecco-v4-podaac-mapping-factors')
+    #output_dir_base = Path('/home/ifenty/tmp/v4r4_nc_output_20201223_native')
 
-    #diags_root = Path('/home/ifenty/ian1/ifenty/ECCOv4/binary_output/diags_all')
+    diags_root = Path('/home/ifenty/ian1/ifenty/ECCOv4/binary_output/diags_all')
     ## METADATA
-    #metadata_json_dir = Path('/home/ifenty/git_repos_others/ECCO-GROUP/ECCO-ACCESS/metadata/ECCOv4r4_metadata_json')
-    #podaac_dir = Path('/home/ifenty/git_repos_others/ecco-data-pub/metadata')
+    metadata_json_dir = Path('/home/ifenty/git_repos_others/ECCO-GROUP/ECCO-ACCESS/metadata/ECCOv4r4_metadata_json')
+    podaac_dir = Path('/home/ifenty/git_repos_others/ecco-data-pub/metadata')
 
-    #ecco_grid_dir = Path('/home/ifenty/data/grids/grid_ECCOV4r4')
-    #ecco_grid_dir_mds = Path('/home/ifenty/data/grids/grid_ECCOV4r4')
+    ecco_grid_dir = Path('/home/ifenty/data/grids/grid_ECCOV4r4')
+    ecco_grid_dir_mds = Path('/home/ifenty/data/grids/grid_ECCOV4r4')
 
     ## PODAAC fields
-    #ecco_grid_filename = 'ECCO_V4r4_llc90_grid_geometry.nc'
-
     ecco_grid_filename = 'ECCO_V4r4_llc90_grid_geometry.nc'
-    ecco_grid_dir     = Path('/nobackupp2/ifenty/grids/grid_ECCOV4r4')
-    ecco_grid_dir_mds = Path('/nobackupp2/ifenty/grids/grid_ECCOV4r4/')
 
-    podaac_dir = Path('/home5/ifenty/git_repos_others/ecco-data-pub/metadata')
-    metadata_json_dir = Path('/home5/ifenty/git_repos_others/ECCO-GROUP/ECCO-ACCESS/metadata/ECCOv4r4_metadata_json')
-    diags_root = Path('/nobackupp11/owang/runs/V4r4/')
+    #ecco_grid_filename = 'ECCO_V4r4_llc90_grid_geometry.nc'
+    #ecco_grid_dir     = Path('/nobackupp2/ifenty/grids/grid_ECCOV4r4')
+    #ecco_grid_dir_mds = Path('/nobackupp2/ifenty/grids/grid_ECCOV4r4/')
+
+    #podaac_dir = Path('/home5/ifenty/git_repos_others/ecco-data-pub/metadata')
+    #metadata_json_dir = Path('/home5/ifenty/git_repos_others/ECCO-GROUP/ECCO-ACCESS/metadata/ECCOv4r4_metadata_json')
+    #diags_root = Path('/nobackupp11/owang/runs/V4r4/')
     #output_dir_base = Path('/nobackupp2/ifenty/podaac')
-    mapping_factors_dir = Path('/nobackupp2/ifenty/podaac/lat-lon/mapping_factors')
+    #mapping_factors_dir = Path('/nobackupp2/ifenty/podaac/lat-lon/mapping_factors')
 
     #%%
     # Define precision of output files, float32 is standard
     # ------------------------------------------------------
     array_precision = np.float32
 
-    
+
 # 20 NATIVE GRID GROUPINGS
 #        0 dynamic sea surface height and model sea level anomaly
 # 	 1 ocean bottom pressure and model ocean bottom pressure anomaly
@@ -1427,7 +1427,7 @@ if __name__ == "__main__":
 #        11 "ocean velocity",
 #        12 "Gent-McWilliams ocean bolus velocity",
 
-	
+
 
     debug_mode=False
 
