@@ -64,11 +64,6 @@ def processing(config_path='', output_path='', solr_info=''):
     solr_collection_name = config['solr_collection_name']
     date_regex = '%Y-%m-%dT%H:%M:%S'
 
-    # Query for all dataset granules
-    fq = ['type_s:harvested', f'dataset_s:{dataset_name}']
-    remaining_granules = solr_query(
-        config, solr_host, fq, solr_collection_name)
-
     # Query for all existing cycles in Solr
     fq = ['type_s:cycle', f'dataset_s:{dataset_name}']
     solr_cycles = solr_query(config, solr_host, fq, solr_collection_name)
@@ -92,18 +87,20 @@ def processing(config_path='', output_path='', solr_info=''):
     var = 'SLA'
 
     for (start_date, end_date) in cycle_dates:
+
         start_date_str = datetime.strftime(start_date, date_regex)
         end_date_str = datetime.strftime(end_date, date_regex)
 
-        cycle_granules = [granule for granule in remaining_granules if
-                          start_date_str <= granule['date_s'] and
-                          granule['date_s'] <= end_date_str]
+        query_start = datetime.strftime(start_date, '%Y-%m-%dT%H:%M:%SZ')
+        query_end = datetime.strftime(end_date, '%Y-%m-%dT%H:%M:%SZ')
+        fq = ['type_s:harvested', f'dataset_s:{dataset_name}',
+              f'date_s:[{query_start} TO {query_end}]']
+
+        cycle_granules = solr_query(
+            config, solr_host, fq, solr_collection_name)
 
         if not cycle_granules:
             print(f'No granules for cycle {start_date_str} to {end_date_str}')
-            continue
-
-        if len(cycle_granules) < 2:
             continue
 
         updating = False
@@ -293,7 +290,3 @@ def processing(config_path='', output_path='', solr_info=''):
                 print('\tFailed to create Solr cycle documents')
         else:
             print(f'No updates for cycle {start_date_str} to {end_date_str}')
-
-        # Update loop variables
-        remaining_granules = [granule for granule in remaining_granules
-                              if granule not in cycle_granules]
