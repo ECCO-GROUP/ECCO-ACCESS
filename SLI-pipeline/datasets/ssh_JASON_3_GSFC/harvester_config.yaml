@@ -1,0 +1,31 @@
+# =====================================================
+# PODAAC
+# =====================================================
+# PODAAC explicitly expects this date format
+start: "20160101T00:00:00Z" # yyyymmddThh:mm:ssZ
+end: "20210112T23:59:59Z" # yyyymmddThh:mm:ssZ
+most_recent: True # Overrides end date to be current date at time of execution
+name: ""
+password: ""
+host: https://podaac.jpl.nasa.gov/ws/search/granule/?format=atom&pretty=false&itemsPerPage=300000 # does not change
+date_regex: "%Y-%m-%dT%H:%M:%SZ" # does not change
+
+# =====================================================
+# Dataset
+# =====================================================
+ds_name: "ssh_JASON_3_GSFC" # Name for dataset
+harvester_type: "local"
+podaac_id: ""
+
+# new_data_attrs:
+original_dataset_title: Jason-3 GSFC SSH
+original_dataset_short_name: JASON_3_GSFC
+original_dataset_url: "N/A"
+original_dataset_reference: "N/A"
+original_dataset_doi: "Not Registered"
+
+# =====================================================
+# Solr
+# =====================================================
+solr_host_local: http://localhost:8983/solr/ # doesn't change if following standard Solr setup
+solr_collection_name: sealevel_datasets # doesn't change

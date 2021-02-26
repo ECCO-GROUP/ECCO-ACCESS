@@ -1,0 +1,12 @@
+# =====================================================
+# Dataset
+# =====================================================
+ds_name: "ssh_SENTINEL_3A_s1-rads" # Name for dataset
+version: 1.0
+indicator: ssha
+
+# =====================================================
+# Solr
+# =====================================================
+solr_host_local: http://localhost:8983/solr/ # doesn't change if following standard Solr setup
+solr_collection_name: sealevel_datasets # doesn't change
