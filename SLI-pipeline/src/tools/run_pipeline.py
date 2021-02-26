@@ -155,7 +155,7 @@ def run_harvester(datasets, path_to_harvesters, output_dir, solr_info):
             if 'harvester_type' in config.keys():
                 harvester_type = config['harvester_type']
 
-                if harvester_type not in ['podaac', 'osisaf_ftp', 'nsidc_ftp']:
+                if harvester_type not in ['podaac', 'local']:
                     print(f'{harvester_type} is not a supported harvester type.')
                     break
 
@@ -164,10 +164,8 @@ def run_harvester(datasets, path_to_harvesters, output_dir, solr_info):
 
                 if harvester_type == 'podaac':
                     harvester = 'podaac_harvester'
-                # elif harvester_type == 'osisaf_ftp':
-                #     harvester = 'osisaf_ftp_harvester_local'
-                # elif harvester_type == 'nsidc_ftp':
-                #     harvester = 'nsidc_ftp_harvester_local'
+                elif harvester_type == 'local':
+                    harvester = 'local_harvester'
 
                 sys.path.insert(1, str(path_to_code))
 
