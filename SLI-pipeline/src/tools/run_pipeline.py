@@ -205,10 +205,9 @@ def run_aggregation(datasets, path_to_preprocessing, output_dir, solr_info):
             with open(config_path, 'r') as stream:
                 config = yaml.load(stream, yaml.Loader)
 
-            indicator = config['indicator']
+            processor = config['processor']
 
-            path_to_code = Path(
-                f'{path_to_preprocessing}/{indicator}/')
+            path_to_code = Path(f'{path_to_preprocessing}/{processor}')
 
             sys.path.insert(1, str(path_to_code))
 
@@ -243,7 +242,7 @@ if __name__ == '__main__':
 
     path_to_harvesters = Path(f'{pipeline_path.parents[1]}/harvesters')
     path_to_preprocessing = Path(
-        f'{pipeline_path.parents[1]}/indicator_processing')
+        f'{pipeline_path.parents[1]}/processors')
     path_to_datasets = Path(f'{pipeline_path.parents[2]}/datasets')
 
     # ------------------- Harvested Entry Validation -------------------

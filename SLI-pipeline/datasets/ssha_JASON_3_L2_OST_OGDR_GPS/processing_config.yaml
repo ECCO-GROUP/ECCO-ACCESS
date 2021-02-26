@@ -3,7 +3,7 @@
 # =====================================================
 ds_name: "ssha_JASON_3_L2_OST_OGDR_GPS" # Name for dataset
 version: 15.0
-indicator: ssha
+processor: shalin
 
 # =====================================================
 # Solr

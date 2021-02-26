@@ -3,7 +3,7 @@
 # =====================================================
 ds_name: "ssh_JASON_3_s0-j-rads" # Name for dataset
 version: 1.0
-indicator: ssha
+processor: along_track
 
 # =====================================================
 # Solr

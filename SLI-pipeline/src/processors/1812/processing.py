@@ -83,7 +83,7 @@ def processing(config_path='', output_path='', solr_info=''):
     cycle_dates = []
     start_date = datetime.strptime('1992-01-01T00:00:00', date_regex)
     end_date = datetime.strptime('2020-01-01T00:00:00', date_regex)
-    delta = timedelta(days=5)
+    delta = timedelta(days=10)
     curr = start_date
     while curr < end_date:
         cycle_dates.append((curr, curr + delta))
@@ -102,6 +102,10 @@ def processing(config_path='', output_path='', solr_info=''):
         if not cycle_granules:
             print(f'No granules for cycle {start_date_str} to {end_date_str}')
             continue
+
+        print(len(cycle_granules))
+        continue
+        exit()
 
         updating = False
 
