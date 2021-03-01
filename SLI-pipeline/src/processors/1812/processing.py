@@ -75,6 +75,7 @@ def processing(config_path='', output_path='', solr_info=''):
             cycles[cycle['start_date_s']] = cycle
 
     # Generate list of cycle date tuples (start, end)
+    # Dataset ends at roughly 2019-02-01
     cycle_dates = []
     start_date = datetime.strptime('1992-01-01T00:00:00', date_regex)
     end_date = datetime.strptime('2020-01-01T00:00:00', date_regex)
@@ -94,7 +95,7 @@ def processing(config_path='', output_path='', solr_info=''):
         query_start = datetime.strftime(start_date, '%Y-%m-%dT%H:%M:%SZ')
         query_end = datetime.strftime(end_date, '%Y-%m-%dT%H:%M:%SZ')
         fq = ['type_s:harvested', f'dataset_s:{dataset_name}',
-              f'date_s:[{query_start} TO {query_end}]']
+              f'date_s:{{{query_start} TO {query_end}]']
 
         cycle_granules = solr_query(
             config, solr_host, fq, solr_collection_name)
@@ -187,8 +188,6 @@ def processing(config_path='', output_path='', solr_info=''):
                     merged_cycle_ds['SSHA'].values)
                 merged_cycle_ds['SSHA'].attrs['valid_max'] = np.nanmax(
                     merged_cycle_ds['SSHA'].values)
-
-                # merged_cycle_ds['Time'].attrs['units'] = 'Days since 1985-01-01'
 
                 encoding_each = {'zlib': True,
                                  'complevel': 5,
