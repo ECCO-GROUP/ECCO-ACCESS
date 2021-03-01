@@ -294,8 +294,6 @@ def processing(config_path='', output_path='', solr_info=''):
                         ds = ds.assign_coords(
                             {"Latitude": ds_flags.Latitude})
 
-                        ds[var].encoding['coordinates'] = 'Longitude Latitude'
-
                     start_times.append(ds.time.values[::])
 
                     # Remove outliers before running tests
@@ -345,8 +343,7 @@ def processing(config_path='', output_path='', solr_info=''):
                 # Center time
                 overall_center_time = start_times[0] + \
                     ((end_times[-1] - start_times[0])/2)
-                center_time = datetime.strptime(
-                    str(overall_center_time)[:19], '%Y-%m-%dT%H:%M:%S')
+                center_time = start_date + ((end_date - start_date) / 2)
                 filename_time = datetime.strftime(center_time, '%Y%m%dT%H%M%S')
 
                 filename = f'ssha_{filename_time}.nc'
@@ -399,7 +396,7 @@ def processing(config_path='', output_path='', solr_info=''):
                                              'dtype': 'float32',
                                              'complevel': 6}
 
-                    if 'ssha' in coord:
+                    if 'SSHA' in coord:
                         coord_encoding[coord] = {
                             '_FillValue': default_fillvals['f8']}
 
@@ -431,6 +428,7 @@ def processing(config_path='', output_path='', solr_info=''):
 
                 # Save to netcdf
                 merged_cycle_ds.to_netcdf(save_path, encoding=encoding)
+
                 checksum = md5(save_path)
                 file_size = os.path.getsize(save_path)
                 aggregation_success = True
