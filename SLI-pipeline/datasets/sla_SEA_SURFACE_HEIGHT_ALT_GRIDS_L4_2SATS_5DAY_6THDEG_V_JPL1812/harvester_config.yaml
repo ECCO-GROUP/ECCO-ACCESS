@@ -4,7 +4,7 @@
 # PODAAC explicitly expects this date format
 start: "19920101T00:00:00Z" # yyyymmddThh:mm:ssZ
 end: "20170101T00:00:00Z" # yyyymmddThh:mm:ssZ
-most_recent: False # Overrides end date to be current date at time of execution
+most_recent: True # Overrides end date to be current date at time of execution
 name: ""
 password: ""
 host: https://podaac.jpl.nasa.gov/ws/search/granule/?format=atom&pretty=false&itemsPerPage=300000 # does not change
