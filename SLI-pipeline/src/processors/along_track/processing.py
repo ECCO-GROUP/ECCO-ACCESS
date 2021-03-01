@@ -64,6 +64,10 @@ def processing(config_path='', output_path='', solr_info=''):
     solr_collection_name = config['solr_collection_name']
     date_regex = '%Y-%m-%dT%H:%M:%S'
 
+    # Query for dataset metadata
+    fq = ['type_s:dataset', f'dataset_s:{dataset_name}']
+    ds_metadata = solr_query(config, solr_host, fq, solr_collection_name)[0]
+
     # Query for all existing cycles in Solr
     fq = ['type_s:cycle', f'dataset_s:{dataset_name}']
     solr_cycles = solr_query(config, solr_host, fq, solr_collection_name)
@@ -86,6 +90,7 @@ def processing(config_path='', output_path='', solr_info=''):
         curr += delta
 
     var = 'ssh'
+    reference_date = datetime(1985, 1, 1, 0, 0, 0)
 
     for (start_date, end_date) in cycle_dates:
 
@@ -95,7 +100,7 @@ def processing(config_path='', output_path='', solr_info=''):
         query_start = datetime.strftime(start_date, '%Y-%m-%dT%H:%M:%SZ')
         query_end = datetime.strftime(end_date, '%Y-%m-%dT%H:%M:%SZ')
         fq = ['type_s:harvested', f'dataset_s:{dataset_name}',
-              f'date_s:({query_start} TO {query_end}]']
+              f'date_s:[{query_start} TO {query_end}}}']
 
         cycle_granules = solr_query(
             config, solr_host, fq, solr_collection_name)
@@ -103,9 +108,6 @@ def processing(config_path='', output_path='', solr_info=''):
         if not cycle_granules:
             print(f'No granules for cycle {start_date_str} to {end_date_str}')
             continue
-
-        print(len(cycle_granules))
-        continue
 
         updating = False
 
@@ -138,6 +140,8 @@ def processing(config_path='', output_path='', solr_info=''):
             print(f'Processing cycle {start_date_str} to {end_date_str}')
 
             granules = []
+            data_start_time = None
+            data_end_time = None
 
             overall_center_time = start_date + ((end_date - start_date)/2)
             overall_center_time_str = datetime.strftime(
@@ -149,19 +153,36 @@ def processing(config_path='', output_path='', solr_info=''):
                 ds = xr.open_dataset(
                     granule['granule_file_path_s'], group='data')
 
-                ds = ds.rename_dims({'phony_dim_1': 'Time'})
+                if 'gmss' in ds.data_vars:
+                    ds = ds.drop(['gmss'])
+                    ds = ds.rename_dims({'phony_dim_2': 'Time'})
+
+                else:
+                    ds = ds.rename_dims({'phony_dim_1': 'Time'})
+
                 ds = ds.rename_vars({'time': 'Time'})
                 ds = ds.rename_vars({var: 'SSHA'})
+                ds = ds.rename({'lats': 'Latitude'})
+                ds = ds.rename({'lons': 'Longitude'})
+
+                # ds[var].encoding['coordinates'] = 'Longitude Latitude'
 
                 ds = ds.drop([var for var in ds.data_vars if var[0] == '_'])
                 ds = ds.assign_coords(Time=('Time', ds.Time))
+                ds = ds.assign_coords(Latitude=ds.Latitude)
+                ds = ds.assign_coords(Longitude=ds.Longitude)
 
                 ds.Time.attrs['long_name'] = 'Time'
                 ds.Time.attrs['standard_name'] = 'Time'
-                ds.Time.attrs['units'] = "seconds since 1985-01-01 00:00:00.0"
+                ds = ds.assign_coords(Time=[reference_date +
+                                            timedelta(seconds=time) for time in ds.Time.values])
 
-                print(ds)
-                exit()
+                data_start_time = min(
+                    data_start_time, ds.Time.values[0]) if data_start_time else ds.Time.values[0]
+                data_end_time = max(
+                    data_end_time, ds.Time.values[-1]) if data_end_time else ds.Time.values[-1]
+
+                granules.append(ds)
 
             try:
                 # Merge opened granules
@@ -173,28 +194,25 @@ def processing(config_path='', output_path='', solr_info=''):
                     merged_cycle_ds = granules[0]
 
                 # Time bounds
-                start_times = np.concatenate(start_times).ravel()
-                end_times = start_times[1:]
-                end_times = np.append(
-                    end_times, end_times[-1] + np.timedelta64(1, 's'))
 
                 # Center time
-                overall_center_time = start_times[0] + \
-                    ((end_times[-1] - start_times[0])/2)
-                center_time = datetime.strptime(
-                    str(overall_center_time)[:19], '%Y-%m-%dT%H:%M:%S')
-                filename_time = datetime.strftime(center_time, '%Y%m%dT%H%M%S')
+                data_center_time = data_start_time + \
+                    ((data_end_time - data_start_time)/2)
+                cycle_center_time = start_date + ((end_date - start_date)/2)
+
+                filename_time = datetime.strftime(
+                    cycle_center_time, '%Y%m%dT%H%M%S')
 
                 filename = f'ssha_{filename_time}.nc'
 
                 # Var Attributes
-                merged_cycle_ds[var].attrs['valid_min'] = np.nanmin(
-                    merged_cycle_ds[var].values)
-                merged_cycle_ds[var].attrs['valid_max'] = np.nanmax(
-                    merged_cycle_ds[var].values)
+                merged_cycle_ds['SSHA'].attrs['valid_min'] = np.nanmin(
+                    merged_cycle_ds['SSHA'].values)
+                merged_cycle_ds['SSHA'].attrs['valid_max'] = np.nanmax(
+                    merged_cycle_ds['SSHA'].values)
 
                 # Time Attributes
-                merged_cycle_ds.time.attrs['long_name'] = 'time'
+                merged_cycle_ds.Time.attrs['long_name'] = 'Time'
 
                 # Global Attributes
                 merged_cycle_ds.attrs = {}
@@ -202,25 +220,25 @@ def processing(config_path='', output_path='', solr_info=''):
 
                 merged_cycle_ds.attrs['cycle_start'] = start_date_str
                 merged_cycle_ds.attrs['cycle_center'] = datetime.strftime(
-                    start_date + ((end_date - start_date) / 2), date_regex)
+                    cycle_center_time, date_regex)
                 merged_cycle_ds.attrs['cycle_end'] = end_date_str
 
-                merged_cycle_ds.attrs['data_time_start'] = str(start_times[0])[
+                merged_cycle_ds.attrs['data_time_start'] = str(data_start_time)[
                     :19]
-                merged_cycle_ds.attrs['data_time_center'] = str(
-                    overall_center_time)[:19]
-                merged_cycle_ds.attrs['data_time_end'] = str(
-                    end_times[-1])[:19]
+                merged_cycle_ds.attrs['data_time_center'] = str(data_center_time)[
+                    :19]
+                merged_cycle_ds.attrs['data_time_end'] = str(data_end_time)[
+                    :19]
 
-                merged_cycle_ds.attrs['original_dataset_title'] = 'Jason-3 GPS based orbit and SSHA OGDR'
-                merged_cycle_ds.attrs['original_dataset_short_name'] = 'JASON_3_L2_OST_OGDR_GPS'
-                merged_cycle_ds.attrs['original_dataset_url'] = 'https://podaac.jpl.nasa.gov/dataset/JASON_3_L2_OST_OGDR_GPS?ids=Platforms:Processing%20Levels&values=JASON-3::2%20-%20Geophys.%20Variables,%20Sensor%20Coordinates'
-                merged_cycle_ds.attrs['original_dataset_reference'] = 'https://podaac-tools.jpl.nasa.gov/drive/files/allData/jason3/preview/L2/GPS-OGDR/docs/j3_user_handbook.pdf'
+                merged_cycle_ds.attrs['original_dataset_title'] = ds_metadata['original_dataset_title_s']
+                merged_cycle_ds.attrs['original_dataset_short_name'] = ds_metadata['original_dataset_short_name_s']
+                merged_cycle_ds.attrs['original_dataset_url'] = ds_metadata['original_dataset_url_s']
+                merged_cycle_ds.attrs['original_dataset_reference'] = ds_metadata['original_dataset_reference_s']
 
                 # Unify var, dims, coords
-                merged_cycle_ds = merged_cycle_ds.rename({var: 'SSHA'})
-                merged_cycle_ds = merged_cycle_ds.rename_dims({'time': 'Time'})
-                merged_cycle_ds = merged_cycle_ds.rename({'time': 'Time'})
+                # merged_cycle_ds = merged_cycle_ds.rename({var: 'SSHA'})
+                # merged_cycle_ds = merged_cycle_ds.rename_dims({'time': 'Time'})
+                # merged_cycle_ds = merged_cycle_ds.rename({'time': 'Time'})
 
                 # NetCDF encoding
                 encoding_each = {'zlib': True,
@@ -270,7 +288,7 @@ def processing(config_path='', output_path='', solr_info=''):
                 checksum = md5(save_path)
                 file_size = os.path.getsize(save_path)
                 aggregation_success = True
-                granule_count = len(opened_data)
+                granule_count = len(granules)
 
             except Exception as e:
                 print(e)
@@ -285,7 +303,7 @@ def processing(config_path='', output_path='', solr_info=''):
             item['type_s'] = 'cycle'
             item['dataset_s'] = dataset_name
             item['start_date_s'] = start_date_str
-            item['center_date_s'] = filename_time
+            # item['center_date_s'] = filename_time
             item['end_date_s'] = end_date_str
             item['granules_in_cycle_i'] = granule_count
             item['filename_s'] = filename
