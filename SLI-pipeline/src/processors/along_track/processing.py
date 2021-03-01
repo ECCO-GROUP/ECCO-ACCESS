@@ -53,97 +53,6 @@ def solr_update(config, solr_host, update_body, solr_collection_name, r=False):
         requests.post(url, json=update_body)
 
 
-def testing(ds, var):
-    time_da = ds.time
-    ssha_da = ds.ssha
-    var_da = ds[var]
-
-    vals = ds[var].values
-    non_nan_vals = vals[~np.isnan(vals)]
-
-    mean = np.nanmean(ds[var].values)
-    rms = np.sqrt(np.mean(non_nan_vals**2))
-    std = np.std(non_nan_vals)
-
-    try:
-        OFFSET, AMPLITUDE, _, _ = delta_orbit_altitude_offset_amplitude(
-            time_da, ssha_da, var_da)
-    except Exception as e:
-        print(e)
-        OFFSET = 100
-        AMPLITUDE = 100
-    tests = [('Mean', mean), ('RMS', rms), ('STD', std),
-             ('Offset', OFFSET), ('Amplitude', AMPLITUDE)]
-
-    for (test, result) in tests:
-        test_array = np.full(len(ds[var]), result, dtype='float32')
-        ds[test] = xr.DataArray(test_array, ds[var].coords, ds[var].dims)
-        ds[test].attrs['comment'] = f'{test} test value from original granule in cycle.'
-    return ds
-
-
-def delta_orbit_altitude_offset_amplitude(time_da, ssha_da, gps_ssha_da):
-    # time_da, ssha_da, and gps_ssha_da are xarray DataArray objects
-    # least squares fit for an OFFSET and AMPLITUDE of
-    # delta orbit altitude between the GPS orbit altitude
-    # and DORIS orbit altitude
-    # ssh = orbit_altitude - range - corrections
-    #
-    # in Shailen's SSH files, there is both 'gps_ssha', and 'ssha'
-    #
-    # gps_ssha - ssha = delta orbit_altitude
-    #    because range and corrections are the same for both ssha fields
-    #
-    # therefore we seek a solution the following equation
-    # y = C0 +  C1 cos(omega t) + C2 sin(omega t)
-    #
-    # where
-    # y      : delta GPS orbit altitude
-    # C0     : OFFSET
-    # C1, C2 : AMPLITUDES of cosine and sine terms comprising a phase shifted oscillation
-    # omega  : period of one orbit resolution in seconds
-    # t      : time in seconds
-    # calculate delta orbit altitude
-    delta_orbit_altitude = gps_ssha_da.values - ssha_da.values
-    # calculate time (in seconds) from the first to last observations in
-    # record
-    if type(time_da.values[0]) == np.datetime64:
-        td = (time_da.values - time_da[0].values)/1e9
-        td = td.astype('float')
-    else:
-        td = time_da.values
-    # plt.plot(td, delta_orbit_altitude, 'k.')
-    # plt.xlabel('time delta (s)')
-    # plt.grid()
-    # plt.title('delta orbit altitude [m]')
-    # calculate omega * t
-    omega = 2.*np.pi/6745.756
-    omega_t = omega * td
-    # pull values of omega_t and the delta_orbit_altitude only where
-    # the delta_orbit_altitude is not nan (i.e., not missing)
-    omega_t_nn = omega_t[~np.isnan(delta_orbit_altitude)]
-    delta_orbit_altitude_nn = delta_orbit_altitude[~np.isnan(
-        delta_orbit_altitude)]
-    # Least squares solution will take the form:
-    # c = inv(A.T A) A.T  delta_orbit_altitude.T
-    # where *.T indicates transpose
-    # inv indicates matrix inverse
-    # the three columns of the A matrix
-    CONST_TERM = np.ones(len(omega_t_nn))
-    COS_TERM = np.cos(omega_t_nn)
-    SIN_TERM = np.sin(omega_t_nn)
-    # construct A matrix
-    A = np.column_stack((CONST_TERM, COS_TERM, SIN_TERM))
-    c = np.matmul(np.matmul(np.linalg.inv(np.matmul(A.T, A)),
-                            A.T), delta_orbit_altitude_nn.T)
-    OFFSET = c[0]
-    AMPLITUDE = np.sqrt(c[1]**2 + c[2]**2)
-    # estimated time series
-    y_e = c[0] + c[1]*np.cos(omega_t) + c[2] * np.sin(omega_t)
-    # the c vector will have 3 elements
-    return OFFSET, AMPLITUDE, delta_orbit_altitude, y_e
-
-
 def processing(config_path='', output_path='', solr_info=''):
 
     with open(config_path, "r") as stream:
@@ -154,36 +63,6 @@ def processing(config_path='', output_path='', solr_info=''):
     solr_host = config['solr_host_local']
     solr_collection_name = config['solr_collection_name']
     date_regex = '%Y-%m-%dT%H:%M:%S'
-
-    print('loaded')
-    exit()
-    """
-    Flags
-    - DS field names change after a certain date
-    - All possible flag names are used by checking if each flag
-      is in the keys of a DS
-    1.  rad_surface_type_flag (rad_surf_type) = 0 (open ocean)
-    2.  surface_classification_flag (surface_type) = 0 (open ocean)
-    3.  alt_qual (alt_quality_flag)= 0 (good)
-    4.  rad_qual (rad_quality_flag) = 0 (good)
-    5.  geo_qual (geophysical_quality_flag)= 0 (good)
-    6.  meteo_map_availability_flag (ecmwf_meteo_map_avail) = 0 ('2_maps_nominal')
-    7.  rain_flag = 0 (no rain)
-    8.  rad_rain_flag = 0 (no rain)
-    9.  ice_flag = 0 (no ice)
-    10. rad_sea_ice_flag = 0 (no ice)
-    """
-
-    flags = ['rad_surface_type_flag', 'surface_classification_flag', 'alt_qual',
-             'rad_qual', 'geo_qual', 'meteo_map_availability_flag', 'rain_flag',
-             'rad_rain_flag', 'ice_flag', 'rad_sea_ice_flag', 'rad_surf_type',
-             'surface_type', 'alt_quality_flag', 'rad_quality_flag',
-             'geophysical_quality_flag', 'ecmwf_meteo_map_avail']
-
-    # Query for all dataset granules
-    fq = ['type_s:harvested', f'dataset_s:{dataset_name}']
-    remaining_granules = solr_query(
-        config, solr_host, fq, solr_collection_name)
 
     # Query for all existing cycles in Solr
     fq = ['type_s:cycle', f'dataset_s:{dataset_name}']
@@ -206,8 +85,7 @@ def processing(config_path='', output_path='', solr_info=''):
             cycle_dates.append((curr, curr + delta))
         curr += delta
 
-    var = 'gps_ssha'
-    tests = ['Mean', 'RMS', 'STD', 'Offset', 'Amplitude']
+    var = 'ssh'
 
     for (start_date, end_date) in cycle_dates:
 
@@ -216,8 +94,8 @@ def processing(config_path='', output_path='', solr_info=''):
 
         query_start = datetime.strftime(start_date, '%Y-%m-%dT%H:%M:%SZ')
         query_end = datetime.strftime(end_date, '%Y-%m-%dT%H:%M:%SZ')
-        fq = ['type_s:harvested',
-              f'dataset_s:{dataset_name}', f'date_s:[{query_start} TO {query_end}]']
+        fq = ['type_s:harvested', f'dataset_s:{dataset_name}',
+              f'date_s:({query_start} TO {query_end}]']
 
         cycle_granules = solr_query(
             config, solr_host, fq, solr_collection_name)
@@ -226,9 +104,8 @@ def processing(config_path='', output_path='', solr_info=''):
             print(f'No granules for cycle {start_date_str} to {end_date_str}')
             continue
 
-        # if len(cycle_granules) < 60:
-        #     print(
-        #         f'Not enough granules for cycle {start_date_str} to {end_date_str}: {len(cycle_granules)}')
+        print(len(cycle_granules))
+        continue
 
         updating = False
 
@@ -260,83 +137,40 @@ def processing(config_path='', output_path='', solr_info=''):
             aggregation_success = False
             print(f'Processing cycle {start_date_str} to {end_date_str}')
 
-            opened_data = []
-            start_times = []
-            end_times = []
+            granules = []
+
+            overall_center_time = start_date + ((end_date - start_date)/2)
+            overall_center_time_str = datetime.strftime(
+                overall_center_time, '%Y-%m-%dT%H:%M:%S')
+            units_time = datetime.strftime(
+                overall_center_time, "%Y-%m-%d %H:%M:%S")
+
+            for granule in cycle_granules:
+                ds = xr.open_dataset(
+                    granule['granule_file_path_s'], group='data')
+
+                ds = ds.rename_dims({'phony_dim_1': 'Time'})
+                ds = ds.rename_vars({'time': 'Time'})
+                ds = ds.rename_vars({var: 'SSHA'})
+
+                ds = ds.drop([var for var in ds.data_vars if var[0] == '_'])
+                ds = ds.assign_coords(Time=('Time', ds.Time))
+
+                ds.Time.attrs['long_name'] = 'Time'
+                ds.Time.attrs['standard_name'] = 'Time'
+                ds.Time.attrs['units'] = "seconds since 1985-01-01 00:00:00.0"
+
+                print(ds)
+                exit()
 
             try:
+                # Merge opened granules
+                if len(granules) > 1:
 
-                # Process the granules
-                for granule in cycle_granules:
-                    uses_groups = False
+                    merged_cycle_ds = xr.concat((granules), dim='Time')
 
-                    # netCDF granules from 2020-10-29 on contain groups
-                    ds = xr.open_dataset(granule['granule_file_path_s'])
-
-                    if 'lon' in ds.coords:
-                        ds = ds.rename({'lon': 'Longitude'})
-                        ds = ds.rename({'lat': 'Latitude'})
-                        ds[var].encoding['coordinates'] = 'Longitude Latitude'
-                        ds_keys = list(ds.keys())
-                    else:
-                        uses_groups = True
-
-                        ds = xr.open_dataset(granule['granule_file_path_s'],
-                                             group='data_01/ku')
-                        ds_flags = xr.open_dataset(granule['granule_file_path_s'],
-                                                   group='data_01')
-
-                        ds_flags = ds_flags.rename({'longitude': 'Longitude'})
-                        ds_flags = ds_flags.rename({'latitude': 'Latitude'})
-
-                        ds_keys = list(ds_flags.keys())
-
-                        ds = ds.assign_coords(
-                            {"Longitude": ds_flags.Longitude})
-                        ds = ds.assign_coords(
-                            {"Latitude": ds_flags.Latitude})
-
-                        ds[var].encoding['coordinates'] = 'Longitude Latitude'
-
-                    start_times.append(ds.time.values[::])
-
-                    # Remove outliers before running tests
-                    ds[var].values[np.greater(
-                        abs(ds[var].values), 1.5, where=~np.isnan(ds[var].values))] = np.nan
-
-                    # Run tests, returns byte results convert to int
-                    ds = testing(ds, var)
-
-                    # Mask out flagged data
-                    for flag in flags:
-                        if flag in ds_keys:
-                            if uses_groups:
-                                if np.isnan(ds_flags[flag].values).all():
-                                    continue
-
-                                ds[var].values = np.where(ds_flags[flag].values == 0,
-                                                          ds[var].values,
-                                                          default_fillvals['f8'])
-                            else:
-                                if np.isnan(ds[flag].values).all():
-                                    continue
-                                ds[var].values = np.where(ds[flag].values == 0,
-                                                          ds[var].values,
-                                                          default_fillvals['f8'])
-
-                    # Replace nans with fill value
-                    ds[var].values = np.where(np.isnan(ds[var].values),
-                                              default_fillvals['f8'],
-                                              ds[var].values)
-
-                    keep_keys = tests + [var]
-                    ds = ds.drop([key for key in ds.keys()
-                                  if key not in keep_keys])
-
-                    opened_data.append(ds)
-
-                # Merge
-                merged_cycle_ds = xr.concat((opened_data), dim='time')
+                else:
+                    merged_cycle_ds = granules[0]
 
                 # Time bounds
                 start_times = np.concatenate(start_times).ravel()
