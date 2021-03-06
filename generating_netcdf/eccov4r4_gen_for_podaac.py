@@ -67,7 +67,6 @@ def find_grouping_to_process_by_job_id(job_id, num_groupings:int):
 #%%
 def find_time_steps_to_process_by_job_id(num_jobs:int, job_id:int, \
                                          num_groupings:int, all_time_steps):
-# def find_time_steps_to_process_by_job_id(num_jobs, job_id, num_groupings, all_time_steps):
 
     print('\n-- find time steps to process by job id')
     print('--- this job ', job_id)
@@ -200,19 +199,6 @@ def apply_podaac_metadata(xrds, podaac_metadata):
 
 
 
-#%%
-#def get_coordinate_attribute_to_data_vars(G):
-#    coord_attr = dict()#
-
-    # dvs = list(G.data_vars)
-    # for dv in dvs:
-    #     dv_coords[dv] = list(G[dv].coords) #' '.join([str(elem) for elem in G[dv].coords])
-
-    # coord_G = ' '.join([str(elem) for elem in G.coords])
-
-    # return coord_attr, coord_G
-
-
 def sort_attrs(attrs):
     od = OrderedDict()
 
@@ -326,8 +312,6 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
                        'ECCOv4r4_groupings_for_native_datasets',
                        'ECCOv4r4_variable_metadata',
                        'ECCOv4r4_variable_metadata_for_latlon_datasets']
-
-    divide_OBP_by_g = True
 
 
     #%% -- -program start
@@ -1022,12 +1006,6 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
                     if F_DS[data_var].values.dtype != array_precision:
                         F_DS[data_var].values = F_DS[data_var].astype(array_precision)
 
-#                # hack to fix mistake in OBP fields
-#                if divide_OBP_by_g:
-#                    for data_var in F_DS.data_vars:
-#                        if data_var == 'OBP' or data_var == 'OBPGMAP':
-#                            print('DIVIDING BY g! ', data_var)
-#                            F_DS[data_var].values = F_DS[data_var].values / 9.8100
 
                 # set valid min and max, and replace nan with fill values
                 for data_var in F_DS.data_vars:
@@ -1360,7 +1338,7 @@ if __name__ == "__main__":
     output_dir_base = Path(args.output_dir)
 
 
-    # local
+    # local testing
     if 1 ==0:
         #%%
         output_dir_base=Path('/home/ifenty/tmp/v4r4_nc_output_20210305')
@@ -1406,46 +1384,46 @@ if __name__ == "__main__":
     # ------------------------------------------------------
     array_precision = np.float32
 
-# 20 NATIVE GRID GROUPINGS
-#        0 dynamic sea surface height and model sea level anomaly
-# 	 1 ocean bottom pressure and model ocean bottom pressure anomaly
-# 	 2 ocean and sea-ice surface freshwater fluxes
-# 	 3 ocean and sea-ice surface heat fluxes
-# 	 4 atmosphere surface temperature, humidity, wind, and pressure
-# 	 5 ocean mixed layer depth
-# 	 6 ocean and sea-ice surface stress
-# 	 7 sea-ice and snow concentration and thickness
-# 	 8 sea-ice velocity
-# 	 9 sea-ice and snow horizontal volume fluxes
-# 	 10 Gent-McWilliams ocean bolus transport streamfunction
-# 	 11 ocean three-dimensional volume fluxes
-# 	 12 ocean three-dimensional potential temperature fluxes
-# 	 13 ocean three-dimensional salinity fluxes
-# 	 14 sea-ice salt plume fluxes
-# 	 15 ocean potential temperature and salinity
-# 	 16 ocean density, stratification, and hydrostatic pressure
-# 	 17 ocean velocity
-# 	 18 Gent-McWilliams ocean bolus velocity
-# 	 19 ocean three-dimensional momentum tendency
+    # 20 NATIVE GRID GROUPINGS
+    #        0 dynamic sea surface height and model sea level anomaly
+    # 	 1 ocean bottom pressure and model ocean bottom pressure anomaly
+    # 	 2 ocean and sea-ice surface freshwater fluxes
+    # 	 3 ocean and sea-ice surface heat fluxes
+    # 	 4 atmosphere surface temperature, humidity, wind, and pressure
+    # 	 5 ocean mixed layer depth
+    # 	 6 ocean and sea-ice surface stress
+    # 	 7 sea-ice and snow concentration and thickness
+    # 	 8 sea-ice velocity
+    # 	 9 sea-ice and snow horizontal volume fluxes
+    # 	 10 Gent-McWilliams ocean bolus transport streamfunction
+    # 	 11 ocean three-dimensional volume fluxes
+    # 	 12 ocean three-dimensional potential temperature fluxes
+    # 	 13 ocean three-dimensional salinity fluxes
+    # 	 14 sea-ice salt plume fluxes
+    # 	 15 ocean potential temperature and salinity
+    # 	 16 ocean density, stratification, and hydrostatic pressure
+    # 	 17 ocean velocity
+    # 	 18 Gent-McWilliams ocean bolus velocity
+    # 	 19 ocean three-dimensional momentum tendency
 
-# ----- > groupings_native_snap (5) = [0, 1, 7, 8, 15]
-# SSH, obp, sea ice and snow, sea ice velocity, TS
+    # ----- > groupings_native_snap (5) = [0, 1, 7, 8, 15]
+    # SSH, obp, sea ice and snow, sea ice velocity, TS
 
 
-# 13 LATLON GRID GROUPINGS
-#         0 "dynamic sea surface height",
-#         1 "ocean bottom pressure",
-#         2 "ocean and sea-ice surface freshwater fluxes",
-#         3 "ocean and sea-ice surface heat fluxes",
-#         4 "atmosphere surface temperature, humidity, wind, and pressure",
-#         5 "ocean mixed layer depth",
-#         6 "ocean and sea-ice surface stress",
-#         7 "sea-ice and snow concentration and thickness",
-#         8 "sea-ice velocity",
-#         9 "ocean potential temperature and salinity",
-#        10 "ocean density, stratification, and hydrostatic pressure",
-#        11 "ocean velocity",
-#        12 "Gent-McWilliams ocean bolus velocity",
+    # 13 LATLON GRID GROUPINGS
+    #         0 "dynamic sea surface height",
+    #         1 "ocean bottom pressure",
+    #         2 "ocean and sea-ice surface freshwater fluxes",
+    #         3 "ocean and sea-ice surface heat fluxes",
+    #         4 "atmosphere surface temperature, humidity, wind, and pressure",
+    #         5 "ocean mixed layer depth",
+    #         6 "ocean and sea-ice surface stress",
+    #         7 "sea-ice and snow concentration and thickness",
+    #         8 "sea-ice velocity",
+    #         9 "ocean potential temperature and salinity",
+    #        10 "ocean density, stratification, and hydrostatic pressure",
+    #        11 "ocean velocity",
+    #        12 "Gent-McWilliams ocean bolus velocity",
 
 
 
@@ -1461,7 +1439,6 @@ if __name__ == "__main__":
 
     #%%
     G = []
-
     G, ecco_grid =  generate_netcdfs(output_freq_code, job_id, num_jobs,
                              product_type,
                              mapping_factors_dir,
