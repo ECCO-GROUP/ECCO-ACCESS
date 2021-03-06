@@ -10,7 +10,6 @@ sys.path.append('/home/ifenty/git_repos_others/ECCO-GROUP/ECCOv4-py')
 from importlib import reload
 import ecco_v4_py as ecco
 import ecco_cloud_utils as ea
-
 import argparse
 import json
 import numpy as np
@@ -243,6 +242,7 @@ def sort_all_attrs(G, print_output=False):
 
     return G
 
+#%%
 def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
                      product_type,
                      mapping_factors_dir,
@@ -371,7 +371,9 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
     groupings_for_native_datasets = metadata['ECCOv4r4_groupings_for_native_datasets']
 
     variable_metadata_latlon = metadata['ECCOv4r4_variable_metadata_for_latlon_datasets']
-    variable_metadata = metadata['ECCOv4r4_variable_metadata']
+    variable_metadata_default = metadata['ECCOv4r4_variable_metadata']
+
+    variable_metadata_native = variable_metadata_default + geometry_metadata_for_native_datasets
 
     #%%
     # load PODAAC fields
@@ -921,7 +923,6 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
 
                 elif product_type == 'native':
                     short_mds_name = mds_file.name.split('.')[0]
-                    variable_metadata = variable_metadata + geometry_metadata_for_native_datasets
 
                     F_DS = \
                         ecco.load_ecco_vars_from_mds(mds_var_dir,\
@@ -1071,12 +1072,12 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
             # ADD VARIABLE SPECIFIC METADATA TO VARIABLE ATTRIBUTES (DATA ARRAYS)
             print('\n... adding metadata specific to the variable')
             G, grouping_gcmd_keywords = \
-                ecco.add_variable_metadata(variable_metadata, G, grouping_gcmd_keywords)
+                ecco.add_variable_metadata(variable_metadata_native, G, grouping_gcmd_keywords, less_output=False)
 
             if product_type == 'latlon':
                 print('\n... using latlon dataseta metadata specific to the variable')
                 G, grouping_gcmd_keywords = \
-                    ecco.add_variable_metadata(variable_metadata_latlon, G, grouping_gcmd_keywords)
+                    ecco.add_variable_metadata(variable_metadata_latlon, G, grouping_gcmd_keywords, less_output=False)
 
 
             # ADD COORDINATE METADATA
@@ -1297,6 +1298,7 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
             print('\n... checking existence of new file: ', netcdf_output_filename.exists())
             print('\n')
 
+    #%%
     return G, ecco_grid
 
 #%%
@@ -1332,10 +1334,12 @@ def create_parser():
 
 
 
+#%%
 if __name__ == "__main__":
 
     parser = create_parser()
     args = parser.parse_args()
+
 
     print(args.time_steps_to_process, type(args.time_steps_to_process))
     print(args.num_jobs, type(args.num_jobs))
@@ -1345,6 +1349,8 @@ if __name__ == "__main__":
     print(args.output_freq_code, type(args.output_freq_code))
     print(args.output_dir, type(args.output_dir))
 
+
+
     time_steps_to_process = args.time_steps_to_process
     num_jobs = args.num_jobs
     job_id = args.job_id
@@ -1352,6 +1358,21 @@ if __name__ == "__main__":
     product_type = args.product_type
     output_freq_code = args.output_freq_code
     output_dir_base = Path(args.output_dir)
+
+
+    # local
+    if 1 ==0:
+        #%%
+        output_dir_base=Path('/home/ifenty/tmp/v4r4_nc_output_20210305')
+        output_freq_code='AVG_MON'
+        grouping_to_process=15
+        product_type='native'
+        job_id = 0
+        num_jobs = 1
+        time_steps_to_process = 'by_job'
+    #%%
+
+
 
     #sys.exit()
     reload(ecco)
@@ -1380,11 +1401,10 @@ if __name__ == "__main__":
     #output_dir_base = Path('/nobackupp2/ifenty/podaac')
     #mapping_factors_dir = Path('/nobackupp2/ifenty/podaac/lat-lon/mapping_factors')
 
-    #%%
+    #%
     # Define precision of output files, float32 is standard
     # ------------------------------------------------------
     array_precision = np.float32
-
 
 # 20 NATIVE GRID GROUPINGS
 #        0 dynamic sea surface height and model sea level anomaly
@@ -1439,6 +1459,7 @@ if __name__ == "__main__":
     print('product_type', product_type)
 
 
+    #%%
     G = []
 
     G, ecco_grid =  generate_netcdfs(output_freq_code, job_id, num_jobs,

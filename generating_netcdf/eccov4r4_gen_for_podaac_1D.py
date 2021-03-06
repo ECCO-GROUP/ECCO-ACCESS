@@ -35,7 +35,6 @@ def find_podaac_metadata(podaac_dataset_table, filename, debug=False):
     table.
 
     """
-
     # Use filename components to find metadata row from podaac_dataset_table.
     if "_snap_" in filename:
         head, tail = filename.split("_snap_")
@@ -61,6 +60,7 @@ def find_podaac_metadata(podaac_dataset_table, filename, debug=False):
     # Get the filenames column from my table as a list of strings.
     names = podaac_dataset_table['DATASET.FILENAME']
 
+    print(head, tail)
     # Find the index of the row with a filename with matching head, tail chars.
     index = names.apply(lambda x: all([x.startswith(head), x.endswith(tail)]))
 
@@ -110,20 +110,6 @@ def apply_podaac_metadata(xrds, podaac_metadata):
     #return apply_podaac_metadata  # Return the function.
 
 
-
-#%%
-#def get_coordinate_attribute_to_data_vars(G):
-#    coord_attr = dict()#
-
-    # dvs = list(G.data_vars)
-    # for dv in dvs:
-    #     dv_coords[dv] = list(G[dv].coords) #' '.join([str(elem) for elem in G[dv].coords])
-
-    # coord_G = ' '.join([str(elem) for elem in G.coords])
-
-    # return coord_attr, coord_G
-
-
 def sort_attrs(attrs):
     od = OrderedDict()
 
@@ -154,9 +140,9 @@ def sort_all_attrs(G, print_output=False):
     return G
 
 #%%
-def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
+def generate_netcdfs(output_freq_code,
                      product_type,
-                     mapping_factors_dir,
+                     grouping_to_process,
                      output_dir_base,
                      diags_root,
                      metadata_json_dir,
@@ -164,25 +150,9 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
                      ecco_grid_dir,
                      ecco_grid_filename,
                      array_precision = np.float32,
-                     grouping_to_process='by_job',\
                      debug_mode=False):
-                     num_job
-
-    #%%
-    G = []
-    test = True
-    if test:
-        product_type = '1D'
-        output_freq_code = 'SNAPSHOT'
-        grouping_to_process = 0
-
-        output_freq_code = 'AVG_MON'
-        grouping_to_process = 1
 
 
-        debug_mode = True
-        output_dir_base = Path('/home/ifenty/tmp/')
-        diags_root = Path('/home/ifenty/ian1/ifenty/ECCOv4/binary_output/scalar_time_series/netcdf')
     #%%
     # output_freq_codes  one of either 'AVG_DAY' or 'AVG_MON'
     #
@@ -301,7 +271,8 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
 
     #%%
     # load PODAAC fields
-    podaac_dataset_table = read_csv(podaac_dir / 'PODAAC_datasets-revised.csv')
+    podaac_dataset_table = read_csv(podaac_dir / 'PODAAC_datasets-revised_20210226.4.csv')
+
 
     # load ECCO grid
     #ecco_grid = ecco.load_ecco_grid_nc(ecco_grid_dir, ecco_grid_filename)
@@ -313,12 +284,12 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
     print('\nproduct type', product_type)
 
     if product_type == '1D':
-        dataset_description_tail = dataset_description_tail_1D
+        #dataset_description_tail = dataset_description_tail_1D
         filename_tail = filename_tail_1D
         groupings = groupings_for_1D_datasets
         output_dir_type = output_dir_base / '1D'
 
-        global_metadata = global_metadata_for_all_datasets + global_metadata_for_native_datasets
+        global_metadata = global_metadata_for_all_datasets + global_metadata_for_1D_datasets
 
 
     # show groupings
@@ -330,11 +301,11 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
     print('\nGetting directories for group variables')
     if output_freq_code == 'AVG_DAY':
         period_suffix = 'day_mean'
-        dataset_description_head = 'This dataset contains daily-averaged '
+        dataset_description_head = 'This dataset provides daily-averaged '
 
     elif output_freq_code == 'AVG_MON':
         period_suffix = 'mon_mean'
-        dataset_description_head = 'This dataset contains monthly-averaged '
+        dataset_description_head = 'This dataset provides monthly-averaged '
 
     elif output_freq_code == 'SNAPSHOT':
         period_suffix = 'day_inst'
@@ -357,19 +328,14 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
         except:
             print('...cannot make %s ' % output_dir_freq)
 
-    # determine which grouping to process
-    print('\nDetermining grouping to process')
-    grouping = []
-    if grouping_to_process == 'by_job':
-        print('... using grouping provided by job_id')
-        grouping_num = find_grouping_to_process_by_job_id(job_id, len(groupings))
 
-    else:
-        print('... using provided grouping ', grouping_to_process)
-        grouping_num = grouping_to_process
+    print('... using provided grouping ', grouping_to_process)
+    grouping_num = grouping_to_process
 
     if grouping_to_process == 0: # Pressure
         G = xr.open_dataset(diags_root / 'Pa_global.nc')
+        G_orig = G.copy(deep=True)
+
         G = G.Pa_global
         #tmp = Pa_global.Pa_global.isel(time=0).copy(deep=True)
         #tmp.time.values = tmp.time - np.timedelta64(1, 'h')
@@ -385,13 +351,41 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
         print(G.time[0:3])
         print(G.values[0:3])
         G = G.to_dataset()
+        summary_text = 'This dataset provides instantaneous hourly global mean atmospheric surface pressure over the ocean and sea-ice from the ECCO Version 4 Release 4 (V4r4) ocean and sea-ice state estimate. Estimating the Circulation and Climate of the Ocean (ECCO) state estimates are data-constrained, dynamically and kinematically-consistent reconstructions of the three-dimensional, time-evolving ocean, sea-ice, and surface atmospheric states and fluxes. ECCO V4r4 is a free-running solution of a global, nominally 1-degree configuration of the MIT general circulation model (MITgcm) that has been fit to observations in a least-squares sense. Observational data constraints used in V4r4 include sea surface height (SSH) from satellite altimeters [ERS-1/2, TOPEX/Poseidon, GFO, ENVISAT, Jason-1,2,3, CryoSat-2, and SARAL/AltiKa]; sea surface temperature (SST) from satellite radiometers [AVHRR], sea surface salinity (SSS) from the Aquarius satellite radiometer/scatterometer, ocean bottom pressure (OBP) from the GRACE satellite gravimeter; sea ice concentration from satellite radiometers [SSM/I and SSMIS], and in-situ ocean temperature and salinity measured with conductivity-temperature-depth (CTD) sensors and expendable bathythermographs (XBTs) from several programs [e.g., WOCE, GO-SHIP, Argo, and others] and platforms [e.g., research vessels, gliders, moorings, ice-tethered profilers, and instrumented pinnipeds]. V4r4 covers the period 1992-01-01T12:00:00 to 2018-01-01T00:00:00.'
 
     if grouping_to_process == 1: # GMSL
+        #ster = xr.open_dataset(diags_root / 'sterGloH.nc')
+        #ster['sterGloH'] = ster['sterGloH'] - ster['sterGloH'].mean()
+
         if output_freq_code == 'AVG_MON':
             G = xr.open_dataset(diags_root / 'GMSL.nc')
+            G_orig = G.copy(deep=True)
+
+            summary_text = 'This dataset provides monthly-averaged global mean sea-level anomalies including barystatic and sterodynamic terms from the ECCO Version 4 Release 4 (V4r4) ocean and sea-ice state estimate. Estimating the Circulation and Climate of the Ocean (ECCO) state estimates are data-constrained, dynamically and kinematically-consistent reconstructions of the three-dimensional, time-evolving ocean, sea-ice, and surface atmospheric states and fluxes. ECCO V4r4 is a free-running solution of a global, nominally 1-degree configuration of the MIT general circulation model (MITgcm) that has been fit to observations in a least-squares sense. Observational data constraints used in V4r4 include sea surface height (SSH) from satellite altimeters [ERS-1/2, TOPEX/Poseidon, GFO, ENVISAT, Jason-1,2,3, CryoSat-2, and SARAL/AltiKa]; sea surface temperature (SST) from satellite radiometers [AVHRR], sea surface salinity (SSS) from the Aquarius satellite radiometer/scatterometer, ocean bottom pressure (OBP) from the GRACE satellite gravimeter; sea ice concentration from satellite radiometers [SSM/I and SSMIS], and in-situ ocean temperature and salinity measured with conductivity-temperature-depth (CTD) sensors and expendable bathythermographs (XBTs) from several programs [e.g., WOCE, GO-SHIP, Argo, and others] and platforms [e.g., research vessels, gliders, moorings, ice-tethered profilers, and instrumented pinnipeds]. V4r4 covers the period 1992-01-01T12:00:00 to 2018-01-01T00:00:00.'
+         #   ster_m = ster.resample(time='m').mean()
+
         if output_freq_code == 'AVG_DAY':
             G = xr.open_dataset(diags_root / 'GMSL_day.nc')
+            G_orig = G.copy(deep=True)
 
+            summary_text = 'This dataset provides daily-averaged global mean sea-level anomalies including barystatic and sterodynamic terms from the ECCO Version 4 Release 4 (V4r4) ocean and sea-ice state estimate. Estimating the Circulation and Climate of the Ocean (ECCO) state estimates are data-constrained, dynamically and kinematically-consistent reconstructions of the three-dimensional, time-evolving ocean, sea-ice, and surface atmospheric states and fluxes. ECCO V4r4 is a free-running solution of a global, nominally 1-degree configuration of the MIT general circulation model (MITgcm) that has been fit to observations in a least-squares sense. Observational data constraints used in V4r4 include sea surface height (SSH) from satellite altimeters [ERS-1/2, TOPEX/Poseidon, GFO, ENVISAT, Jason-1,2,3, CryoSat-2, and SARAL/AltiKa]; sea surface temperature (SST) from satellite radiometers [AVHRR], sea surface salinity (SSS) from the Aquarius satellite radiometer/scatterometer, ocean bottom pressure (OBP) from the GRACE satellite gravimeter; sea ice concentration from satellite radiometers [SSM/I and SSMIS], and in-situ ocean temperature and salinity measured with conductivity-temperature-depth (CTD) sensors and expendable bathythermographs (XBTs) from several programs [e.g., WOCE, GO-SHIP, Argo, and others] and platforms [e.g., research vessels, gliders, moorings, ice-tethered profilers, and instrumented pinnipeds]. V4r4 covers the period 1992-01-01T12:00:00 to 2018-01-01T00:00:00.'
+            # nan out the first time level because the barystatic sea level array as a discontinuity at t=0
+            for gdv in G.data_vars:
+                G[gdv].values[0] = np.nan
+
+        for gdv in G.data_vars:
+            G[gdv] = G[gdv] - G[gdv].mean()
+
+
+    if grouping_to_process == 2: #SBO
+        G = xr.open_dataset(diags_root / 'SBO_global.nc')
+        summary_text = 'This dataset provides instantaneous hourly core products of the IERS Special Bureau for the Oceans from the ECCO Version 4 Release 4 (V4r4) ocean and sea-ice state estimate. Estimating the Circulation and Climate of the Ocean (ECCO) state estimates are data-constrained, dynamically and kinematically-consistent reconstructions of the three-dimensional, time-evolving ocean, sea-ice, and surface atmospheric states and fluxes. ECCO V4r4 is a free-running solution of a global, nominally 1-degree configuration of the MIT general circulation model (MITgcm) that has been fit to observations in a least-squares sense. Observational data constraints used in V4r4 include sea surface height (SSH) from satellite altimeters [ERS-1/2, TOPEX/Poseidon, GFO, ENVISAT, Jason-1,2,3, CryoSat-2, and SARAL/AltiKa]; sea surface temperature (SST) from satellite radiometers [AVHRR], sea surface salinity (SSS) from the Aquarius satellite radiometer/scatterometer, ocean bottom pressure (OBP) from the GRACE satellite gravimeter; sea ice concentration from satellite radiometers [SSM/I and SSMIS], and in-situ ocean temperature and salinity measured with conductivity-temperature-depth (CTD) sensors and expendable bathythermographs (XBTs) from several programs [e.g., WOCE, GO-SHIP, Argo, and others] and platforms [e.g., research vessels, gliders, moorings, ice-tethered profilers, and instrumented pinnipeds]. V4r4 covers the period 1992-01-01T12:00:00 to 2018-01-01T00:00:00.'
+        G_orig = G.copy(deep=True)
+
+    for dv in G.data_vars:
+        G[dv].attrs = dict()
+
+    G.attrs = dict()
 
     grouping = groupings[grouping_num]
     print('... grouping to use ', grouping['name'])
@@ -405,13 +399,6 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
     # define empty list of gcmd keywords pertaining to this dataset
     grouping_gcmd_keywords = []
 
-    # create dataset description head
-    dataset_description =\
-        dataset_description_head +\
-            grouping['name'] +\
-            dataset_description_tail
-
-    print(dataset_description)
 #%%
 
     # ADD VARIABLE SPECIFIC METADATA TO VARIABLE ATTRIBUTES (DATA ARRAYS)
@@ -437,16 +424,10 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
 #%%
     # ADD GLOBAL METADATA
     print("\n... adding global metadata for all datasets")
-    G = ecco.add_global_metadata(global_metadata_for_all_datasets, G,\
+    G = ecco.add_global_metadata(global_metadata, G,\
                             dataset_dim)
-
-#            if product_type == 'latlon':
-#                print('\n... adding global meta for latlon dataset')
-#                G = ecco.add_global_metadata(global_metadata_for_latlon_datasets, G,\
-#                                        dataset_dim)
- #           elif product_type == 'native':
     print('\n... adding global metadata for native dataset')
-    G = ecco.add_global_metadata(global_metadata_for_1D_datasets, G,\
+    G = ecco.add_global_metadata(global_metadata, G,\
                                     dataset_dim)
 
     pprint(G)
@@ -531,7 +512,8 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
     # MERGE ENCODINGS for coordinates and variables
     encoding = {**dv_encoding, **coord_encoding}
 
-    #%%
+    if 'keywords' not in G.attrs:
+        G.attrs['keywords'] = ""
     pprint(G.keywords)
     #%%
     # MERGE GCMD KEYWORDS
@@ -569,6 +551,7 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
 
     # set averaging period duration and resolution
     print('\n... setting time coverage resolution')
+    print(output_freq_code)
     # --- AVG DAY
     if output_freq_code == 'AVG_MON':
         G.attrs['time_coverage_duration'] = 'P1M'
@@ -590,7 +573,8 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
         G.attrs['time_coverage_duration'] = 'P0S'
         G.attrs['time_coverage_resolution'] = 'P0S'
 
-        G.time.attrs.pop('bounds')
+        if 'bounds' in G.time.attrs:
+            G.time.attrs.pop('bounds')
 
         # convert from oroginal
         #   '1992-01-16T12:00:00.000000000'
@@ -599,64 +583,68 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
         #date_str = str(G.time.values[0])[0:19].replace(':','')
         ppp_tttt = 'snap'
 
+    print(ppp_tttt)
     #%%
-        ## construct filename
-        print('\n... creating filename')
+    ## construct filename
+    print('\n... creating filename')
 
-        filename = grouping['filename'] + '_' + ppp_tttt + \
-            filename_tail
+    filename = grouping['filename'] + '_' + ppp_tttt + \
+        filename_tail
 
-        print(filename)
-        # make subdirectory for the grouping
-        output_dir = output_dir_freq / grouping['filename']
-        print('\n... creating output_dir', output_dir)
+    print(filename)
+    # make subdirectory for the grouping
+    output_dir = output_dir_freq / grouping['filename']
+    print('\n... creating output_dir', output_dir)
 
-        if not output_dir.exists():
-            try:
-                output_dir.mkdir(parents=True,exist_ok=True)
-            except:
-                print ('cannot make %s ' % output_dir)
+    if not output_dir.exists():
+        try:
+            output_dir.mkdir(parents=True,exist_ok=True)
+        except:
+            print ('cannot make %s ' % output_dir)
+
+#%%
+    # create full pathname for netcdf file
+    netcdf_output_filename = output_dir / filename
+
+    # add product name attribute = filename
+    G.attrs['product_name'] = filename
+
+    # add summary attribute = description of dataset
+    #G.attrs['summary'] = dataset_description + ' ' + G.attrs['summary']
+
+    G.attrs['summary'] = summary_text
+    # get podaac metadata based on filename
+
+    #print('\n... getting PODAAC metadata')
+    podaac_metadata = \
+       find_podaac_metadata(podaac_dataset_table, filename, debug=True)
+
+    # apply podaac metadata based on filename
+    print('\n... applying PODAAC metadata')
+    pprint(podaac_metadata)
+    G = apply_podaac_metadata(G, podaac_metadata)
+
+    # sort comments alphabetically
+    print('\n... sorting global attributes')
+    G.attrs = sort_attrs(G.attrs)
+
+    # add one final comment (PODAAC request)
+    G.attrs["coordinates_comment"] = \
+        "Note: the global 'coordinates' attribute descibes auxillary coordinates."
 
     #%%
-        # create full pathname for netcdf file
-        netcdf_output_filename = output_dir / filename
+    # SAVE
+    print('\n... saving to netcdf ', netcdf_output_filename)
+    G.to_netcdf(netcdf_output_filename, encoding=encoding)
+    G.close()
 
-        # add product name attribute = filename
-        G.attrs['product_name'] = filename
+    print('\n... checking existence of new file: ', netcdf_output_filename.exists())
+    print('\n')
 
-        # add summary attribute = description of dataset
-        G.attrs['summary'] = dataset_description + ' ' + G.attrs['summary']
-
-        # get podaac metadata based on filename
-
-        #print('\n... getting PODAAC metadata')
-        podaac_metadata = \
-           find_podaac_metadata(podaac_dataset_table, filename, debug=True)
-
-        # apply podaac metadata based on filename
-        print('\n... applying PODAAC metadata')
-        pprint(podaac_metadata)
-        G = apply_podaac_metadata(G, podaac_metadata)
-
-        # sort comments alphabetically
-        print('\n... sorting global attributes')
-        G.attrs = sort_attrs(G.attrs)
-
-        # add one final comment (PODAAC request)
-        G.attrs["coordinates_comment"] = \
-            "Note: the global 'coordinates' attribute descibes auxillary coordinates."
-
+    GG = xr.open_dataset(netcdf_output_filename)
+    GG.close()
         #%%
-        # SAVE
-        print('\n... saving to netcdf ', netcdf_output_filename)
-        G.to_netcdf(netcdf_output_filename, encoding=encoding)
-        G.close()
-
-        print('\n... checking existence of new file: ', netcdf_output_filename.exists())
-        print('\n')
-
-        #%%
-    return G, ecco_grid
+    return G,G_orig
 
 #%%
 
@@ -693,24 +681,24 @@ def create_parser():
 #%%
 if __name__ == "__main__":
 
-    parser = create_parser()
-    args = parser.parse_args()
+    # parser = create_parser()
+    # args = parser.parse_args()
 
-    print(args.time_steps_to_process, type(args.time_steps_to_process))
-    print(args.num_jobs, type(args.num_jobs))
-    print(args.job_id, type(args.job_id))
-    print(args.grouping_to_process, type(args.grouping_to_process))
-    print(args.product_type, type(args.product_type))
-    print(args.output_freq_code, type(args.output_freq_code))
-    print(args.output_dir, type(args.output_dir))
+    # print(args.time_steps_to_process, type(args.time_steps_to_process))
+    # print(args.num_jobs, type(args.num_jobs))
+    # print(args.job_id, type(args.job_id))
+    # print(args.grouping_to_process, type(args.grouping_to_process))
+    # print(args.product_type, type(args.product_type))
+    # print(args.output_freq_code, type(args.output_freq_code))
+    # print(args.output_dir, type(args.output_dir))
 
-    time_steps_to_process = args.time_steps_to_process
-    num_jobs = args.num_jobs
-    job_id = args.job_id
-    grouping_to_process = args.grouping_to_process
-    product_type = args.product_type
-    output_freq_code = args.output_freq_code
-    output_dir_base = Path(args.output_dir)
+    # time_steps_to_process = args.time_steps_to_process
+    # num_jobs = args.num_jobs
+    # job_id = args.job_id
+    # grouping_to_process = args.grouping_to_process
+    # product_type = args.product_type
+    # output_freq_code = args.output_freq_code
+    # output_dir_base = Path(args.output_dir)
 
     #sys.exit()
     reload(ecco)
@@ -788,29 +776,179 @@ if __name__ == "__main__":
 
 
 
-    debug_mode=False
 
-    print('\n\n===================================')
-    print('starting python: num jobs, job_id', num_jobs, job_id)
-    print('grouping to process', grouping_to_process)
-    print('time_steps_to_process', time_steps_to_process)
-    print('output_freq_code', output_freq_code)
-    print('product_type', product_type)
-
-
+    #%%
     G = []
 
-    G, ecco_grid =  generate_netcdfs(output_freq_code, job_id, num_jobs,
+    product_type = '1D'
+    output_dir_base = Path('/home/ifenty/tmp/1D_20210305')
+    #output_dir_base.mkdir()
+
+    Gs = []
+    G_os = []
+
+    for    product in  range(4):
+
+        if product == 0:
+            # pressure
+            output_freq_code = 'SNAPSHOT'
+            grouping_to_process = 0
+
+        elif product== 1:
+            #GMSL
+            output_freq_code = 'AVG_MON'
+            grouping_to_process = 1
+
+        elif product == 2:
+            output_freq_code = 'AVG_DAY'
+            grouping_to_process = 1
+
+        elif product == 3:
+            output_freq_code = 'SNAPSHOT'
+            grouping_to_process = 2
+
+        debug_mode = True
+
+
+        diags_root = Path('/home/ifenty/ian1/ifenty/ECCOv4/binary_output/scalar_time_series/netcdf')
+
+
+
+        print('\n\n===================================')
+        print('output_freq_code', output_freq_code)
+        print('product_type', product_type)
+
+        g, go = generate_netcdfs(output_freq_code,
                              product_type,
-                             mapping_factors_dir,
+                             grouping_to_process,
                              output_dir_base,
                              diags_root,
                              metadata_json_dir,
                              podaac_dir,
                              ecco_grid_dir,
-                             ecco_grid_dir_mds,
                              ecco_grid_filename,
                              array_precision,
-                             grouping_to_process,
-                             time_steps_to_process,
                              debug_mode)
+
+        Gs.append(g)
+        G_os.append(go)
+
+#%%
+import matplotlib.pyplot as plt
+
+
+thumbnail_height = 5.5
+thumbnail_width_to_height_ratio = 2
+
+
+fig_ref = plt.figure(1,clear=True)
+
+legs = []
+for dv in Gs[0].data_vars:
+    legs.append(dv)
+    plt.plot(Gs[0].time, Gs[0][dv])
+plt.grid()
+plt.title(Gs[0].title)
+plt.ylabel('Pressure [N m-2]')
+
+
+name = Gs[0].id.split('/')[1]
+fname = name + '.jpg'
+fig_ref.set_size_inches(thumbnail_width_to_height_ratio*thumbnail_height, thumbnail_height)
+fpath = Path('/home/ifenty/tmp/') / fname
+plt.savefig(fpath, dpi=150, facecolor='w', bbox_inches='tight', pad_inches = 0.05)
+print(fpath)
+
+#%%
+fig_ref = plt.figure(2,clear=True)
+
+legs = []
+for dv in Gs[1].data_vars:
+    legs.append(dv)
+    plt.plot(Gs[1].time, Gs[1][dv])
+plt.legend(legs)
+plt.grid()
+plt.title(Gs[1].title)
+plt.ylabel('Sea-Level Anomaly [m]')
+
+name = Gs[1].id.split('/')[1]
+fname = name + '.jpg'
+fig_ref.set_size_inches(thumbnail_width_to_height_ratio*thumbnail_height, thumbnail_height)
+fpath = Path('/home/ifenty/tmp/') / fname
+plt.savefig(fpath, dpi=150, facecolor='w', bbox_inches='tight', pad_inches = 0.05)
+
+print(fpath)
+
+fig_ref = plt.figure(3,clear=True)
+legs = []
+for dv in Gs[2].data_vars:
+    legs.append(dv)
+    plt.plot(Gs[2].time, Gs[2][dv])
+
+plt.legend(legs)
+plt.grid()
+plt.title(Gs[2].title)
+plt.ylabel('Sea-Level Anomaly [m]')
+
+name = Gs[2].id.split('/')[1]
+fname = name + '.jpg'
+fig_ref.set_size_inches(thumbnail_width_to_height_ratio*thumbnail_height, thumbnail_height)
+fpath = Path('/home/ifenty/tmp/') / fname
+plt.savefig(fpath, dpi=150, facecolor='w', bbox_inches='tight', pad_inches = 0.05)
+print(fpath)
+#%%
+
+fig_ref = plt.figure(4,clear=True)
+legs = []
+fs = ['xoamp_fw', 'yoamp_fw']
+for dv in Gs[3].data_vars:
+    if dv in fs:
+        plt.plot(Gs[3].time, Gs[3][dv])
+        legs.append(dv)
+
+plt.legend(legs)
+plt.grid()
+plt.title(Gs[3].title)
+plt.ylabel('component of oam due to freshwater flux [kg m2 s-1]')
+
+
+name = Gs[3].id.split('/')[1]
+fname = name + '.jpg'
+fig_ref.set_size_inches(thumbnail_width_to_height_ratio*thumbnail_height, thumbnail_height)
+fpath = Path('/home/ifenty/tmp/') / fname
+plt.savefig(fpath, dpi=150, facecolor='w', bbox_inches='tight', pad_inches = 0.05)
+print(fpath)
+
+
+#%%
+
+
+for dv in Gs[1].data_vars:
+    print(dv)
+    print(Gs[1][dv].mean())
+    Gs[1][dv][0:12].plot()
+plt.legend(legs)
+
+plt.figure(4,clear=True)
+for dv in Gs[2].data_vars:
+    print(dv)
+    print(Gs[2][dv].mean())
+    Gs[2][dv][0:365].plot()
+plt.legend(legs)
+
+#%%
+
+plt.figure(5,clear=True)
+tmp = Gs[2]
+tmp2 = tmp['global_mean_sea_level_anomaly'] -\
+    tmp['global_mean_sterodynamic_sea_level_anomaly'] - tmp['global_mean_barystatic_sea_level_anomaly']
+tmp2.plot()
+plt.title('residual : GMSL - stereo - bary')
+
+
+plt.figure(6,clear=True)
+tmp = Gs[1]
+tmp2 = tmp['global_mean_sea_level_anomaly'] -\
+    tmp['global_mean_sterodynamic_sea_level_anomaly'] - tmp['global_mean_barystatic_sea_level_anomaly']
+tmp2.plot()
+plt.title('residual : GMSL - stereo - bary')
