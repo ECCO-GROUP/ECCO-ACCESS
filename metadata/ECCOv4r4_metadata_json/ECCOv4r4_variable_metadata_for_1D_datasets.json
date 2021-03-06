@@ -12,7 +12,7 @@
       },
       {
          "name": "global_mean_sea_level_anomaly",
-         "long_name": "Global mean of dyanmic SSH",
+         "long_name": "Global mean of dynamic SSH",
          "units": "m",
          "standard_name": "",
          "comments_1": "Global mean of dynamic sea level anomaly, equivalent to global mean sea level change.",
