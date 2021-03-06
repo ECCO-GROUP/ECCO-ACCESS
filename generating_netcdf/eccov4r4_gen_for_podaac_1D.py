@@ -60,7 +60,6 @@ def find_podaac_metadata(podaac_dataset_table, filename, debug=False):
     # Get the filenames column from my table as a list of strings.
     names = podaac_dataset_table['DATASET.FILENAME']
 
-    print(head, tail)
     # Find the index of the row with a filename with matching head, tail chars.
     index = names.apply(lambda x: all([x.startswith(head), x.endswith(tail)]))
 
@@ -167,8 +166,6 @@ def generate_netcdfs(output_freq_code,
     #   'by_job' determine from job id and num_jobs
 
 
-    # mds_
-
     # ECCO FIELD INPUT DIRECTORY
     # model diagnostic output
     # subdirectories must be
@@ -184,23 +181,11 @@ def generate_netcdfs(output_freq_code,
     print('\n')
 
 
-
     # ECCO always uses -9999 for missing data.
     binary_fill_value = -9999
 
-    # num of depth levels
-    nk=50
-
-    # levels to process (for testing purposes make less than nk)
-    max_k = 50
-
     ecco_start_time = np.datetime64('1992-01-01T12:00:00')
     ecco_end_time   = np.datetime64('2017-12-31T12:00:00')
-
-    # Define tail for dataset description (summary)
-    dataset_description_tail_native = ' on the native Lat-Lon-Cap 90 (LLC90) model grid from the ECCO Version 4 revision 4 (V4r4) ocean and sea-ice state estimate.'
-    dataset_description_tail_latlon = ' interpolated to a regular 0.5-degree grid from the ECCO Version 4 revision 4 (V4r4) ocean and sea-ice state estimate.'
-    dataset_description_tail_1D = ' as a 1D time series calculated from the ECCO Version 4 revision 4 (V4r4) ocean and sea-ice state estimate.'
 
     filename_tail_latlon = '_ECCO_V4r4_latlon_0p50deg.nc'
     filename_tail_native = '_ECCO_V4r4_native_llc0090.nc'
@@ -275,7 +260,6 @@ def generate_netcdfs(output_freq_code,
 
 
     # load ECCO grid
-    #ecco_grid = ecco.load_ecco_grid_nc(ecco_grid_dir, ecco_grid_filename)
     ecco_grid = xr.open_dataset(ecco_grid_dir / ecco_grid_filename)
 
     print(ecco_grid)
@@ -288,9 +272,7 @@ def generate_netcdfs(output_freq_code,
         filename_tail = filename_tail_1D
         groupings = groupings_for_1D_datasets
         output_dir_type = output_dir_base / '1D'
-
         global_metadata = global_metadata_for_all_datasets + global_metadata_for_1D_datasets
-
 
     # show groupings
     print('\nAll groupings')
@@ -301,15 +283,12 @@ def generate_netcdfs(output_freq_code,
     print('\nGetting directories for group variables')
     if output_freq_code == 'AVG_DAY':
         period_suffix = 'day_mean'
-        dataset_description_head = 'This dataset provides daily-averaged '
 
     elif output_freq_code == 'AVG_MON':
         period_suffix = 'mon_mean'
-        dataset_description_head = 'This dataset provides monthly-averaged '
 
     elif output_freq_code == 'SNAPSHOT':
         period_suffix = 'day_inst'
-        dataset_description_head = 'This dataset contains instantaneous (hourly) '
     else:
         print('valid options are AVG_DAY, AVG_MON, SNAPSHOT')
         print('you provided ', output_freq_code)
@@ -332,14 +311,18 @@ def generate_netcdfs(output_freq_code,
     print('... using provided grouping ', grouping_to_process)
     grouping_num = grouping_to_process
 
+
+    ######################################################
+    # all super custom for v4r4.
+    # load's ou 1D NeCDF files and trusts their time levels
+    # summary text is explicitly provided instead of made
+    # on the fly
     if grouping_to_process == 0: # Pressure
         G = xr.open_dataset(diags_root / 'Pa_global.nc')
         G_orig = G.copy(deep=True)
 
         G = G.Pa_global
-        #tmp = Pa_global.Pa_global.isel(time=0).copy(deep=True)
-        #tmp.time.values = tmp.time - np.timedelta64(1, 'h')
-        #G = xr.concat([tmp, Pa_global.Pa_global], dim='time')
+        # nan out the first two misisng values
         G.values[0:2] = np.nan
         G.attrs.clear()
 
@@ -348,21 +331,15 @@ def generate_netcdfs(output_freq_code,
         if output_freq_code == 'AVG_DAY':
             G.resample(time='1D').mean()
 
-        print(G.time[0:3])
-        print(G.values[0:3])
         G = G.to_dataset()
         summary_text = 'This dataset provides instantaneous hourly global mean atmospheric surface pressure over the ocean and sea-ice from the ECCO Version 4 Release 4 (V4r4) ocean and sea-ice state estimate. Estimating the Circulation and Climate of the Ocean (ECCO) state estimates are data-constrained, dynamically and kinematically-consistent reconstructions of the three-dimensional, time-evolving ocean, sea-ice, and surface atmospheric states and fluxes. ECCO V4r4 is a free-running solution of a global, nominally 1-degree configuration of the MIT general circulation model (MITgcm) that has been fit to observations in a least-squares sense. Observational data constraints used in V4r4 include sea surface height (SSH) from satellite altimeters [ERS-1/2, TOPEX/Poseidon, GFO, ENVISAT, Jason-1,2,3, CryoSat-2, and SARAL/AltiKa]; sea surface temperature (SST) from satellite radiometers [AVHRR], sea surface salinity (SSS) from the Aquarius satellite radiometer/scatterometer, ocean bottom pressure (OBP) from the GRACE satellite gravimeter; sea ice concentration from satellite radiometers [SSM/I and SSMIS], and in-situ ocean temperature and salinity measured with conductivity-temperature-depth (CTD) sensors and expendable bathythermographs (XBTs) from several programs [e.g., WOCE, GO-SHIP, Argo, and others] and platforms [e.g., research vessels, gliders, moorings, ice-tethered profilers, and instrumented pinnipeds]. V4r4 covers the period 1992-01-01T12:00:00 to 2018-01-01T00:00:00.'
 
     if grouping_to_process == 1: # GMSL
-        #ster = xr.open_dataset(diags_root / 'sterGloH.nc')
-        #ster['sterGloH'] = ster['sterGloH'] - ster['sterGloH'].mean()
-
         if output_freq_code == 'AVG_MON':
             G = xr.open_dataset(diags_root / 'GMSL.nc')
             G_orig = G.copy(deep=True)
 
             summary_text = 'This dataset provides monthly-averaged global mean sea-level anomalies including barystatic and sterodynamic terms from the ECCO Version 4 Release 4 (V4r4) ocean and sea-ice state estimate. Estimating the Circulation and Climate of the Ocean (ECCO) state estimates are data-constrained, dynamically and kinematically-consistent reconstructions of the three-dimensional, time-evolving ocean, sea-ice, and surface atmospheric states and fluxes. ECCO V4r4 is a free-running solution of a global, nominally 1-degree configuration of the MIT general circulation model (MITgcm) that has been fit to observations in a least-squares sense. Observational data constraints used in V4r4 include sea surface height (SSH) from satellite altimeters [ERS-1/2, TOPEX/Poseidon, GFO, ENVISAT, Jason-1,2,3, CryoSat-2, and SARAL/AltiKa]; sea surface temperature (SST) from satellite radiometers [AVHRR], sea surface salinity (SSS) from the Aquarius satellite radiometer/scatterometer, ocean bottom pressure (OBP) from the GRACE satellite gravimeter; sea ice concentration from satellite radiometers [SSM/I and SSMIS], and in-situ ocean temperature and salinity measured with conductivity-temperature-depth (CTD) sensors and expendable bathythermographs (XBTs) from several programs [e.g., WOCE, GO-SHIP, Argo, and others] and platforms [e.g., research vessels, gliders, moorings, ice-tethered profilers, and instrumented pinnipeds]. V4r4 covers the period 1992-01-01T12:00:00 to 2018-01-01T00:00:00.'
-         #   ster_m = ster.resample(time='m').mean()
 
         if output_freq_code == 'AVG_DAY':
             G = xr.open_dataset(diags_root / 'GMSL_day.nc')
@@ -379,9 +356,17 @@ def generate_netcdfs(output_freq_code,
 
     if grouping_to_process == 2: #SBO
         G = xr.open_dataset(diags_root / 'SBO_global.nc')
+        # nan out the first time level because the barystatic sea level array as a discontinuity at t=0
+
         summary_text = 'This dataset provides instantaneous hourly core products of the IERS Special Bureau for the Oceans from the ECCO Version 4 Release 4 (V4r4) ocean and sea-ice state estimate. Estimating the Circulation and Climate of the Ocean (ECCO) state estimates are data-constrained, dynamically and kinematically-consistent reconstructions of the three-dimensional, time-evolving ocean, sea-ice, and surface atmospheric states and fluxes. ECCO V4r4 is a free-running solution of a global, nominally 1-degree configuration of the MIT general circulation model (MITgcm) that has been fit to observations in a least-squares sense. Observational data constraints used in V4r4 include sea surface height (SSH) from satellite altimeters [ERS-1/2, TOPEX/Poseidon, GFO, ENVISAT, Jason-1,2,3, CryoSat-2, and SARAL/AltiKa]; sea surface temperature (SST) from satellite radiometers [AVHRR], sea surface salinity (SSS) from the Aquarius satellite radiometer/scatterometer, ocean bottom pressure (OBP) from the GRACE satellite gravimeter; sea ice concentration from satellite radiometers [SSM/I and SSMIS], and in-situ ocean temperature and salinity measured with conductivity-temperature-depth (CTD) sensors and expendable bathythermographs (XBTs) from several programs [e.g., WOCE, GO-SHIP, Argo, and others] and platforms [e.g., research vessels, gliders, moorings, ice-tethered profilers, and instrumented pinnipeds]. V4r4 covers the period 1992-01-01T12:00:00 to 2018-01-01T00:00:00.'
         G_orig = G.copy(deep=True)
 
+        for gdv in G.data_vars:
+            if ('com' in gdv) or ('amp' in gdv) or ('mass' in gdv):
+                G[gdv].values[0:1] = np.nan
+
+
+    ######################################################
     for dv in G.data_vars:
         G[dv].attrs = dict()
 
@@ -418,16 +403,15 @@ def generate_netcdfs(output_freq_code,
 
     print('\n... adding coordinate metadata for 1D dataset')
     G = ecco.add_coordinate_metadata(coordinate_metadata_for_1D_datasets,G)
-
     pprint(G)
 
 #%%
     # ADD GLOBAL METADATA
     print("\n... adding global metadata for all datasets")
-    G = ecco.add_global_metadata(global_metadata, G,\
+    G = ecco.add_global_metadata(global_metadata_for_all_datasets, G,\
                             dataset_dim)
-    print('\n... adding global metadata for native dataset')
-    G = ecco.add_global_metadata(global_metadata, G,\
+    print('\n... adding global metadata for 1D dataset')
+    G = ecco.add_global_metadata(global_metadata_for_1D_datasets, G,\
                                     dataset_dim)
 
     pprint(G)
@@ -451,14 +435,10 @@ def generate_netcdfs(output_freq_code,
 
     #%%
     # add coordinate attributes to the variables
-    #coord_attrs, coord_G=  get_coordinate_attribute_to_data_vars(G)
-    #print(coord_G)
     dv_coordinate_attrs = dict()
 
     for dv in list(G.data_vars):
         dv_coords_orig = set(list(G[dv].coords))
-
-        #print(dv, dv_coords_orig)
 
         # REMOVE TIME STEP FROM LIST OF COORDINATES (PODAAC REQUEST)
         #coord_attrs[coord] = coord_attrs[coord].split('time_step')[0].strip()
@@ -466,8 +446,6 @@ def generate_netcdfs(output_freq_code,
         set_intersect = dv_coords_orig.intersection(set(['XC','YC','XG','YG','Z','Zp1','Zu','Zl','time'])) #
 
         dv_coordinate_attrs[dv] = " ".join(set_intersect)
-
-        #print(dv, dv_coordinate_attrs[dv])
 
     #%%
     print('\n... creating variable encodings')
@@ -479,10 +457,8 @@ def generate_netcdfs(output_freq_code,
                             'shuffle':True,\
                             '_FillValue':netcdf_fill_value}
 
-        # overwrite default coordinats attribute (PODAAC REQUEST)
+        # overwrite default coordinates attribute (PODAAC REQUEST)
         G[dv].encoding['coordinates'] = dv_coordinate_attrs[dv]
-        #print(G[dv].encoding)
-        #dv_encoding[dv]['coordinates'] = dv_coordinate_attrs[dv]
 
     #%%
     # PROVIDE SPECIFIC ENCODING DIRECTIVES FOR EACH COORDINATE
@@ -531,6 +507,7 @@ def generate_netcdfs(output_freq_code,
     #print(gcmd_keyword_str)
     G.attrs['keywords'] = gcmd_keyword_str
     pprint(G.attrs)
+
     #%%
     ## ADD FINISHING TOUCHES
 
@@ -602,7 +579,7 @@ def generate_netcdfs(output_freq_code,
         except:
             print ('cannot make %s ' % output_dir)
 
-#%%
+    #%%
     # create full pathname for netcdf file
     netcdf_output_filename = output_dir / filename
 
@@ -610,7 +587,6 @@ def generate_netcdfs(output_freq_code,
     G.attrs['product_name'] = filename
 
     # add summary attribute = description of dataset
-    #G.attrs['summary'] = dataset_description + ' ' + G.attrs['summary']
 
     G.attrs['summary'] = summary_text
     # get podaac metadata based on filename
@@ -646,133 +622,37 @@ def generate_netcdfs(output_freq_code,
         #%%
     return G,G_orig
 
-#%%
-
-
-def create_parser():
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument('--time_steps_to_process', default='by_job', nargs="+",\
-                        help='which time steps to process')
-
-    parser.add_argument('--num_jobs', type=int, default=1,\
-                        help='the total number of separate jobs you are using to process the files')
-
-    parser.add_argument('--job_id', type=int, default=0,\
-                        help='the id of this particular job (out of num_jobs)')
-
-    parser.add_argument('--grouping_to_process', required=True, type=int,\
-                        help='which dataset grouping to process, there are 20 in v4r4')
-
-    parser.add_argument('--product_type', required=True, type=str, choices=['latlon', 'native'], \
-                        help='one of either "latlon" or "native" ')
-
-    parser.add_argument('--output_freq_code', required=True, type=str, choices=['AVG_MON','AVG_DAY','SNAPSHOT'],\
-                        help='one of AVG_MON, AVG_DAY, or SNAPSHOT')
-
-    parser.add_argument('--output_dir', required=True, type=str,\
-                        help='output directory')
-    return parser
-
-
 
 
 
 #%%
 if __name__ == "__main__":
 
-    # parser = create_parser()
-    # args = parser.parse_args()
-
-    # print(args.time_steps_to_process, type(args.time_steps_to_process))
-    # print(args.num_jobs, type(args.num_jobs))
-    # print(args.job_id, type(args.job_id))
-    # print(args.grouping_to_process, type(args.grouping_to_process))
-    # print(args.product_type, type(args.product_type))
-    # print(args.output_freq_code, type(args.output_freq_code))
-    # print(args.output_dir, type(args.output_dir))
-
-    # time_steps_to_process = args.time_steps_to_process
-    # num_jobs = args.num_jobs
-    # job_id = args.job_id
-    # grouping_to_process = args.grouping_to_process
-    # product_type = args.product_type
-    # output_freq_code = args.output_freq_code
-    # output_dir_base = Path(args.output_dir)
-
-    #sys.exit()
     reload(ecco)
+
     #%%
     mapping_factors_dir = Path('/home/ifenty/tmp/ecco-v4-podaac-mapping-factors')
-    #output_dir_base = Path('/home/ifenty/tmp/v4r4_nc_output_20201223_native')
 
     diags_root = Path('/home/ifenty/ian1/ifenty/ECCOv4/binary_output/diags_all')
+
     ## METADATA
     metadata_json_dir = Path('/home/ifenty/git_repos_others/ECCO-GROUP/ECCO-ACCESS/metadata/ECCOv4r4_metadata_json')
     podaac_dir = metadata_json_dir #Path('/home/ifenty/git_repos_others/ecco-data-pub/metadata')
 
     ecco_grid_dir = Path('/home/ifenty/data/grids/grid_ECCOV4r4')
     ecco_grid_dir_mds = Path('/home/ifenty/data/grids/grid_ECCOV4r4')
-
-    ## PODAAC fields
     ecco_grid_filename = 'ECCO_V4r4_llc90_grid_geometry.nc'
-
-    #ecco_grid_filename = 'ECCO_V4r4_llc90_grid_geometry.nc'
-    #ecco_grid_dir     = Path('/nobackupp2/ifenty/grids/grid_ECCOV4r4')
-    #ecco_grid_dir_mds = Path('/nobackupp2/ifenty/grids/grid_ECCOV4r4/')
-
-    #podaac_dir = Path('/home5/ifenty/git_repos_others/ecco-data-pub/metadata')
-    #metadata_json_dir = Path('/home5/ifenty/git_repos_others/ECCO-GROUP/ECCO-ACCESS/metadata/ECCOv4r4_metadata_json')
-    #diags_root = Path('/nobackupp11/owang/runs/V4r4/')
-    #output_dir_base = Path('/nobackupp2/ifenty/podaac')
-    #mapping_factors_dir = Path('/nobackupp2/ifenty/podaac/lat-lon/mapping_factors')
 
     #%%
     # Define precision of output files, float32 is standard
     # ------------------------------------------------------
     array_precision = np.float32
 
-    #%%
-# 20 NATIVE GRID GROUPINGS
-#        0 dynamic sea surface height and model sea level anomaly
-# 	 1 ocean bottom pressure and model ocean bottom pressure anomaly
-# 	 2 ocean and sea-ice surface freshwater fluxes
-# 	 3 ocean and sea-ice surface heat fluxes
-# 	 4 atmosphere surface temperature, humidity, wind, and pressure
-# 	 5 ocean mixed layer depth
-# 	 6 ocean and sea-ice surface stress
-# 	 7 sea-ice and snow concentration and thickness
-# 	 8 sea-ice velocity
-# 	 9 sea-ice and snow horizontal volume fluxes
-# 	 10 Gent-McWilliams ocean bolus transport streamfunction
-# 	 11 ocean three-dimensional volume fluxes
-# 	 12 ocean three-dimensional potential temperature fluxes
-# 	 13 ocean three-dimensional salinity fluxes
-# 	 14 sea-ice salt plume fluxes
-# 	 15 ocean potential temperature and salinity
-# 	 16 ocean density, stratification, and hydrostatic pressure
-# 	 17 ocean velocity
-# 	 18 Gent-McWilliams ocean bolus velocity
-# 	 19 ocean three-dimensional momentum tendency
 
-# ----- > groupings_native_snap (5) = [0, 1, 7, 8, 15]
-# SSH, obp, sea ice and snow, sea ice velocity, TS
-
-
-# 13 LATLON GRID GROUPINGS
-#         0 "dynamic sea surface height",
-#         1 "ocean bottom pressure",
-#         2 "ocean and sea-ice surface freshwater fluxes",
-#         3 "ocean and sea-ice surface heat fluxes",
-#         4 "atmosphere surface temperature, humidity, wind, and pressure",
-#         5 "ocean mixed layer depth",
-#         6 "ocean and sea-ice surface stress",
-#         7 "sea-ice and snow concentration and thickness",
-#         8 "sea-ice velocity",
-#         9 "ocean potential temperature and salinity",
-#        10 "ocean density, stratification, and hydrostatic pressure",
-#        11 "ocean velocity",
-#        12 "Gent-McWilliams ocean bolus velocity",
+    # 1D Groupings
+    #    0 Pressure
+    # 	 1 GMSL
+    # 	 2 SBO
 
 
 
@@ -781,8 +661,10 @@ if __name__ == "__main__":
     G = []
 
     product_type = '1D'
-    output_dir_base = Path('/home/ifenty/tmp/1D_20210305')
-    #output_dir_base.mkdir()
+    output_dir_base = Path('/home/ifenty/tmp/1D_20210306')
+    if not output_dir_base.exists():
+        output_dir_base.mkdir()
+
 
     Gs = []
     G_os = []
@@ -836,6 +718,13 @@ if __name__ == "__main__":
 #%%
 import matplotlib.pyplot as plt
 
+thumb_dir = output_dir_base / 'thumbs'
+try:
+    thumb_dir.mkdir()
+except:
+    print('already exists')
+    print(thumb_dir.exists())
+
 
 thumbnail_height = 5.5
 thumbnail_width_to_height_ratio = 2
@@ -855,7 +744,7 @@ plt.ylabel('Pressure [N m-2]')
 name = Gs[0].id.split('/')[1]
 fname = name + '.jpg'
 fig_ref.set_size_inches(thumbnail_width_to_height_ratio*thumbnail_height, thumbnail_height)
-fpath = Path('/home/ifenty/tmp/') / fname
+fpath = thumb_dir / fname
 plt.savefig(fpath, dpi=150, facecolor='w', bbox_inches='tight', pad_inches = 0.05)
 print(fpath)
 
@@ -874,7 +763,7 @@ plt.ylabel('Sea-Level Anomaly [m]')
 name = Gs[1].id.split('/')[1]
 fname = name + '.jpg'
 fig_ref.set_size_inches(thumbnail_width_to_height_ratio*thumbnail_height, thumbnail_height)
-fpath = Path('/home/ifenty/tmp/') / fname
+fpath = thumb_dir / fname
 plt.savefig(fpath, dpi=150, facecolor='w', bbox_inches='tight', pad_inches = 0.05)
 
 print(fpath)
@@ -893,14 +782,14 @@ plt.ylabel('Sea-Level Anomaly [m]')
 name = Gs[2].id.split('/')[1]
 fname = name + '.jpg'
 fig_ref.set_size_inches(thumbnail_width_to_height_ratio*thumbnail_height, thumbnail_height)
-fpath = Path('/home/ifenty/tmp/') / fname
+fpath = thumb_dir / fname
 plt.savefig(fpath, dpi=150, facecolor='w', bbox_inches='tight', pad_inches = 0.05)
 print(fpath)
 #%%
 
 fig_ref = plt.figure(4,clear=True)
 legs = []
-fs = ['xoamp_fw', 'yoamp_fw']
+fs = ['xoamp']
 for dv in Gs[3].data_vars:
     if dv in fs:
         plt.plot(Gs[3].time, Gs[3][dv])
@@ -915,7 +804,7 @@ plt.ylabel('component of oam due to freshwater flux [kg m2 s-1]')
 name = Gs[3].id.split('/')[1]
 fname = name + '.jpg'
 fig_ref.set_size_inches(thumbnail_width_to_height_ratio*thumbnail_height, thumbnail_height)
-fpath = Path('/home/ifenty/tmp/') / fname
+fpath = thumb_dir / fname
 plt.savefig(fpath, dpi=150, facecolor='w', bbox_inches='tight', pad_inches = 0.05)
 print(fpath)
 
@@ -952,3 +841,30 @@ tmp2 = tmp['global_mean_sea_level_anomaly'] -\
     tmp['global_mean_sterodynamic_sea_level_anomaly'] - tmp['global_mean_barystatic_sea_level_anomaly']
 tmp2.plot()
 plt.title('residual : GMSL - stereo - bary')
+
+
+
+
+#%%
+plt.close(10)
+fig, axs = plt.subplots(6,5,num=10,figsize=(26,20), sharex=True, clear=True)
+axs = axs.ravel()
+tmp = Gs[3]
+for dvi, dv in enumerate(Gs[3].data_vars):
+    axs[dvi].plot(Gs[3].time[:], Gs[3][dv][:])
+    axs[dvi].set_title(dv, fontsize=10, y=1, pad=-14)
+    axs[dvi].yaxis.get_offset_text().set_fontsize(6)
+
+plt.tight_layout()
+
+
+plt.close(11)
+fig, axs = plt.subplots(6,5,num=11,figsize=(26,20), sharex=True, clear=True)
+axs = axs.ravel()
+tmp = Gs[3]
+for dvi, dv in enumerate(Gs[3].data_vars):
+    axs[dvi].plot(Gs[3].time[1:], Gs[3][dv][1:])
+    axs[dvi].set_title(dv, fontsize=10, y=1, pad=-14)
+    axs[dvi].yaxis.get_offset_text().set_fontsize(6)
+
+plt.tight_layout()

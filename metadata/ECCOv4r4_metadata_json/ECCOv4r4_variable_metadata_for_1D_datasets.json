@@ -55,7 +55,7 @@
       },
       {
          "name": "xoamc",
-         "long_name": "x-comp oam due to currents",
+         "long_name": "x-comp of oceanic angular momentum due to currents",
          "units": "kg m2 s-1",
          "GCMD_keywords" : "",
          "comments_1": "",
@@ -65,7 +65,7 @@
       },
       {
          "name": "yoamc",
-         "long_name": "y-comp oam due to currents",
+         "long_name": "y-comp of oceanic angular momentum due to currents",
          "units": "kg m2 s-1",
          "GCMD_keywords" : "",
          "comments_1": "",
@@ -75,7 +75,7 @@
       },
       {
          "name": "zoamc",
-         "long_name": "z-comp oam due to currents",
+         "long_name": "z-comp of oceanic angular momentum due to currents",
          "units": "kg m2 s-1",
          "GCMD_keywords" : "",
          "comments_1": "",
@@ -85,7 +85,7 @@
       },
       {
          "name": "xoamp",
-         "long_name": "x-comp oam due to pressure",
+         "long_name": "x-comp of oceanic angular momentum due to pressure",
          "units": "kg m2 s-1",
          "GCMD_keywords" : "",
          "comments_1": "",
@@ -95,7 +95,7 @@
       },
       {
          "name": "yoamp",
-         "long_name": "y-comp oam due to pressure",
+         "long_name": "y-comp of oceanic angular momentum due to pressure",
          "units": "kg m2 s-1",
          "GCMD_keywords" : "",
          "comments_1": "",
@@ -105,7 +105,7 @@
       },
       {
          "name": "zoamp",
-         "long_name": "z-comp oam due to pressure",
+         "long_name": "z-comp of oceanic angular momentum due to pressure",
          "units": "kg m2 s-1",
          "GCMD_keywords" : "",
          "comments_1": "",
@@ -158,14 +158,14 @@
          "long_name": "surface area of oceans",
          "units": "m2",
          "GCMD_keywords" : "",
-         "comments_1": "",
+         "comments_1": "Note: ocean surface area is constant but provided as time series for convenience",
          "comments_2": "",
          "grid_dimension":"1D",
          "coverage_content_type": "modelResult"
       },
       {
          "name": "xoamc_si",
-         "long_name": "x-comp oam due to sea-ice motion",
+         "long_name": "x-comp of oceanic angular momentum due to sea-ice motion",
          "units": "kg m2 s-1",
          "GCMD_keywords" : "",
          "comments_1": "",
@@ -175,7 +175,7 @@
       },
       {
          "name": "yoamc_si",
-         "long_name": "y-comp oam due to sea-ice motion",
+         "long_name": "y-comp of oceanic angular momentum due to sea-ice motion",
          "units": "kg m2 s-1",
          "GCMD_keywords" : "",
          "comments_1": "",
@@ -185,7 +185,7 @@
       },
       {
          "name": "zoamc_si",
-         "long_name": "z-comp oam due to sea-ice motion",
+         "long_name": "z-comp of oceanic angular momentum due to sea-ice motion",
          "units": "kg m2 s-1",
          "GCMD_keywords" : "",
          "comments_1": "",
@@ -205,7 +205,7 @@
       },
       {
          "name": "xoamp_fw",
-         "long_name": "x-comp oam due to freshwater flux",
+         "long_name": "x-comp of oceanic angular momentum due to freshwater flux",
          "units": "kg m2 s-1",
          "GCMD_keywords" : "",
          "comments_1": "",
@@ -215,7 +215,7 @@
       },
       {
          "name": "yoamp_fw",
-         "long_name": "y-comp oam due to freshwater flux",
+         "long_name": "y-comp of oceanic angular momentum due to freshwater flux",
          "units": "kg m2 s-1",
          "GCMD_keywords" : "",
          "comments_1": "",
@@ -225,7 +225,7 @@
       },
       {
          "name": "zoamp_fw",
-         "long_name": "z-comp oam due to freshwater flux",
+         "long_name": "z-comp of oceanic angular momentum due to freshwater flux",
          "units": "kg m2 s-1",
          "GCMD_keywords" : "",
          "comments_1": "",
@@ -285,7 +285,7 @@
       },
       {
          "name": "xoamp_dsl",
-         "long_name": "x-comp oam due to pressure based on dynamic (IB-corrected) sea level",
+         "long_name": "x-comp of oceanic angular momentum due to pressure based on dynamic (IB-corrected) sea level",
          "units": "kg m2 s-1",
          "GCMD_keywords" : "",
          "comments_1": "",
@@ -295,7 +295,7 @@
       },
       {
          "name": "yoamp_dsl",
-         "long_name": "y-comp oam due to pressure based on dynamic (IB-corrected) sea level",
+         "long_name": "y-comp of oceanic angular momentum due to pressure based on dynamic (IB-corrected) sea level",
          "units": "kg m2 s-1",
          "GCMD_keywords" : "",
          "comments_1": "",
@@ -305,7 +305,7 @@
       },
       {
          "name": "zoamp_dsl",
-         "long_name": "z-comp oam due to pressure based on dynamic (IB-corrected) sea level",
+         "long_name": "z-comp of oceanic angular momentum due to pressure based on dynamic (IB-corrected) sea level",
          "units": "kg m2 s-1",
          "GCMD_keywords" : "",
          "comments_1": "",
