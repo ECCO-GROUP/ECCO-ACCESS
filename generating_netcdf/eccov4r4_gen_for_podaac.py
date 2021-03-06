@@ -10,7 +10,6 @@ sys.path.append('/home/ifenty/git_repos_others/ECCO-GROUP/ECCOv4-py')
 from importlib import reload
 import ecco_v4_py as ecco
 import ecco_cloud_utils as ea
-
 import argparse
 import json
 import numpy as np
@@ -68,7 +67,6 @@ def find_grouping_to_process_by_job_id(job_id, num_groupings:int):
 #%%
 def find_time_steps_to_process_by_job_id(num_jobs:int, job_id:int, \
                                          num_groupings:int, all_time_steps):
-# def find_time_steps_to_process_by_job_id(num_jobs, job_id, num_groupings, all_time_steps):
 
     print('\n-- find time steps to process by job id')
     print('--- this job ', job_id)
@@ -201,19 +199,6 @@ def apply_podaac_metadata(xrds, podaac_metadata):
 
 
 
-#%%
-#def get_coordinate_attribute_to_data_vars(G):
-#    coord_attr = dict()#
-
-    # dvs = list(G.data_vars)
-    # for dv in dvs:
-    #     dv_coords[dv] = list(G[dv].coords) #' '.join([str(elem) for elem in G[dv].coords])
-
-    # coord_G = ' '.join([str(elem) for elem in G.coords])
-
-    # return coord_attr, coord_G
-
-
 def sort_attrs(attrs):
     od = OrderedDict()
 
@@ -243,6 +228,7 @@ def sort_all_attrs(G, print_output=False):
 
     return G
 
+#%%
 def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
                      product_type,
                      mapping_factors_dir,
@@ -327,8 +313,6 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
                        'ECCOv4r4_variable_metadata',
                        'ECCOv4r4_variable_metadata_for_latlon_datasets']
 
-    divide_OBP_by_g = True
-
 
     #%% -- -program start
 
@@ -371,7 +355,9 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
     groupings_for_native_datasets = metadata['ECCOv4r4_groupings_for_native_datasets']
 
     variable_metadata_latlon = metadata['ECCOv4r4_variable_metadata_for_latlon_datasets']
-    variable_metadata = metadata['ECCOv4r4_variable_metadata']
+    variable_metadata_default = metadata['ECCOv4r4_variable_metadata']
+
+    variable_metadata_native = variable_metadata_default + geometry_metadata_for_native_datasets
 
     #%%
     # load PODAAC fields
@@ -921,7 +907,6 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
 
                 elif product_type == 'native':
                     short_mds_name = mds_file.name.split('.')[0]
-                    variable_metadata = variable_metadata + geometry_metadata_for_native_datasets
 
                     F_DS = \
                         ecco.load_ecco_vars_from_mds(mds_var_dir,\
@@ -1021,12 +1006,6 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
                     if F_DS[data_var].values.dtype != array_precision:
                         F_DS[data_var].values = F_DS[data_var].astype(array_precision)
 
-#                # hack to fix mistake in OBP fields
-#                if divide_OBP_by_g:
-#                    for data_var in F_DS.data_vars:
-#                        if data_var == 'OBP' or data_var == 'OBPGMAP':
-#                            print('DIVIDING BY g! ', data_var)
-#                            F_DS[data_var].values = F_DS[data_var].values / 9.8100
 
                 # set valid min and max, and replace nan with fill values
                 for data_var in F_DS.data_vars:
@@ -1071,12 +1050,12 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
             # ADD VARIABLE SPECIFIC METADATA TO VARIABLE ATTRIBUTES (DATA ARRAYS)
             print('\n... adding metadata specific to the variable')
             G, grouping_gcmd_keywords = \
-                ecco.add_variable_metadata(variable_metadata, G, grouping_gcmd_keywords)
+                ecco.add_variable_metadata(variable_metadata_native, G, grouping_gcmd_keywords, less_output=False)
 
             if product_type == 'latlon':
                 print('\n... using latlon dataseta metadata specific to the variable')
                 G, grouping_gcmd_keywords = \
-                    ecco.add_variable_metadata(variable_metadata_latlon, G, grouping_gcmd_keywords)
+                    ecco.add_variable_metadata(variable_metadata_latlon, G, grouping_gcmd_keywords, less_output=False)
 
 
             # ADD COORDINATE METADATA
@@ -1297,6 +1276,7 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
             print('\n... checking existence of new file: ', netcdf_output_filename.exists())
             print('\n')
 
+    #%%
     return G, ecco_grid
 
 #%%
@@ -1332,10 +1312,12 @@ def create_parser():
 
 
 
+#%%
 if __name__ == "__main__":
 
     parser = create_parser()
     args = parser.parse_args()
+
 
     print(args.time_steps_to_process, type(args.time_steps_to_process))
     print(args.num_jobs, type(args.num_jobs))
@@ -1345,6 +1327,8 @@ if __name__ == "__main__":
     print(args.output_freq_code, type(args.output_freq_code))
     print(args.output_dir, type(args.output_dir))
 
+
+
     time_steps_to_process = args.time_steps_to_process
     num_jobs = args.num_jobs
     job_id = args.job_id
@@ -1352,6 +1336,21 @@ if __name__ == "__main__":
     product_type = args.product_type
     output_freq_code = args.output_freq_code
     output_dir_base = Path(args.output_dir)
+
+
+    # local testing
+    if 1 ==0:
+        #%%
+        output_dir_base=Path('/home/ifenty/tmp/v4r4_nc_output_20210305')
+        output_freq_code='AVG_MON'
+        grouping_to_process=15
+        product_type='native'
+        job_id = 0
+        num_jobs = 1
+        time_steps_to_process = 'by_job'
+    #%%
+
+
 
     #sys.exit()
     reload(ecco)
@@ -1380,52 +1379,51 @@ if __name__ == "__main__":
     #output_dir_base = Path('/nobackupp2/ifenty/podaac')
     #mapping_factors_dir = Path('/nobackupp2/ifenty/podaac/lat-lon/mapping_factors')
 
-    #%%
+    #%
     # Define precision of output files, float32 is standard
     # ------------------------------------------------------
     array_precision = np.float32
 
+    # 20 NATIVE GRID GROUPINGS
+    #        0 dynamic sea surface height and model sea level anomaly
+    # 	 1 ocean bottom pressure and model ocean bottom pressure anomaly
+    # 	 2 ocean and sea-ice surface freshwater fluxes
+    # 	 3 ocean and sea-ice surface heat fluxes
+    # 	 4 atmosphere surface temperature, humidity, wind, and pressure
+    # 	 5 ocean mixed layer depth
+    # 	 6 ocean and sea-ice surface stress
+    # 	 7 sea-ice and snow concentration and thickness
+    # 	 8 sea-ice velocity
+    # 	 9 sea-ice and snow horizontal volume fluxes
+    # 	 10 Gent-McWilliams ocean bolus transport streamfunction
+    # 	 11 ocean three-dimensional volume fluxes
+    # 	 12 ocean three-dimensional potential temperature fluxes
+    # 	 13 ocean three-dimensional salinity fluxes
+    # 	 14 sea-ice salt plume fluxes
+    # 	 15 ocean potential temperature and salinity
+    # 	 16 ocean density, stratification, and hydrostatic pressure
+    # 	 17 ocean velocity
+    # 	 18 Gent-McWilliams ocean bolus velocity
+    # 	 19 ocean three-dimensional momentum tendency
 
-# 20 NATIVE GRID GROUPINGS
-#        0 dynamic sea surface height and model sea level anomaly
-# 	 1 ocean bottom pressure and model ocean bottom pressure anomaly
-# 	 2 ocean and sea-ice surface freshwater fluxes
-# 	 3 ocean and sea-ice surface heat fluxes
-# 	 4 atmosphere surface temperature, humidity, wind, and pressure
-# 	 5 ocean mixed layer depth
-# 	 6 ocean and sea-ice surface stress
-# 	 7 sea-ice and snow concentration and thickness
-# 	 8 sea-ice velocity
-# 	 9 sea-ice and snow horizontal volume fluxes
-# 	 10 Gent-McWilliams ocean bolus transport streamfunction
-# 	 11 ocean three-dimensional volume fluxes
-# 	 12 ocean three-dimensional potential temperature fluxes
-# 	 13 ocean three-dimensional salinity fluxes
-# 	 14 sea-ice salt plume fluxes
-# 	 15 ocean potential temperature and salinity
-# 	 16 ocean density, stratification, and hydrostatic pressure
-# 	 17 ocean velocity
-# 	 18 Gent-McWilliams ocean bolus velocity
-# 	 19 ocean three-dimensional momentum tendency
-
-# ----- > groupings_native_snap (5) = [0, 1, 7, 8, 15]
-# SSH, obp, sea ice and snow, sea ice velocity, TS
+    # ----- > groupings_native_snap (5) = [0, 1, 7, 8, 15]
+    # SSH, obp, sea ice and snow, sea ice velocity, TS
 
 
-# 13 LATLON GRID GROUPINGS
-#         0 "dynamic sea surface height",
-#         1 "ocean bottom pressure",
-#         2 "ocean and sea-ice surface freshwater fluxes",
-#         3 "ocean and sea-ice surface heat fluxes",
-#         4 "atmosphere surface temperature, humidity, wind, and pressure",
-#         5 "ocean mixed layer depth",
-#         6 "ocean and sea-ice surface stress",
-#         7 "sea-ice and snow concentration and thickness",
-#         8 "sea-ice velocity",
-#         9 "ocean potential temperature and salinity",
-#        10 "ocean density, stratification, and hydrostatic pressure",
-#        11 "ocean velocity",
-#        12 "Gent-McWilliams ocean bolus velocity",
+    # 13 LATLON GRID GROUPINGS
+    #         0 "dynamic sea surface height",
+    #         1 "ocean bottom pressure",
+    #         2 "ocean and sea-ice surface freshwater fluxes",
+    #         3 "ocean and sea-ice surface heat fluxes",
+    #         4 "atmosphere surface temperature, humidity, wind, and pressure",
+    #         5 "ocean mixed layer depth",
+    #         6 "ocean and sea-ice surface stress",
+    #         7 "sea-ice and snow concentration and thickness",
+    #         8 "sea-ice velocity",
+    #         9 "ocean potential temperature and salinity",
+    #        10 "ocean density, stratification, and hydrostatic pressure",
+    #        11 "ocean velocity",
+    #        12 "Gent-McWilliams ocean bolus velocity",
 
 
 
@@ -1439,8 +1437,8 @@ if __name__ == "__main__":
     print('product_type', product_type)
 
 
+    #%%
     G = []
-
     G, ecco_grid =  generate_netcdfs(output_freq_code, job_id, num_jobs,
                              product_type,
                              mapping_factors_dir,
