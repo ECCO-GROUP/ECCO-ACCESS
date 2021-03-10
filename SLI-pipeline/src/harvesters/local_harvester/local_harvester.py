@@ -227,7 +227,7 @@ def harvester(config_path='', output_path='', s3=None, solr_info=''):
         item['modified_time_dt'] = mod_time_string
 
         if data_file in docs.keys():
-            item['id'] = docs[newfile]['id']
+            item['id'] = docs[data_file]['id']
 
         # If granule doesn't exist or previously failed or has been updated since last harvest
         updating = (data_file not in docs.keys()) or \
