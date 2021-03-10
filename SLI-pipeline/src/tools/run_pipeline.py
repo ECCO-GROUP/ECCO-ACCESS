@@ -211,13 +211,12 @@ def run_aggregation(datasets, path_to_preprocessing, output_dir, solr_info):
 
             sys.path.insert(1, str(path_to_code))
 
-            try:
-                ret_import = importlib.reload(ret_import)
-            except:
-                ret_import = importlib.import_module('processing')
+            ret_import = importlib.import_module('processing')
+            ret_import = importlib.reload(ret_import)
 
             ret_import.processing(config_path=config_path, output_path=output_dir,
                                   solr_info=solr_info)
+
             sys.path.remove(str(path_to_code))
             agg_logger.info(f'Aggregation successful')
             print('\033[92mAggregation successful\033[0m')
