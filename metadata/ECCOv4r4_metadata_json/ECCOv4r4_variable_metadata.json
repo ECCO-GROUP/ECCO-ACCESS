@@ -300,7 +300,7 @@
    {
       "name": "EXFatemp",
       "long_name": "Atmosphere surface (2 m) air temperature ",
-      "units": "degree_C",
+      "units": "degree_K",
       "standard_name": "air_temperature",
       "comments_1": "Surface (2 m) air temperature over open water",
       "comments_2": "Note: sum of ERA-Interim surface air temperature and the control adjustment from ocean state estimation.",
@@ -838,7 +838,7 @@
       "long_name": "Snow precipitation on sea-ice",
       "units": "kg m-2 s-1",
       "standard_name": "snowfall_flux",
-      "comments_1": "Snow precipitation rate over sea-ice, averaged over the entire model grid cell. ",
+      "comments_1": "Snow precipitation rate over sea-ice, averaged over the entire model grid cell.",
       "comments_2": "",
       "direction": ">0 increases snow thickness (HSNOW)",
       "GCMD_keywords" : "EARTH SCIENCE > ATMOSPHERE > PRECIPITATION > SOLID PRECIPITATION > SNOW",

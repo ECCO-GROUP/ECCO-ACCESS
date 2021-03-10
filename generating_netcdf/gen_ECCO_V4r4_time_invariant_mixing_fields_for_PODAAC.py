@@ -31,24 +31,19 @@ import matplotlib.pyplot as plt
 from pandas import read_csv
 reload(ecco)
 
-# uses the MITgcm simplegrid package by Greg Moore and Ian Fenty
-# https://github.com/nasa/simplegrid
-sys.path.append('/home/ifenty/git_repos_others/simplegrid')
-import simplegrid as sg
+#%%
 
 
 #%%
+# NATIVE
+plt.close('all')
+netcdf_grid_dir = Path('/home/ifenty/data/grids/grid_ECCOV4r4_20210309')
+ecco_grid_native = xr.open_dataset(netcdf_grid_dir / 'GRID_GEOMETRY_ECCO_v4r4_native_llc0090.nc')
+latlon_grid_dir = Path('/home/ifenty/data/grids/grid_ECCOV4r4_20210309')
+ecco_grid_latlon = xr.open_dataset(netcdf_grid_dir / 'GRID_GEOMETRY_ECCO_v4r4_latlon_0p50deg.nc')
 
+#%%
 output_array_precision = np.float32
-
-
-#%%
-
-summary  = 'This dataset provides geometric parameters for the lat-lon-cap 90 (llc90) native model grid from the ECCO Version 4 Release 4 (V4r4) ocean and sea-ice state estimate. Parameters include areas and lengths of grid cell sides; horizontal and vertical coordinates of grid cell centers and corners; grid rotation angles; and global domain geometry including bathymetry and land/ocean masks. Estimating the Circulation and Climate of the Ocean (ECCO) state estimates are dynamically and kinematically-consistent reconstructions of the three-dimensional, time-evolving ocean, sea-ice, and surface atmospheric states. ECCO V4r4 is a free-running solution of a global, nominally 1-degree configuration of the MIT general circulation model (MITgcm) that has been fit to observations in a least-squares sense. Observational data constraints used in V4r4 include sea surface height (SSH) from satellite altimeters [ERS-1/2, TOPEX/Poseidon, GFO, ENVISAT, Jason-1,2,3, CryoSat-2, and SARAL/AltiKa]; sea surface temperature (SST) from satellite radiometers [AVHRR], sea surface salinity (SSS) from the Aquarius satellite radiometer/scatterometer, ocean bottom pressure (OBP) from the GRACE satellite gravimeter; sea ice concentration from satellite radiometers [SSM/I and SSMIS], and in-situ ocean temperature and salinity measured with conductivity-temperature-depth (CTD) sensors and expendable bathythermographs (XBTs) from several programs [e.g., WOCE, GO-SHIP, Argo, and others] and platforms [e.g., research vessels, gliders, moorings, ice-tethered profilers, and instrumented pinnipeds]. V4r4 covers the period 1992-01-01T12:00:00 to 2018-01-01T00:00:00.'
-
-
-## GRID DIR -- MAKE SURE USE GRID FIELDS WITHOUT BLANK TILES!!
-#mds_grid_dir = Path('/Users/ifenty/tmp/no_blank_all')
 
 ## METADATA
 metadata_json_dir = Path('/home/ifenty/git_repos_others/ECCO-GROUP/ECCO-ACCESS/metadata/ECCOv4r4_metadata_json')
@@ -100,59 +95,73 @@ podaac_dataset_table = read_csv(podaac_dir / 'PODAAC_datasets-revised_20210226.4
 
 ecco_grid_dir_mds = Path('/home/ifenty/data/grids/grid_ECCOV4r4')
 
-title='ECCO V4r4 Grid Geometry for Lat-Lon-Cap 90 (llc90) Native Model Grid'
 
 
 #%%
-# LOAD TILE FILES
-mitgrid_files = list(ecco_grid_dir_mds.glob('tile*mitgrid'))
-mitgrid_tile = dict()
-mitgrid_tile[1] = sg.gridio.read_mitgridfile(ecco_grid_dir_mds / 'tile001.mitgrid', 90, 270)
-mitgrid_tile[2] = sg.gridio.read_mitgridfile(ecco_grid_dir_mds / 'tile002.mitgrid', 90, 270)
-mitgrid_tile[3] = sg.gridio.read_mitgridfile(ecco_grid_dir_mds / 'tile003.mitgrid', 90, 90)
-mitgrid_tile[4] = sg.gridio.read_mitgridfile(ecco_grid_dir_mds / 'tile004.mitgrid', 270, 90)
-mitgrid_tile[5] = sg.gridio.read_mitgridfile(ecco_grid_dir_mds / 'tile005.mitgrid', 270, 90)
 
-XG_igjg = dict()
-YG_igjg = dict()
+    # get podaac metadata based on filename
+    print('\n... getting PODAAC metadata')
+    podaac_metadata = \
+        ecco.find_podaac_metadata(podaac_dataset_table,
+                                  filename,
+                                  less_output=False)
 
-for i in range(1,6):
-    XG_igjg[i] = mitgrid_tile[i]['XG'].T
-    YG_igjg[i] = mitgrid_tile[i]['YG'].T
 
-XG_igjg_tiles = ecco.llc_ig_jg_faces_to_tiles(XG_igjg)
-YG_igjg_tiles = ecco.llc_ig_jg_faces_to_tiles(YG_igjg)
 
-XC_bnds = np.zeros((13,90,90,4))
-YC_bnds = np.zeros((13,90,90,4))
-
-for tile in range(13):
-    XC_bnds[tile,:,:,0] = XG_igjg_tiles[tile, :-1, :-1] # --
-    XC_bnds[tile,:,:,1] = XG_igjg_tiles[tile, :-1, 1:]   # -+
-    XC_bnds[tile,:,:,2] = XG_igjg_tiles[tile, 1:,  1:]   # ++
-    XC_bnds[tile,:,:,3] = XG_igjg_tiles[tile, 1:, :-1] # +-
-
-    YC_bnds[tile,:,:,0] = YG_igjg_tiles[tile, :-1, :-1] # --
-    YC_bnds[tile,:,:,1] = YG_igjg_tiles[tile, :-1, 1:]   # -+
-    YC_bnds[tile,:,:,2] = YG_igjg_tiles[tile, 1:,  1:]   # ++
-    YC_bnds[tile,:,:,3] = YG_igjg_tiles[tile, 1:, :-1] # +-
 
 #%%
-tile_coords = list(range(13))
-ij_coords = list(range(90))
-nb_coords = list(range(4))
 
-XC_bnds_DA = xr.DataArray(XC_bnds, dims=["tile","j","i","nb"],\
-                          coords=[tile_coords, ij_coords, ij_coords, nb_coords])
-YC_bnds_DA = xr.DataArray(YC_bnds, dims=["tile","j","i","nb"],\
-                          coords=[tile_coords, ij_coords, ij_coords, nb_coords])
-XC_bnds_DA.name = 'XC_bnds'
-YC_bnds_DA.name = 'YC_bnds'
-XC_YC_bnds = xr.merge([XC_bnds_DA, YC_bnds_DA])
-
-print(XC_bnds_DA)
 #%%
-file_basename = 'GRID_GEOMETRY_ECCO'
+mixing_dir = Path('/home/ifenty/ian1/ifenty/ECCOv4/binary_output/3dmixingparameters')
+kapgm_fname = 'xx_kapgm.effective.0000000129.data'
+kapredi_fname = 'xx_kapredi.effective.0000000129.data'
+diffkr_fname = 'xx_diffkr.effective.0000000129.data'
+
+#mds_var_dir,\
+#                                   mds_grid_dir = mds_grid_dir, \
+#                                   mds_files = short_mds_name,\
+#                                   vars_to_load = vars_to_load,
+
+kapgm = ecco.read_llc_to_tiles(mixing_dir, kapgm_fname, nk=50, use_xmitgcm=False)
+kapredi = ecco.read_llc_to_tiles(mixing_dir, kapredi_fname, nk=50, use_xmitgcm=False)
+diffkr = ecco.read_llc_to_tiles(mixing_dir, diffkr_fname, nk=50, use_xmitgcm=False)
+
+kapgm_DA = ecco_grid_native.hFacC.copy(deep=True)
+kapgm_DA.values = kapgm
+kapgm_DA.name = 'kapgm'
+
+kapredi_DA = ecco_grid_native.hFacC.copy(deep=True)
+kapredi_DA.values = kapredi
+kapredi_DA.name = 'kapredi'
+
+diffkr_DA = ecco_grid_native.hFacC.copy(deep=True)
+diffkr_DA.values = diffkr
+diffkr_DA.name = 'diffkr'
+
+#% Mask land
+kapgm_DA = kapgm_DA.where(ecco_grid_native.maskC == True)
+kapredi_DA = kapredi_DA.where(ecco_grid_native.maskC == True)
+diffkr_DA = diffkr_DA.where(ecco_grid_native.maskC == True)
+
+
+#%%
+#def read_llc_to_tiles(fdir, fname, llc=90, skip=0, nk=1, nl=1,
+#              	      filetype = '>f', less_output = False,
+#                      use_xmitgcm=False):
+#    """
+
+F =  ecco.load_ecco_vars_from_mds(mixing_dir,
+                             ecco_grid_dir_mds,
+                             mds_files = 'xx_kapgm.effective',
+                             vars_to_load = 'all',
+                             drop_unused_coords = False,
+                             grid_vars_to_coords = False,
+                             coordinate_metadata = geometry_metadata_for_native_datasets,
+                             variable_metadata = variable_metadata,
+                             global_metadata = global_metadata_for_all_datasets,
+                             ignore_unknown_vars=True)
+
+#%%
 
 output_dir = Path('/home/ifenty/data/grids/grid_ECCOV4r4_20210309/')
 G =ecco.create_ecco_grid_geometry_from_mds(ecco_grid_dir_mds,
@@ -529,12 +538,12 @@ if make_latlon_grid_geometry:
                             dims = 'Z', coords = [ecco_grid.Z.values])
     drF_ll_DA.name = 'drF'
 
-    #drC_ll_DA= xr.DataArray(ecco_grid.drC.values, \
-    #                        dims = 'Zp1', coords = [ecco_grid.Zp1.values])
-    #drC_ll_DA.name = 'drC'
+    drC_ll_DA= xr.DataArray(ecco_grid.drC.values, \
+                            dims = 'Zp1', coords = [ecco_grid.Zp1.values])
+    drC_ll_DA.name = 'drC'
 
     # Merge
-    ecco_grid_ll = xr.merge([A,B, area_latlon_DA, drF_ll_DA, maskC])
+    ecco_grid_ll = xr.merge([A,B, area_latlon_DA, drF_ll_DA, drC_ll_DA, maskC])
 
 
     #   assign lat and lon bounds

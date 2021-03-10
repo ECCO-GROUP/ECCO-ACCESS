@@ -39,7 +39,7 @@
    {
       "name": "latitude_bnds",
       "units": "degrees_north",
-      "long_name": "latitude bounds grid cells",
+      "long_name": "latitudes of grid cell edges",
       "grid_dimension":"2D 3D",
       "coverage_content_type": "coordinate"
    },
@@ -57,7 +57,7 @@
    {
       "name": "longitude_bnds",
       "units": "degrees_east",
-      "long_name": "longitude bounds grid cells",
+      "long_name": "longitudes of grid cell edges",
       "grid_dimension":"2D 3D",
       "coverage_content_type": "coordinate"
    },
@@ -70,6 +70,16 @@
       "axis": "Z",
       "positive": "up",
       "bounds": "Z_bnds",
+      "grid_dimension":"3D",
+      "coverage_content_type": "coordinate"
+   },
+   {
+      "name": "Zp1",
+      "standard_name": "depth",
+      "long_name": "depth of top/bottom face of tracer grid cell",
+      "comment": "Contains one element more than the number of vertical layers. First element is 0m, the depth of the top face of the uppermost grid cell. Last element is the depth of the bottom face of the deepest grid cell.",
+      "units": "m",
+      "positive" : "up",
       "grid_dimension":"3D",
       "coverage_content_type": "coordinate"
    },
