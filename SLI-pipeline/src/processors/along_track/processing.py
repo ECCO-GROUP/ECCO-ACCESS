@@ -30,7 +30,7 @@ def solr_query(config, solr_host, fq, solr_collection_name):
     getVars = {'q': '*:*',
                'fq': fq,
                'rows': 300000,
-               'sort': 'date_s asc'}
+               'sort': 'date_dt asc'}
 
     url = f'{solr_host}{solr_collection_name}/select?'
     response = requests.get(url, params=getVars)
@@ -76,7 +76,7 @@ def processing(config_path='', output_path='', solr_info=''):
 
     if solr_cycles:
         for cycle in solr_cycles:
-            cycles[cycle['start_date_s']] = cycle
+            cycles[cycle['start_date_dt']] = cycle
 
     # Generate list of cycle date tuples (start, end)
     cycle_dates = []
@@ -89,7 +89,7 @@ def processing(config_path='', output_path='', solr_info=''):
             cycle_dates.append((curr, curr + delta))
         curr += delta
 
-    var = 'ssh'
+    var = 'ssh_smoothed'
     reference_date = datetime(1985, 1, 1, 0, 0, 0)
 
     for (start_date, end_date) in cycle_dates:
@@ -100,7 +100,7 @@ def processing(config_path='', output_path='', solr_info=''):
         query_start = datetime.strftime(start_date, '%Y-%m-%dT%H:%M:%SZ')
         query_end = datetime.strftime(end_date, '%Y-%m-%dT%H:%M:%SZ')
         fq = ['type_s:harvested', f'dataset_s:{dataset_name}',
-              f'date_s:[{query_start} TO {query_end}}}']
+              f'date_dt:[{query_start} TO {query_end}}}']
 
         cycle_granules = solr_query(
             config, solr_host, fq, solr_collection_name)
@@ -119,7 +119,7 @@ def processing(config_path='', output_path='', solr_info=''):
         if cycles:
             if start_date_str in cycles.keys():
                 existing_cycle = cycles[start_date_str]
-                prior_time = existing_cycle['aggregation_time_s']
+                prior_time = existing_cycle['aggregation_time_dt']
                 prior_success = existing_cycle['aggregation_success_b']
                 prior_version = existing_cycle['aggregation_version_f']
 
@@ -168,6 +168,7 @@ def processing(config_path='', output_path='', solr_info=''):
                 # ds[var].encoding['coordinates'] = 'Longitude Latitude'
 
                 ds = ds.drop([var for var in ds.data_vars if var[0] == '_'])
+                ds = ds.drop_vars(['ssh'])
                 ds = ds.assign_coords(Time=('Time', ds.Time))
                 ds = ds.assign_coords(Latitude=ds.Latitude)
                 ds = ds.assign_coords(Longitude=ds.Longitude)
@@ -302,16 +303,16 @@ def processing(config_path='', output_path='', solr_info=''):
             item = {}
             item['type_s'] = 'cycle'
             item['dataset_s'] = dataset_name
-            item['start_date_s'] = start_date_str
+            item['start_date_dt'] = start_date_str
             # item['center_date_s'] = filename_time
-            item['end_date_s'] = end_date_str
+            item['end_date_dt'] = end_date_str
             item['granules_in_cycle_i'] = granule_count
             item['filename_s'] = filename
             item['filepath_s'] = save_path
             item['checksum_s'] = checksum
             item['file_size_l'] = file_size
             item['aggregation_success_b'] = aggregation_success
-            item['aggregation_time_s'] = datetime.utcnow().strftime(
+            item['aggregation_time_dt'] = datetime.utcnow().strftime(
                 "%Y-%m-%dT%H:%M:%S")
             item['aggregation_version_f'] = version
             if start_date_str in cycles.keys():
