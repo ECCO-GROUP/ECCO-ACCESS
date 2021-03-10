@@ -661,7 +661,7 @@ if __name__ == "__main__":
     G = []
 
     product_type = '1D'
-    output_dir_base = Path('/home/ifenty/tmp/1D_20210306')
+    output_dir_base = Path('/home/ifenty/tmp/1D_20210307')
     if not output_dir_base.exists():
         output_dir_base.mkdir()
 
@@ -865,6 +865,20 @@ tmp = Gs[3]
 for dvi, dv in enumerate(Gs[3].data_vars):
     axs[dvi].plot(Gs[3].time[1:], Gs[3][dv][1:])
     axs[dvi].set_title(dv, fontsize=10, y=1, pad=-14)
+    axs[dvi].yaxis.get_offset_text().set_fontsize(6)
+
+plt.tight_layout()
+
+
+
+plt.close(12)
+fig, axs = plt.subplots(6,5,num=11,figsize=(26,20), sharex=True, clear=True)
+axs = axs.ravel()
+tmp = Gs[3]
+for dvi, dv in enumerate(Gs[3].data_vars):
+    tmp = np.mean(Gs[3][dv][1:].values)
+    axs[dvi].plot(Gs[3].time[1:], Gs[3][dv][1:] - tmp)
+    axs[dvi].set_title( dv + ' mean =' + str('%10.3e' % tmp), fontsize=10, y=1, pad=-14)
     axs[dvi].yaxis.get_offset_text().set_fontsize(6)
 
 plt.tight_layout()
