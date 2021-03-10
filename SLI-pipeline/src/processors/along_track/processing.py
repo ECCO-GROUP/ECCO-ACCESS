@@ -304,7 +304,7 @@ def processing(config_path='', output_path='', solr_info=''):
             item['type_s'] = 'cycle'
             item['dataset_s'] = dataset_name
             item['start_date_dt'] = start_date_str
-            # item['center_date_s'] = filename_time
+            item['center_date_dt'] = filename_time
             item['end_date_dt'] = end_date_str
             item['granules_in_cycle_i'] = granule_count
             item['filename_s'] = filename
