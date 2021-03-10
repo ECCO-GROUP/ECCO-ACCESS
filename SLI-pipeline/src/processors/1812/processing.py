@@ -72,7 +72,7 @@ def processing(config_path='', output_path='', solr_info=''):
 
     if solr_cycles:
         for cycle in solr_cycles:
-            cycles[cycle['start_date_s']] = cycle
+            cycles[cycle['start_date_dt']] = cycle
 
     # Generate list of cycle date tuples (start, end)
     # Dataset ends at roughly 2019-02-01
@@ -87,22 +87,38 @@ def processing(config_path='', output_path='', solr_info=''):
 
     var = 'SLA'
 
+    # 1812 dataset only uses one granule per cycle
     for (start_date, end_date) in cycle_dates:
 
         start_date_str = datetime.strftime(start_date, date_regex)
         end_date_str = datetime.strftime(end_date, date_regex)
+        center_time = start_date + ((end_date - start_date)/2)
+        center_time_str = datetime.strftime(center_time, '%Y-%m-%dT%H:%M:%SZ')
 
+        # Find the granule with date closest to center of cycle
+        # Uses special Solr query function to automatically return granules in proximal order
         query_start = datetime.strftime(start_date, '%Y-%m-%dT%H:%M:%SZ')
         query_end = datetime.strftime(end_date, '%Y-%m-%dT%H:%M:%SZ')
         fq = ['type_s:harvested', f'dataset_s:{dataset_name}',
-              f'date_s:[{query_start} TO {query_end}}}']
+              f'date_dt:[{query_start} TO {query_end}}}']
+        bf = f'recip(abs(ms({center_time_str},date_dt)),3.16e-11,1,1)'
 
-        cycle_granules = solr_query(
-            config, solr_host, fq, solr_collection_name)
+        getVars = {'q': '*:*',
+                   'fq': fq,
+                   'bf': bf,
+                   'defType': 'edismax',
+                   'rows': 300000,
+                   'sort': 'date_s asc'}
+
+        url = f'{solr_host}{solr_collection_name}/select?'
+        response = requests.get(url, params=getVars)
+        cycle_granules = response.json()['response']['docs']
 
         if not cycle_granules:
             print(f'No granules for cycle {start_date_str} to {end_date_str}')
             continue
+
+        granule = cycle_granules[0]
 
         updating = False
 
@@ -114,17 +130,15 @@ def processing(config_path='', output_path='', solr_info=''):
         if cycles:
             if start_date_str in cycles.keys():
                 existing_cycle = cycles[start_date_str]
-                prior_time = existing_cycle['aggregation_time_s']
+                prior_time = existing_cycle['aggregation_time_dt']
                 prior_success = existing_cycle['aggregation_success_b']
                 prior_version = existing_cycle['aggregation_version_f']
 
                 if not prior_success or prior_version != version:
                     updating = True
 
-                for granule in cycle_granules:
-                    if prior_time < granule['modified_time_dt']:
-                        updating = True
-                        continue
+                if prior_time < granule['modified_time_dt']:
+                    updating = True
             else:
                 updating = True
         else:
@@ -134,48 +148,35 @@ def processing(config_path='', output_path='', solr_info=''):
             aggregation_success = False
             print(f'Processing cycle {start_date_str} to {end_date_str}')
 
-            granules = []
-
             overall_center_time = start_date + ((end_date - start_date)/2)
             overall_center_time_str = datetime.strftime(
                 overall_center_time, '%Y-%m-%dT%H:%M:%S')
             units_time = datetime.strftime(
                 overall_center_time, "%Y-%m-%d %H:%M:%S")
 
-            for granule in cycle_granules:
-                ds = xr.open_dataset(granule['granule_file_path_s'])
+            ds = xr.open_dataset(granule['granule_file_path_s'])
 
-                # Rename var to 'SSHA'
-                ds = ds.rename({var: 'SSHA'})
-
-                granules.append(ds)
+            # Rename var to 'SSHA'
+            ds = ds.rename({var: 'SSHA'})
 
             try:
-                # Merge opened granules
-                if len(granules) > 1:
+                ds.attrs = {}
+                ds.attrs['title'] = 'Sea Level Anormaly Estimate based on Altimeter Data'
 
-                    merged_cycle_ds = xr.concat((granules), dim='Time')
+                ds.attrs['cycle_start'] = start_date_str
+                ds.attrs['cycle_center'] = overall_center_time_str
+                ds.attrs['cycle_end'] = end_date_str
 
-                else:
-                    merged_cycle_ds = granules[0]
-
-                merged_cycle_ds.attrs = {}
-                merged_cycle_ds.attrs['title'] = 'Sea Level Anormaly Estimate based on Altimeter Data'
-
-                merged_cycle_ds.attrs['cycle_start'] = start_date_str
-                merged_cycle_ds.attrs['cycle_center'] = overall_center_time_str
-                merged_cycle_ds.attrs['cycle_end'] = end_date_str
-
-                data_time_start = merged_cycle_ds.Time_bounds.values[0][0]
-                data_time_end = merged_cycle_ds.Time_bounds.values[-1][1]
+                data_time_start = ds.Time_bounds.values[0][0]
+                data_time_end = ds.Time_bounds.values[-1][1]
                 data_time_center = data_time_start + \
                     ((data_time_end - data_time_start)/2)
 
-                merged_cycle_ds.attrs['data_time_start'] = np.datetime_as_string(
+                ds.attrs['data_time_start'] = np.datetime_as_string(
                     data_time_start, unit='s')
-                merged_cycle_ds.attrs['data_time_center'] = np.datetime_as_string(
+                ds.attrs['data_time_center'] = np.datetime_as_string(
                     data_time_center, unit='s')
-                merged_cycle_ds.attrs['data_time_end'] = np.datetime_as_string(
+                ds.attrs['data_time_end'] = np.datetime_as_string(
                     data_time_end, unit='s')
 
                 # Center time
@@ -184,10 +185,8 @@ def processing(config_path='', output_path='', solr_info=''):
                 filename = f'sla_{filename_time}.nc'
 
                 # Var Attributes
-                merged_cycle_ds['SSHA'].attrs['valid_min'] = np.nanmin(
-                    merged_cycle_ds['SSHA'].values)
-                merged_cycle_ds['SSHA'].attrs['valid_max'] = np.nanmax(
-                    merged_cycle_ds['SSHA'].values)
+                ds['SSHA'].attrs['valid_min'] = np.nanmin(ds['SSHA'].values)
+                ds['SSHA'].attrs['valid_max'] = np.nanmax(ds['SSHA'].values)
 
                 encoding_each = {'zlib': True,
                                  'complevel': 5,
@@ -196,7 +195,7 @@ def processing(config_path='', output_path='', solr_info=''):
                                  '_FillValue': default_fillvals['f8']}
 
                 coord_encoding = {}
-                for coord in merged_cycle_ds.coords:
+                for coord in ds.coords:
                     coord_encoding[coord] = {'_FillValue': None,
                                              'dtype': 'float32',
                                              'complevel': 6}
@@ -220,8 +219,7 @@ def processing(config_path='', output_path='', solr_info=''):
                         coord_encoding[coord] = {'_FillValue': None,
                                                  'dtype': 'float32'}
 
-                var_encoding = {
-                    var: encoding_each for var in merged_cycle_ds.data_vars}
+                var_encoding = {var: encoding_each for var in ds.data_vars}
 
                 encoding = {**coord_encoding, **var_encoding}
 
@@ -233,7 +231,7 @@ def processing(config_path='', output_path='', solr_info=''):
                     os.makedirs(save_dir)
 
                 # Save to netcdf
-                merged_cycle_ds.to_netcdf(save_path, encoding=encoding)
+                ds.to_netcdf(save_path, encoding=encoding)
                 checksum = md5(save_path)
                 file_size = os.path.getsize(save_path)
                 aggregation_success = True
@@ -249,15 +247,15 @@ def processing(config_path='', output_path='', solr_info=''):
             item = {}
             item['type_s'] = 'cycle'
             item['dataset_s'] = dataset_name
-            item['start_date_s'] = start_date_str
-            item['center_date_s'] = overall_center_time_str
-            item['end_date_s'] = end_date_str
+            item['start_date_dt'] = start_date_str
+            item['center_date_dt'] = overall_center_time_str
+            item['end_date_dt'] = end_date_str
             item['filename_s'] = filename
             item['filepath_s'] = save_path
             item['checksum_s'] = checksum
             item['file_size_l'] = file_size
             item['aggregation_success_b'] = aggregation_success
-            item['aggregation_time_s'] = datetime.utcnow().strftime(
+            item['aggregation_time_dt'] = datetime.utcnow().strftime(
                 "%Y-%m-%dT%H:%M:%S")
             item['aggregation_version_f'] = version
             if start_date_str in cycles.keys():
