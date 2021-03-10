@@ -93,12 +93,12 @@ def processing(config_path='', output_path='', solr_info=''):
         start_date_str = datetime.strftime(start_date, date_regex)
         end_date_str = datetime.strftime(end_date, date_regex)
         center_time = start_date + ((end_date - start_date)/2)
-        center_time_str = datetime.strftime(center_time, '%Y-%m-%dT%H:%M:%SZ')
+        center_time_str = datetime.strftime(center_time, date_regex + 'Z')
 
         # Find the granule with date closest to center of cycle
         # Uses special Solr query function to automatically return granules in proximal order
-        query_start = datetime.strftime(start_date, '%Y-%m-%dT%H:%M:%SZ')
-        query_end = datetime.strftime(end_date, '%Y-%m-%dT%H:%M:%SZ')
+        query_start = datetime.strftime(start_date, f'{date_regex}Z')
+        query_end = datetime.strftime(end_date, f'{date_regex}Z')
         fq = ['type_s:harvested', f'dataset_s:{dataset_name}',
               f'date_dt:[{query_start} TO {query_end}}}']
         bf = f'recip(abs(ms({center_time_str},date_dt)),3.16e-11,1,1)'
@@ -128,8 +128,8 @@ def processing(config_path='', output_path='', solr_info=''):
         # - has a different version than what is in the config
         # reaggregate the entire cycle
         if cycles:
-            if start_date_str in cycles.keys():
-                existing_cycle = cycles[start_date_str]
+            if start_date_str + 'Z' in cycles.keys():
+                existing_cycle = cycles[start_date_str + 'Z']
                 prior_time = existing_cycle['aggregation_time_dt']
                 prior_success = existing_cycle['aggregation_success_b']
                 prior_version = existing_cycle['aggregation_version_f']
@@ -150,7 +150,7 @@ def processing(config_path='', output_path='', solr_info=''):
 
             overall_center_time = start_date + ((end_date - start_date)/2)
             overall_center_time_str = datetime.strftime(
-                overall_center_time, '%Y-%m-%dT%H:%M:%S')
+                overall_center_time, date_regex)
             units_time = datetime.strftime(
                 overall_center_time, "%Y-%m-%d %H:%M:%S")
 
@@ -248,15 +248,14 @@ def processing(config_path='', output_path='', solr_info=''):
             item['type_s'] = 'cycle'
             item['dataset_s'] = dataset_name
             item['start_date_dt'] = start_date_str
-            item['center_date_dt'] = overall_center_time_str
+            item['center_date_dt'] = center_time_str
             item['end_date_dt'] = end_date_str
             item['filename_s'] = filename
             item['filepath_s'] = save_path
             item['checksum_s'] = checksum
             item['file_size_l'] = file_size
             item['aggregation_success_b'] = aggregation_success
-            item['aggregation_time_dt'] = datetime.utcnow().strftime(
-                "%Y-%m-%dT%H:%M:%S")
+            item['aggregation_time_dt'] = datetime.utcnow().strftime(date_regex)
             item['aggregation_version_f'] = version
             if start_date_str in cycles.keys():
                 item['id'] = cycles[start_date_str]['id']
