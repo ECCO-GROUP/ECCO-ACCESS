@@ -220,7 +220,7 @@ def harvester(config_path='', output_path='', s3=None, solr_info=''):
         # Granule metadata used for Solr harvested entries
         item = {}
         item['type_s'] = 'harvested'
-        item['date_s'] = date_start_str
+        item['date_dt'] = date_start_str
         item['dataset_s'] = dataset_name
         item['filename_s'] = data_file
         item['source_s'] = 'Locally stored file'
@@ -343,12 +343,12 @@ def harvester(config_path='', output_path='', s3=None, solr_info=''):
         # Query for dates of all harvested docs
         getVars = {'q': '*:*',
                    'fq': [f'dataset_s:{dataset_name}', 'type_s:harvested', 'harvest_success_b:true'],
-                   'fl': 'date_s',
+                   'fl': 'date_dt',
                    'rows': 300000}
 
         url = f'{solr_host}{solr_collection_name}/select?'
         response = requests.get(url, params=getVars)
-        dates = [x['date_s'] for x in response.json()['response']['docs']]
+        dates = [x['date_dt'] for x in response.json()['response']['docs']]
 
         # Build update document body
         update_doc = {}
