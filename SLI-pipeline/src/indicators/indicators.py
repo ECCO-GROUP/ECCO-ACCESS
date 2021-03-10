@@ -1,21 +1,14 @@
 import os
-import sys
-import gzip
 import yaml
-import shutil
 import hashlib
 import logging
 import requests
 import pandas as pd
-from collections import defaultdict
-from requests.auth import HTTPBasicAuth
-from netCDF4 import default_fillvals
 import numpy as np
 import xarray as xr
-from pathlib import Path
-from xml.etree.ElementTree import parse
 from datetime import datetime, timedelta
-from urllib.request import urlopen, urlcleanup, urlretrieve
+from collections import defaultdict
+from netCDF4 import default_fillvals
 
 log = logging.getLogger(__name__)
 
@@ -161,12 +154,10 @@ def indicators(config_path='', output_path='', s3=None, solr_info=''):
             attrs=indicator_ds.attrs
         )
 
-        print(indicator_ds)
-
     else:
         times = pd.date_range(start='1992-01-01',
                               end=datetime.today(), freq='1D')
-        data = [default_fillvals['f8']]*len(times)
+        data = [np.nan]*len(times)
 
         indicator_ds = xr.Dataset(
             {
@@ -189,6 +180,30 @@ def indicators(config_path='', output_path='', s3=None, solr_info=''):
             indicator_ds.Index.loc[{"Time": time}] = value
 
             # dict(time=slice("2000-01-01", "2000-01-02"))
+
+    # NetCDF encoding
+    encoding_each = {'zlib': True,
+                     'complevel': 5,
+                     'dtype': 'float32',
+                     'shuffle': True,
+                     '_FillValue': default_fillvals['f8']}
+
+    coord_encoding = {}
+    for coord in indicator_ds.coords:
+        coord_encoding[coord] = {'_FillValue': None,
+                                 'dtype': 'float32',
+                                 'complevel': 6}
+
+        if 'Time' in coord:
+            coord_encoding[coord] = {'_FillValue': None,
+                                     'zlib': True,
+                                     'contiguous': False,
+                                     'shuffle': False}
+
+    var_encoding = {
+        var: encoding_each for var in indicator_ds.data_vars}
+
+    encoding = {**coord_encoding, **var_encoding}
 
     indicator_ds.to_netcdf(output_path + filename)
 
