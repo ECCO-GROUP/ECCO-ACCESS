@@ -17,71 +17,6 @@ from urllib.request import urlopen, urlcleanup, urlretrieve
 log = logging.getLogger(__name__)
 
 
-def clean_solr(config, solr_host, grids_to_use, solr_collection_name):
-    """
-    Remove harvested entries in Solr for dates outside of config date range. 
-    Also remove related aggregations, and force aggregation rerun for those years.
-    """
-    dataset_name = config['ds_name']
-    config_start = config['start']
-    config_end = config['end']
-
-    # Query for grids
-    if not grids_to_use:
-        fq = ['type_s:grid']
-        docs = solr_query(config, solr_host, fq, solr_collection_name)
-        grids = [doc['grid_name_s'] for doc in docs]
-    else:
-        grids = grids_to_use
-
-    # Convert config dates to Solr format
-    config_start = f'{config_start[:4]}-{config_start[4:6]}-{config_start[6:]}'
-    config_end = f'{config_end[:4]}-{config_end[4:6]}-{config_end[6:]}'
-
-    fq = [f'type_s:dataset', f'dataset_s:{dataset_name}']
-    dataset_metadata = solr_query(config, solr_host, fq, solr_collection_name)
-
-    if not dataset_metadata:
-        return
-    else:
-        dataset_metadata = dataset_metadata[0]
-
-    print(
-        f'Removing Solr documents related to dates outside of configuration start and end dates: \n\t{config_start} to {config_end}.\n')
-
-    # Remove entries earlier than config start date
-    fq = f'dataset_s:{dataset_name} AND date_s:[* TO {config_start}}}'
-    url = f'{solr_host}{solr_collection_name}/update?commit=true'
-    requests.post(url, json={'delete': {'query': fq}})
-
-    # Remove entries later than config end date
-    fq = f'dataset_s:{dataset_name} AND date_s:{{{config_end} TO *]'
-    url = f'{solr_host}{solr_collection_name}/update?commit=true'
-    requests.post(url, json={'delete': {'query': fq}})
-
-    # Forces the bounding years to be re-aggregated to account for potential
-    # removed dates
-    start_year = config_start[:4]
-    end_year = config_end[:4]
-    update_body = [{"id": dataset_metadata['id']}]
-
-    for grid in grids:
-        solr_grid_years = f'{grid}_years_updated_ss'
-        if solr_grid_years in dataset_metadata.keys():
-            years = dataset_metadata[solr_grid_years]
-        else:
-            years = []
-        if start_year not in years:
-            years.append(start_year)
-        if end_year not in years:
-            years.append(end_year)
-
-        update_body[0][solr_grid_years] = {"set": years}
-
-    if grids:
-        solr_update(config, solr_host, update_body, solr_collection_name)
-
-
 def md5(fname):
     """
     Creates md5 checksum from file
@@ -262,7 +197,7 @@ def harvester(config_path='', output_path='', s3=None, solr_info=''):
                 # Granule metadata used for Solr harvested entries
                 item = {}
                 item['type_s'] = 'harvested'
-                item['date_s'] = date_start_str
+                item['date_dt'] = date_start_str
                 item['dataset_s'] = dataset_name
                 item['filename_s'] = newfile
                 item['source_s'] = link
@@ -442,12 +377,12 @@ def harvester(config_path='', output_path='', s3=None, solr_info=''):
         # Query for dates of all harvested docs
         getVars = {'q': '*:*',
                    'fq': [f'dataset_s:{dataset_name}', 'type_s:harvested', 'harvest_success_b:true'],
-                   'fl': 'date_s',
+                   'fl': 'date_dt',
                    'rows': 300000}
 
         url = f'{solr_host}{solr_collection_name}/select?'
         response = requests.get(url, params=getVars)
-        dates = [x['date_s'] for x in response.json()['response']['docs']]
+        dates = [x['date_dt'] for x in response.json()['response']['docs']]
 
         # Build update document body
         update_doc = {}
