@@ -191,7 +191,7 @@ def processing(config_path='', output_path='', solr_info=''):
 
     if solr_cycles:
         for cycle in solr_cycles:
-            cycles[cycle['start_date_s']] = cycle
+            cycles[cycle['start_date_dt']] = cycle
 
     # Generate list of cycle date tuples (start, end)
     cycle_dates = []
@@ -238,7 +238,7 @@ def processing(config_path='', output_path='', solr_info=''):
         if cycles:
             if start_date_str in cycles.keys():
                 existing_cycle = cycles[start_date_str]
-                prior_time = existing_cycle['aggregation_time_s']
+                prior_time = existing_cycle['aggregation_time_dt']
                 prior_success = existing_cycle['aggregation_success_b']
                 prior_version = existing_cycle['aggregation_version_f']
 
@@ -446,16 +446,16 @@ def processing(config_path='', output_path='', solr_info=''):
             item = {}
             item['type_s'] = 'cycle'
             item['dataset_s'] = dataset_name
-            item['start_date_s'] = start_date_str
-            item['center_date_s'] = filename_time
-            item['end_date_s'] = end_date_str
+            item['start_date_dt'] = start_date_str
+            item['center_date_dt'] = filename_time
+            item['end_date_dt'] = end_date_str
             item['granules_in_cycle_i'] = granule_count
             item['filename_s'] = filename
             item['filepath_s'] = save_path
             item['checksum_s'] = checksum
             item['file_size_l'] = file_size
             item['aggregation_success_b'] = aggregation_success
-            item['aggregation_time_s'] = datetime.utcnow().strftime(
+            item['aggregation_time_dt'] = datetime.utcnow().strftime(
                 "%Y-%m-%dT%H:%M:%S")
             item['aggregation_version_f'] = version
             if start_date_str in cycles.keys():
