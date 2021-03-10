@@ -96,6 +96,8 @@ def processing(config_path='', output_path='', solr_info=''):
 
         start_date_str = datetime.strftime(start_date, date_regex)
         end_date_str = datetime.strftime(end_date, date_regex)
+        cycle_center_time = start_date + ((end_date - start_date)/2)
+        center_time_str = datetime.strftime(cycle_center_time, date_regex)
 
         query_start = datetime.strftime(start_date, '%Y-%m-%dT%H:%M:%SZ')
         query_end = datetime.strftime(end_date, '%Y-%m-%dT%H:%M:%SZ')
@@ -117,8 +119,10 @@ def processing(config_path='', output_path='', solr_info=''):
         # - has a different version than what is in the config
         # reaggregate the entire cycle
         if cycles:
-            if start_date_str in cycles.keys():
-                existing_cycle = cycles[start_date_str]
+
+            if start_date_str + 'Z' in cycles.keys():
+                existing_cycle = cycles[start_date_str + 'Z']
+
                 prior_time = existing_cycle['aggregation_time_dt']
                 prior_success = existing_cycle['aggregation_success_b']
                 prior_version = existing_cycle['aggregation_version_f']
@@ -143,11 +147,8 @@ def processing(config_path='', output_path='', solr_info=''):
             data_start_time = None
             data_end_time = None
 
-            overall_center_time = start_date + ((end_date - start_date)/2)
-            overall_center_time_str = datetime.strftime(
-                overall_center_time, '%Y-%m-%dT%H:%M:%S')
             units_time = datetime.strftime(
-                overall_center_time, "%Y-%m-%d %H:%M:%S")
+                cycle_center_time, "%Y-%m-%d %H:%M:%S")
 
             for granule in cycle_granules:
                 ds = xr.open_dataset(
@@ -199,7 +200,6 @@ def processing(config_path='', output_path='', solr_info=''):
                 # Center time
                 data_center_time = data_start_time + \
                     ((data_end_time - data_start_time)/2)
-                cycle_center_time = start_date + ((end_date - start_date)/2)
 
                 filename_time = datetime.strftime(
                     cycle_center_time, '%Y%m%dT%H%M%S')
@@ -220,8 +220,7 @@ def processing(config_path='', output_path='', solr_info=''):
                 merged_cycle_ds.attrs['title'] = 'Ten day aggregated GPSOGDR - Reduced dataset'
 
                 merged_cycle_ds.attrs['cycle_start'] = start_date_str
-                merged_cycle_ds.attrs['cycle_center'] = datetime.strftime(
-                    cycle_center_time, date_regex)
+                merged_cycle_ds.attrs['cycle_center'] = center_time_str
                 merged_cycle_ds.attrs['cycle_end'] = end_date_str
 
                 merged_cycle_ds.attrs['data_time_start'] = str(data_start_time)[
@@ -304,7 +303,7 @@ def processing(config_path='', output_path='', solr_info=''):
             item['type_s'] = 'cycle'
             item['dataset_s'] = dataset_name
             item['start_date_dt'] = start_date_str
-            item['center_date_dt'] = filename_time
+            item['center_date_dt'] = center_time_str
             item['end_date_dt'] = end_date_str
             item['granules_in_cycle_i'] = granule_count
             item['filename_s'] = filename
