@@ -63,6 +63,7 @@ def processing(config_path='', output_path='', solr_info=''):
     solr_host = config['solr_host_local']
     solr_collection_name = config['solr_collection_name']
     date_regex = '%Y-%m-%dT%H:%M:%S'
+    solr_regex = f'{date_regex}Z'
 
     # Query for dataset metadata
     fq = ['type_s:dataset', f'dataset_s:{dataset_name}']
@@ -99,8 +100,8 @@ def processing(config_path='', output_path='', solr_info=''):
         cycle_center_time = start_date + ((end_date - start_date)/2)
         center_time_str = datetime.strftime(cycle_center_time, date_regex)
 
-        query_start = datetime.strftime(start_date, '%Y-%m-%dT%H:%M:%SZ')
-        query_end = datetime.strftime(end_date, '%Y-%m-%dT%H:%M:%SZ')
+        query_start = datetime.strftime(start_date, solr_regex)
+        query_end = datetime.strftime(end_date, solr_regex)
         fq = ['type_s:harvested', f'dataset_s:{dataset_name}',
               f'date_dt:[{query_start} TO {query_end}}}']
 
@@ -146,9 +147,6 @@ def processing(config_path='', output_path='', solr_info=''):
             granules = []
             data_start_time = None
             data_end_time = None
-
-            units_time = datetime.strftime(
-                cycle_center_time, "%Y-%m-%d %H:%M:%S")
 
             for granule in cycle_granules:
                 ds = xr.open_dataset(
@@ -311,8 +309,7 @@ def processing(config_path='', output_path='', solr_info=''):
             item['checksum_s'] = checksum
             item['file_size_l'] = file_size
             item['aggregation_success_b'] = aggregation_success
-            item['aggregation_time_dt'] = datetime.utcnow().strftime(
-                "%Y-%m-%dT%H:%M:%S")
+            item['aggregation_time_dt'] = datetime.utcnow().strftime(date_regex)
             item['aggregation_version_f'] = version
             if start_date_str in cycles.keys():
                 item['id'] = cycles[start_date_str]['id']

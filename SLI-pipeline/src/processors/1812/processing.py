@@ -63,6 +63,7 @@ def processing(config_path='', output_path='', solr_info=''):
     solr_host = config['solr_host_local']
     solr_collection_name = config['solr_collection_name']
     date_regex = '%Y-%m-%dT%H:%M:%S'
+    solr_regex = f'{date_regex}Z'
 
     # Query for all existing cycles in Solr
     fq = ['type_s:cycle', f'dataset_s:{dataset_name}']
@@ -93,12 +94,12 @@ def processing(config_path='', output_path='', solr_info=''):
         start_date_str = datetime.strftime(start_date, date_regex)
         end_date_str = datetime.strftime(end_date, date_regex)
         center_time = start_date + ((end_date - start_date)/2)
-        center_time_str = datetime.strftime(center_time, date_regex + 'Z')
+        center_time_str = datetime.strftime(center_time, solr_regex)
 
         # Find the granule with date closest to center of cycle
         # Uses special Solr query function to automatically return granules in proximal order
-        query_start = datetime.strftime(start_date, f'{date_regex}Z')
-        query_end = datetime.strftime(end_date, f'{date_regex}Z')
+        query_start = datetime.strftime(start_date, solr_regex)
+        query_end = datetime.strftime(end_date, solr_regex)
         fq = ['type_s:harvested', f'dataset_s:{dataset_name}',
               f'date_dt:[{query_start} TO {query_end}}}']
         bf = f'recip(abs(ms({center_time_str},date_dt)),3.16e-11,1,1)'
@@ -148,11 +149,7 @@ def processing(config_path='', output_path='', solr_info=''):
             aggregation_success = False
             print(f'Processing cycle {start_date_str} to {end_date_str}')
 
-            overall_center_time = start_date + ((end_date - start_date)/2)
-            overall_center_time_str = datetime.strftime(
-                overall_center_time, date_regex)
-            units_time = datetime.strftime(
-                overall_center_time, "%Y-%m-%d %H:%M:%S")
+            units_time = datetime.strftime(center_time, "%Y-%m-%d %H:%M:%S")
 
             ds = xr.open_dataset(granule['granule_file_path_s'])
 
@@ -164,7 +161,7 @@ def processing(config_path='', output_path='', solr_info=''):
                 ds.attrs['title'] = 'Sea Level Anormaly Estimate based on Altimeter Data'
 
                 ds.attrs['cycle_start'] = start_date_str
-                ds.attrs['cycle_center'] = overall_center_time_str
+                ds.attrs['cycle_center'] = center_time_str
                 ds.attrs['cycle_end'] = end_date_str
 
                 data_time_start = ds.Time_bounds.values[0][0]
