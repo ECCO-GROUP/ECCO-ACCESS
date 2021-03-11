@@ -24,14 +24,6 @@ def create_parser():
     parser.add_argument('--output_dir', default=False, action='store_true',
                         help='runs prompt to select pipeline output directory')
 
-    parser.add_argument('--single_processing', default=False, action='store_true',
-                        help='turns off the use of multiprocessing during transformation')
-
-    parser.add_argument('--multiprocesses', type=int, choices=range(1, cpu_count()+1),
-                        default=int(cpu_count()/2), metavar=f'[1, {cpu_count()}]',
-                        help=f'sets the number of multiprocesses used during transformation with a \
-                            system max of {cpu_count()} with default set to half of system max')
-
     parser.add_argument('--harvested_entry_validation', default=False, nargs='*',
                         help='verifies each Solr harvester entry points to a valid file. if no args given, defaults to \
                             hard coded Solr address. Otherwise takes two args: Solr host url and collection name')
@@ -39,10 +31,6 @@ def create_parser():
     parser.add_argument('--wipe_transformations', default=False, action='store_true',
                         help='deletes transformations with version number different than what is \
                             currently in transformation_config')
-
-    parser.add_argument('--developer_solr', default=False, nargs='*',
-                        help='Uses provided Solr host url and collection name for all Solr entries. if no args given, defaults to \
-                            hard coded Solr host url and collection name in configuration files. Otherwise takes two args: Solr host url and collection name')
 
     return parser
 
@@ -134,7 +122,7 @@ def print_log(log_path):
                     print(f'\t\t\033[91m{message}\033[0m')
 
 
-def run_harvester(datasets, path_to_harvesters, output_dir, solr_info):
+def run_harvester(datasets, path_to_harvesters, output_dir):
     print('\n=========================================================')
     print(
         '================== \033[36mRunning harvesters\033[0m ===================')
@@ -175,8 +163,7 @@ def run_harvester(datasets, path_to_harvesters, output_dir, solr_info):
                     ret_import = importlib.import_module(harvester)
 
                 ret_import.harvester(config_path=config_path,
-                                     output_path=output_dir,
-                                     solr_info=solr_info)
+                                     output_path=output_dir)
                 sys.path.remove(str(path_to_code))
 
             harv_logger.info(f'Harvest successful')
@@ -188,7 +175,7 @@ def run_harvester(datasets, path_to_harvesters, output_dir, solr_info):
         print('=========================================================')
 
 
-def run_aggregation(datasets, path_to_preprocessing, output_dir, solr_info):
+def run_aggregation(datasets, path_to_preprocessing, output_dir):
     print('\n=========================================================')
     print(
         '================ \033[36mRunning aggregations\033[0m ===================')
@@ -214,8 +201,8 @@ def run_aggregation(datasets, path_to_preprocessing, output_dir, solr_info):
             ret_import = importlib.import_module('processing')
             ret_import = importlib.reload(ret_import)
 
-            ret_import.processing(config_path=config_path, output_path=output_dir,
-                                  solr_info=solr_info)
+            ret_import.processing(config_path=config_path,
+                                  output_path=output_dir)
 
             sys.path.remove(str(path_to_code))
             agg_logger.info(f'Aggregation successful')
@@ -248,13 +235,6 @@ if __name__ == '__main__':
     if isinstance(args.harvested_entry_validation, list) and len(args.harvested_entry_validation) in [0, 2]:
         harvested_entry_validation(args=args.harvested_entry_validation)
 
-    # ------------------- Developer Solr -------------------
-    if isinstance(args.developer_solr, list) and len(args.developer_solr) in [0, 2]:
-        solr_info = {
-            'solr_url': args.developer_solr[0], 'solr_collection_name': args.developer_solr[1]}
-    else:
-        solr_info = ''
-
     # ------------------- Output directory -------------------
     if args.output_dir or not output_dir:
         print('\nPlease choose your output directory')
@@ -272,15 +252,6 @@ if __name__ == '__main__':
             print(f'{output_dir} is an invalid output directory. Exiting.')
             sys.exit()
     print(f'\nUsing output directory: {output_dir}')
-
-    # # ------------------- Multiprocessing -------------------
-    # multiprocessing = not args.single_processing
-    # user_cpus = args.multiprocesses
-
-    # if multiprocessing:
-    #     print(f'Using {user_cpus} processes for multiprocess transformations')
-    # else:
-    #     print('Using single process transformations')
 
     # ------------------- Run pipeline -------------------
     while True:
@@ -326,18 +297,18 @@ if __name__ == '__main__':
     # Run all
     if chosen_option == '1':
         for ds in datasets:
-            run_harvester([ds], path_to_harvesters, output_dir, solr_info)
-            run_aggregation([ds], path_to_preprocessing, output_dir, solr_info)
+            run_harvester([ds], path_to_harvesters, output_dir)
+            run_aggregation([ds], path_to_preprocessing, output_dir)
 
     # Run harvester
     elif chosen_option == '2':
         for ds in datasets:
-            run_harvester([ds], path_to_harvesters, output_dir, solr_info)
+            run_harvester([ds], path_to_harvesters, output_dir)
 
     # Run aggregation
     elif chosen_option == '3':
         for ds in datasets:
-            run_aggregation([ds], path_to_preprocessing, output_dir, solr_info)
+            run_aggregation([ds], path_to_preprocessing, output_dir)
 
     # Manually enter dataset and pipeline step(s)
     elif chosen_option == '4':
@@ -374,15 +345,11 @@ if __name__ == '__main__':
         wanted_steps = steps_dict[int(steps_index)]
 
         if 'harvest' in wanted_steps:
-            run_harvester([wanted_ds], path_to_harvesters,
-                          output_dir, solr_info)
+            run_harvester([wanted_ds], path_to_harvesters, output_dir)
         if 'aggregate' in wanted_steps:
-            run_aggregation([wanted_ds], path_to_preprocessing,
-                            output_dir, solr_info)
+            run_aggregation([wanted_ds], path_to_preprocessing, output_dir)
         if wanted_steps == 'all':
-            run_harvester([wanted_ds], path_to_harvesters,
-                          output_dir, solr_info)
-            run_aggregation([wanted_ds], path_to_preprocessing,
-                            output_dir, solr_info)
+            run_harvester([wanted_ds], path_to_harvesters, output_dir)
+            run_aggregation([wanted_ds], path_to_preprocessing, output_dir)
 
     print_log(logger_path)

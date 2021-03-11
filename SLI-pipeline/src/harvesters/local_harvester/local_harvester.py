@@ -93,11 +93,14 @@ def md5(fname):
     return hash_md5.hexdigest()
 
 
-def solr_query(config, solr_host, fq, solr_collection_name):
+def solr_query(config, fq):
     """
     Queries Solr database using the filter query passed in.
     Returns list of Solr entries that satisfies the query.
     """
+
+    solr_host = config['solr_host_local']
+    solr_collection_name = config['solr_collection_name']
 
     getVars = {'q': '*:*',
                'fq': fq,
@@ -108,13 +111,16 @@ def solr_query(config, solr_host, fq, solr_collection_name):
     return response.json()['response']['docs']
 
 
-def solr_update(config, solr_host, update_body, solr_collection_name, r=False):
+def solr_update(config, update_body, r=False):
     """
     Posts an update to Solr database with the update body passed in.
     For each item in update_body, a new entry is created in Solr, unless
     that entry contains an id, in which case that entry is updated with new values.
     Optional return of the request status code (ex: 200 for success)
     """
+
+    solr_host = config['solr_host_local']
+    solr_collection_name = config['solr_collection_name']
 
     url = f'{solr_host}{solr_collection_name}/update?commit=true'
 
@@ -124,7 +130,7 @@ def solr_update(config, solr_host, update_body, solr_collection_name, r=False):
         requests.post(url, json=update_body)
 
 
-def harvester(config_path='', output_path='', s3=None, solr_info=''):
+def harvester(config_path='', output_path=''):
     """
     Pulls data files for PODAAC id and date range given in harvester_config.yaml.
     Creates (or updates) Solr entries for dataset and harvested granules.
@@ -166,12 +172,8 @@ def harvester(config_path='', output_path='', s3=None, solr_info=''):
     now = datetime.utcnow()
     updating = False
 
-    if solr_info:
-        solr_host = solr_info['solr_url']
-        solr_collection_name = solr_info['solr_collection_name']
-    else:
-        solr_host = config['solr_host_local']
-        solr_collection_name = config['solr_collection_name']
+    solr_host = config['solr_host_local']
+    solr_collection_name = config['solr_collection_name']
     # clean_solr(config, solr_host, grids_to_use, solr_collection_name)
     print(f'Adding {dataset_name} files in {target_dir} to Solr.\n')
 
@@ -182,7 +184,7 @@ def harvester(config_path='', output_path='', s3=None, solr_info=''):
 
     # Query for existing harvested docs
     fq = ['type_s:harvested', f'dataset_s:{dataset_name}']
-    harvested_docs = solr_query(config, solr_host, fq, solr_collection_name)
+    harvested_docs = solr_query(config, fq)
 
     # Dictionary of existing harvested docs
     # harvested doc filename : solr entry for that doc
@@ -259,8 +261,7 @@ def harvester(config_path='', output_path='', s3=None, solr_info=''):
     # Only update Solr harvested entries if there are fresh downloads
     if entries_for_solr:
         # Update Solr with downloaded granule metadata entries
-        r = solr_update(config, solr_host, entries_for_solr,
-                        solr_collection_name, r=True)
+        r = solr_update(config, entries_for_solr, r=True)
         if r.status_code == 200:
             print('Successfully created or updated Solr harvested documents')
         else:
@@ -269,13 +270,12 @@ def harvester(config_path='', output_path='', s3=None, solr_info=''):
     # Query for Solr failed harvest documents
     fq = ['type_s:harvested', f'dataset_s:{dataset_name}',
           f'harvest_success_b:false']
-    failed_harvesting = solr_query(config, solr_host, fq, solr_collection_name)
+    failed_harvesting = solr_query(config, fq)
 
     # Query for Solr successful harvest documents
     fq = ['type_s:harvested',
           f'dataset_s:{dataset_name}', f'harvest_success_b:true']
-    successful_harvesting = solr_query(
-        config, solr_host, fq, solr_collection_name)
+    successful_harvesting = solr_query(config, fq)
 
     harvest_status = f'All granules successfully harvested'
 
@@ -289,7 +289,7 @@ def harvester(config_path='', output_path='', s3=None, solr_info=''):
 
     # Query for Solr Dataset-level Document
     fq = ['type_s:dataset', f'dataset_s:{dataset_name}']
-    dataset_query = solr_query(config, solr_host, fq, solr_collection_name)
+    dataset_query = solr_query(config, fq)
 
     # If dataset entry exists on Solr
     update = (len(dataset_query) == 1)
@@ -325,8 +325,7 @@ def harvester(config_path='', output_path='', s3=None, solr_info=''):
         ds_meta['harvest_status_s'] = harvest_status
 
         # Update Solr with dataset metadata
-        r = solr_update(config, solr_host, [ds_meta],
-                        solr_collection_name, r=True)
+        r = solr_update(config, [ds_meta], r=True)
 
         if r.status_code == 200:
             print('Successfully created Solr dataset document')
@@ -366,8 +365,7 @@ def harvester(config_path='', output_path='', s3=None, solr_info=''):
                     "set": last_success_item['download_time_dt']}
 
         # Update Solr with modified dataset entry
-        r = solr_update(config, solr_host, [
-                        update_doc], solr_collection_name, r=True)
+        r = solr_update(config, [update_doc], r=True)
 
         if r.status_code == 200:
             print('Successfully updated Solr dataset document\n')

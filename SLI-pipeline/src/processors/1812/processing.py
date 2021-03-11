@@ -21,11 +21,14 @@ def md5(fname):
     return hash_md5.hexdigest()
 
 
-def solr_query(config, solr_host, fq, solr_collection_name):
+def solr_query(config, fq):
     """
     Queries Solr database using the filter query passed in.
     Returns list of Solr entries that satisfies the query.
     """
+
+    solr_host = config['solr_host_local']
+    solr_collection_name = config['solr_collection_name']
 
     getVars = {'q': '*:*',
                'fq': fq,
@@ -37,13 +40,16 @@ def solr_query(config, solr_host, fq, solr_collection_name):
     return response.json()['response']['docs']
 
 
-def solr_update(config, solr_host, update_body, solr_collection_name, r=False):
+def solr_update(config, update_body, r=False):
     """
     Posts an update to Solr database with the update body passed in.
     For each item in update_body, a new entry is created in Solr, unless
     that entry contains an id, in which case that entry is updated with new values.
     Optional return of the request status code (ex: 200 for success)
     """
+
+    solr_host = config['solr_host_local']
+    solr_collection_name = config['solr_collection_name']
 
     url = f'{solr_host}{solr_collection_name}/update?commit=true'
 
@@ -53,7 +59,7 @@ def solr_update(config, solr_host, update_body, solr_collection_name, r=False):
         requests.post(url, json=update_body)
 
 
-def processing(config_path='', output_path='', solr_info=''):
+def processing(config_path='', output_path=''):
 
     with open(config_path, "r") as stream:
         config = yaml.load(stream, yaml.Loader)
@@ -67,7 +73,7 @@ def processing(config_path='', output_path='', solr_info=''):
 
     # Query for all existing cycles in Solr
     fq = ['type_s:cycle', f'dataset_s:{dataset_name}']
-    solr_cycles = solr_query(config, solr_host, fq, solr_collection_name)
+    solr_cycles = solr_query(config, fq)
 
     cycles = {}
 
@@ -257,8 +263,7 @@ def processing(config_path='', output_path='', solr_info=''):
             if start_date_str in cycles.keys():
                 item['id'] = cycles[start_date_str]['id']
 
-            r = solr_update(config, solr_host, [
-                            item], solr_collection_name, r=True)
+            r = solr_update(config, [item], r=True)
             if r.status_code == 200:
                 print('\tSuccessfully created or updated Solr cycle documents')
 
@@ -269,15 +274,13 @@ def processing(config_path='', output_path='', solr_info=''):
                     else:
                         fq = [
                             'type_s:cycle', f'dataset_s:{dataset_name}', f'filename_s:{filename}']
-                        cycle_doc = solr_query(
-                            config, solr_host, fq, solr_collection_name)
+                        cycle_doc = solr_query(config, fq)
                         cycle_id = cycle_doc[0]['id']
 
                     for granule in cycle_granules:
                         granule['cycle_id_s'] = cycle_id
 
-                    r = solr_update(
-                        config, solr_host, cycle_granules, solr_collection_name, r=True)
+                    r = solr_update(config, cycle_granules, r=True)
 
             else:
                 print('\tFailed to create Solr cycle documents')
