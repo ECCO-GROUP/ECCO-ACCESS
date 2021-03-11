@@ -313,7 +313,7 @@ def processing(config_path='', output_path=''):
             item['filepath_s'] = save_path
             item['checksum_s'] = checksum
             item['file_size_l'] = file_size
-            item['processing_success_b'] = processingn_success
+            item['processing_success_b'] = processing_success
             item['processing_time_dt'] = datetime.utcnow().strftime(date_regex)
             item['processing_version_f'] = version
             if start_date_str in cycles.keys():
