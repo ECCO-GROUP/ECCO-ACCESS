@@ -24,13 +24,12 @@ def create_parser():
     parser.add_argument('--output_dir', default=False, action='store_true',
                         help='runs prompt to select pipeline output directory')
 
+    parser.add_argument('--options_menu', default=False, action='store_true',
+                        help='Display the option menu to select which steps in the pipeline to run.')
+
     parser.add_argument('--harvested_entry_validation', default=False, nargs='*',
                         help='verifies each Solr harvester entry points to a valid file. if no args given, defaults to \
                             hard coded Solr address. Otherwise takes two args: Solr host url and collection name')
-
-    parser.add_argument('--wipe_transformations', default=False, action='store_true',
-                        help='deletes transformations with version number different than what is \
-                            currently in transformation_config')
 
     return parser
 
@@ -163,11 +162,11 @@ def run_harvester(datasets, path_to_harvesters, output_dir):
                                      output_path=output_dir)
                 sys.path.remove(str(path_to_code))
 
-            harv_logger.info(f'Harvest successful')
+            harv_logger.info(f'Harvesting successful')
             print('\033[92mHarvest successful\033[0m')
         except Exception as e:
             sys.path.remove(str(path_to_code))
-            harv_logger.info(f'Harvest failed: {e}')
+            harv_logger.info(f'Harvesting failed: {e}')
             print('\033[91mHarvesting failed\033[0m')
         print('=========================================================')
 
@@ -250,20 +249,25 @@ if __name__ == '__main__':
     print(f'\nUsing output directory: {output_dir}')
 
     # ------------------- Run pipeline -------------------
-    while True:
-        print('\n------------- OPTIONS -------------')
-        print('1) Harvest and process all datasets')
-        print('2) Harvest all datasets')
-        print('3) Process all datasets')
-        print('4) Dataset input')
-        chosen_option = input('Enter option number: ')
 
-        if chosen_option in ['1', '2', '3', '4']:
-            break
-        else:
-            print(
-                f'Unknown option entered, "{chosen_option}", please enter a valid option\n'
-            )
+    if args.options_menu:
+
+        while True:
+            print('\n------------- OPTIONS -------------')
+            print('1) Harvest and process all datasets')
+            print('2) Harvest all datasets')
+            print('3) Process all datasets')
+            print('4) Dataset input')
+            chosen_option = input('Enter option number: ')
+
+            if chosen_option in ['1', '2', '3', '4']:
+                break
+            else:
+                print(
+                    f'Unknown option entered, "{chosen_option}", please enter a valid option\n'
+                )
+    else:
+        chosen_option = '1'
 
     # Initialize logger
     logger_path = f'{output_dir}/pipeline.log'
@@ -287,8 +291,6 @@ if __name__ == '__main__':
     logger.addHandler(ch)
 
     datasets = [ds for ds in os.listdir(path_to_datasets) if ds != '.DS_Store']
-
-    wipe = args.wipe_transformations
 
     # Run all
     if chosen_option == '1':
