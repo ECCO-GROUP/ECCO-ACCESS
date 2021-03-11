@@ -123,15 +123,15 @@ def processing(config_path='', output_path=''):
         # - has been updated,
         # - previously failed,
         # - has a different version than what is in the config
-        # reaggregate the entire cycle
+        # reprocess the entire cycle
         if cycles:
 
             if start_date_str + 'Z' in cycles.keys():
                 existing_cycle = cycles[start_date_str + 'Z']
 
-                prior_time = existing_cycle['aggregation_time_dt']
-                prior_success = existing_cycle['aggregation_success_b']
-                prior_version = existing_cycle['aggregation_version_f']
+                prior_time = existing_cycle['processing_time_dt']
+                prior_success = existing_cycle['processing_success_b']
+                prior_version = existing_cycle['processing_version_f']
 
                 if not prior_success or prior_version != version:
                     updating = True
@@ -146,7 +146,7 @@ def processing(config_path='', output_path=''):
             updating = True
 
         if updating:
-            aggregation_success = False
+            processing_success = False
             print(f'Processing cycle {start_date_str} to {end_date_str}')
 
             granules = []
@@ -220,7 +220,7 @@ def processing(config_path='', output_path=''):
 
                 # Global Attributes
                 merged_cycle_ds.attrs = {}
-                merged_cycle_ds.attrs['title'] = 'Ten day aggregated GPSOGDR - Reduced dataset'
+                merged_cycle_ds.attrs['title'] = 'Sea Level Anormaly Estimate based on Altimeter Data'
 
                 merged_cycle_ds.attrs['cycle_start'] = start_date_str
                 merged_cycle_ds.attrs['cycle_center'] = center_time_str
@@ -279,7 +279,7 @@ def processing(config_path='', output_path=''):
 
                 encoding = {**coord_encoding, **var_encoding}
 
-                save_dir = f'{output_path}{dataset_name}/aggregated_products/'
+                save_dir = f'{output_path}{dataset_name}/cycle_products/'
                 save_path = f'{save_dir}{filename}'
 
                 # If paths don't exist, make them
@@ -290,7 +290,7 @@ def processing(config_path='', output_path=''):
                 merged_cycle_ds.to_netcdf(save_path, encoding=encoding)
                 checksum = md5(save_path)
                 file_size = os.path.getsize(save_path)
-                aggregation_success = True
+                processing_success = True
                 granule_count = len(granules)
 
             except Exception as e:
@@ -313,9 +313,9 @@ def processing(config_path='', output_path=''):
             item['filepath_s'] = save_path
             item['checksum_s'] = checksum
             item['file_size_l'] = file_size
-            item['aggregation_success_b'] = aggregation_success
-            item['aggregation_time_dt'] = datetime.utcnow().strftime(date_regex)
-            item['aggregation_version_f'] = version
+            item['processing_success_b'] = processingn_success
+            item['processing_time_dt'] = datetime.utcnow().strftime(date_regex)
+            item['processing_version_f'] = version
             if start_date_str in cycles.keys():
                 item['id'] = cycles[start_date_str]['id']
 
@@ -324,7 +324,7 @@ def processing(config_path='', output_path=''):
                 print('\tSuccessfully created or updated Solr cycle documents')
 
                 # Give harvested documents the id of the corresponding cycle document
-                if aggregation_success:
+                if processing_success:
                     if 'id' in item.keys():
                         cycle_id = item['id']
                     else:
@@ -343,8 +343,28 @@ def processing(config_path='', output_path=''):
         else:
             print(f'No updates for cycle {start_date_str} to {end_date_str}')
 
-        # Quit before most recent cycle (insufficient data)
-        if current_date < end_date + delta:
-            print(
-                f'Insufficient data for complete {start_date + delta} to {end_date + delta} cycle')
-            break
+    # Query for Solr failed harvest documents
+    fq = ['type_s:cycle',
+          f'dataset_s:{dataset_name}', f'processing_success_b:false']
+    failed_processing = solr_query(config, fq)
+
+    if not failed_processing:
+        processing_status = f'All cycles successfully processed'
+    else:
+        # Query for Solr successful harvest documents
+        fq = ['type_s:cycle',
+              f'dataset_s:{dataset_name}', f'processing_success_b:true']
+        successful_processing = solr_query(config, fq)
+
+        if not successful_processing:
+            processing_status = f'No cycles successfully processed (either all failed or no granules to process)'
+        else:
+            processing_status = f'{len(failed_harvesting)} harvested granules failed'
+
+    ds_metadata['processing_status_s'] = {"set": processing_status}
+    r = solr_update(config, [ds_metadata], r=True)
+
+    if r.status_code == 200:
+        print('Successfully updated Solr dataset document\n')
+    else:
+        print('Failed to update Solr dataset document\n')
