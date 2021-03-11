@@ -90,7 +90,7 @@ def print_log(log_path):
     # Must add info level items first
     for d in log_dict:
         ds = d['name'].replace('pipeline.', '').replace(
-            '.harvester', '').replace('.aggregation', '')
+            '.harvester', '').replace('.processing', '')
         preprocessing_step = d['name'].replace(
             'pipeline.', '').replace(f'{ds}.', '')
         if len(ds) > 0:
@@ -100,7 +100,7 @@ def print_log(log_path):
     # Then add errors
     for d in log_dict:
         ds = d['name'].replace('pipeline.', '').replace(
-            '.harvester', '').replace('.aggregation', '')
+            '.harvester', '').replace('.processing', '')
         preprocessing_step = d['name'].replace(
             'pipeline.', '').replace(f'{ds}.', '')
         if len(ds) > 0:
@@ -150,10 +150,7 @@ def run_harvester(datasets, path_to_harvesters, output_dir):
                 path_to_code = Path(
                     f'{path_to_harvesters}/{harvester_type}_harvester/')
 
-                if harvester_type == 'podaac':
-                    harvester = 'podaac_harvester'
-                elif harvester_type == 'local':
-                    harvester = 'local_harvester'
+                harvester = f'{harvester_type}_harvester'
 
                 sys.path.insert(1, str(path_to_code))
 
@@ -175,15 +172,15 @@ def run_harvester(datasets, path_to_harvesters, output_dir):
         print('=========================================================')
 
 
-def run_aggregation(datasets, path_to_preprocessing, output_dir):
+def run_processing(datasets, path_to_processors, output_dir):
     print('\n=========================================================')
     print(
-        '================ \033[36mRunning aggregations\033[0m ===================')
+        '================ \033[36mRunning processing\033[0m ===================')
     print('=========================================================\n')
     for ds in datasets:
-        agg_logger = logging.getLogger(f'pipeline.{ds}.aggregation')
+        agg_logger = logging.getLogger(f'pipeline.{ds}.processing')
         try:
-            print(f'\033[93mRunning aggregation for {ds}\033[0m')
+            print(f'\033[93mRunning processing for {ds}\033[0m')
             print('=========================================================')
             config_path = Path(
                 f'{Path(__file__).resolve().parents[2]}/datasets/{ds}/processing_config.yaml'
@@ -194,7 +191,7 @@ def run_aggregation(datasets, path_to_preprocessing, output_dir):
 
             processor = config['processor']
 
-            path_to_code = Path(f'{path_to_preprocessing}/{processor}')
+            path_to_code = Path(f'{path_to_processors}/{processor}')
 
             sys.path.insert(1, str(path_to_code))
 
@@ -205,13 +202,13 @@ def run_aggregation(datasets, path_to_preprocessing, output_dir):
                                   output_path=output_dir)
 
             sys.path.remove(str(path_to_code))
-            agg_logger.info(f'Aggregation successful')
-            print('\033[92mAggregation successful\033[0m')
+            agg_logger.info(f'Processing successful')
+            print('\033[92mProcessing successful\033[0m')
         except Exception as e:
             print(e)
             sys.path.remove(str(path_to_code))
-            agg_logger.info(f'Aggregation failed: {e}')
-            print('\033[91mAggregation failed\033[0m')
+            agg_logger.info(f'Processing failed: {e}')
+            print('\033[91mProcessing failed\033[0m')
         print('=========================================================')
 
 
@@ -227,8 +224,7 @@ if __name__ == '__main__':
     pipeline_path = Path(__file__).resolve()
 
     path_to_harvesters = Path(f'{pipeline_path.parents[1]}/harvesters')
-    path_to_preprocessing = Path(
-        f'{pipeline_path.parents[1]}/processors')
+    path_to_processors = Path(f'{pipeline_path.parents[1]}/processors')
     path_to_datasets = Path(f'{pipeline_path.parents[2]}/datasets')
 
     # ------------------- Harvested Entry Validation -------------------
@@ -298,17 +294,21 @@ if __name__ == '__main__':
     if chosen_option == '1':
         for ds in datasets:
             run_harvester([ds], path_to_harvesters, output_dir)
-            run_aggregation([ds], path_to_preprocessing, output_dir)
+            run_processing([ds], path_to_processors, output_dir)
+        # Run indexing here:
+        # run_indexing()
 
     # Run harvester
     elif chosen_option == '2':
         for ds in datasets:
             run_harvester([ds], path_to_harvesters, output_dir)
 
-    # Run aggregation
+    # Run processing
     elif chosen_option == '3':
         for ds in datasets:
-            run_aggregation([ds], path_to_preprocessing, output_dir)
+            run_processing([ds], path_to_processors, output_dir)
+        # Run indexing here:
+        # run_indexing()
 
     # Manually enter dataset and pipeline step(s)
     elif chosen_option == '4':
@@ -347,9 +347,13 @@ if __name__ == '__main__':
         if 'harvest' in wanted_steps:
             run_harvester([wanted_ds], path_to_harvesters, output_dir)
         if 'aggregate' in wanted_steps:
-            run_aggregation([wanted_ds], path_to_preprocessing, output_dir)
+            run_processing([wanted_ds], path_to_processors, output_dir)
+            # Run indexing here:
+            # run_indexing()
         if wanted_steps == 'all':
             run_harvester([wanted_ds], path_to_harvesters, output_dir)
-            run_aggregation([wanted_ds], path_to_preprocessing, output_dir)
+            run_processing([wanted_ds], path_to_processors, output_dir)
+            # Run indexing here:
+            # run_indexing()
 
     print_log(logger_path)
