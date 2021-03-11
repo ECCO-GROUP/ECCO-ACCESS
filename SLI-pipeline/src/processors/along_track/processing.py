@@ -94,12 +94,10 @@ def processing(config_path='', output_path=''):
 
     curr = start_date
     while curr < end_date:
-        curr_str = datetime.strftime(curr, date_regex)
-        curr_delta_str = datetime.strftime(curr + delta, date_regex)
 
-        if curr_str >= ds_metadata['start_date_dt']:
+        if datetime.strftime(curr + delta, date_regex) >= ds_metadata['start_date_dt']:
             cycle_dates.append((curr, curr + delta))
-        if curr_delta_str > ds_metadata['end_date_dt']:
+        if datetime.strftime(curr + delta, date_regex) > ds_metadata['end_date_dt']:
             break
 
         curr += delta
