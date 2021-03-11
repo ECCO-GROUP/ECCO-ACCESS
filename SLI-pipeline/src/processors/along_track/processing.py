@@ -87,13 +87,21 @@ def processing(config_path='', output_path=''):
 
     # Generate list of cycle date tuples (start, end)
     cycle_dates = []
-    current_date = datetime.utcnow()
+
     start_date = datetime.strptime('1992-01-01T00:00:00', date_regex)
+    end_date = datetime.utcnow()
     delta = timedelta(days=10)
+
     curr = start_date
-    while curr < current_date:
-        if datetime.strftime(curr, date_regex) > '2016':
+    while curr < end_date:
+        curr_str = datetime.strftime(curr, date_regex)
+        curr_delta_str = datetime.strftime(curr + delta, date_regex)
+
+        if curr_str >= ds_metadata['start_date_dt']:
             cycle_dates.append((curr, curr + delta))
+        if curr_delta_str > ds_metadata['end_date_dt']:
+            break
+
         curr += delta
 
     var = 'ssh_smoothed'
@@ -101,14 +109,16 @@ def processing(config_path='', output_path=''):
 
     for (start_date, end_date) in cycle_dates:
 
+        # Make strings for cycle start, center, and end dates
         start_date_str = datetime.strftime(start_date, date_regex)
         end_date_str = datetime.strftime(end_date, date_regex)
         cycle_center_time = start_date + ((end_date - start_date)/2)
         center_time_str = datetime.strftime(cycle_center_time, date_regex)
 
+        # Get granules within start_date and end_date
         query_start = datetime.strftime(start_date, solr_regex)
         query_end = datetime.strftime(end_date, solr_regex)
-        fq = ['type_s:harvested', f'dataset_s:{dataset_name}',
+        fq = ['type_s:harvested', f'dataset_s:{dataset_name}', 'harvest_success_b:true',
               f'date_dt:[{query_start} TO {query_end}}}']
 
         cycle_granules = solr_query(config, fq)
@@ -237,11 +247,6 @@ def processing(config_path='', output_path=''):
                 merged_cycle_ds.attrs['original_dataset_short_name'] = ds_metadata['original_dataset_short_name_s']
                 merged_cycle_ds.attrs['original_dataset_url'] = ds_metadata['original_dataset_url_s']
                 merged_cycle_ds.attrs['original_dataset_reference'] = ds_metadata['original_dataset_reference_s']
-
-                # Unify var, dims, coords
-                # merged_cycle_ds = merged_cycle_ds.rename({var: 'SSHA'})
-                # merged_cycle_ds = merged_cycle_ds.rename_dims({'time': 'Time'})
-                # merged_cycle_ds = merged_cycle_ds.rename({'time': 'Time'})
 
                 # NetCDF encoding
                 encoding_each = {'zlib': True,
