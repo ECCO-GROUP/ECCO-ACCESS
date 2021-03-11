@@ -447,23 +447,35 @@ def processing(config_path='', output_path=''):
                 file_size = 0
                 granule_count = 0
 
-            # Add cycle to Solr
-            item = {}
-            item['type_s'] = 'cycle'
-            item['dataset_s'] = dataset_name
-            item['start_date_dt'] = start_date_str
-            item['center_date_dt'] = center_time_str
-            item['end_date_dt'] = end_date_str
-            item['granules_in_cycle_i'] = granule_count
-            item['filename_s'] = filename
-            item['filepath_s'] = save_path
-            item['checksum_s'] = checksum
-            item['file_size_l'] = file_size
-            item['processing_success_b'] = processing_success
-            item['processing_time_dt'] = datetime.utcnow().strftime(date_regex)
-            item['processing_version_f'] = version
-            if start_date_str in cycles.keys():
-                item['id'] = cycles[start_date_str]['id']
+            # Add or update Solr cycle
+            # Update cycle entry
+            if start_date_str + 'Z' in cycles.keys():
+                item = cycles[start_date_str + 'Z']
+                item['granules_in_cycle_i'] = {"set": granule_count}
+                item['filename_s'] = {"set": filename}
+                item['filepath_s'] = {"set": save_path}
+                item['checksum_s'] = {"set": checksum}
+                item['file_size_l'] = {"set": file_size}
+                item['processing_success_b'] = {"set": processing_success}
+                item['processing_time_dt'] = {
+                    "set": datetime.utcnow().strftime(solr_regex)}
+                item['processing_version_f'] = {"set": version}
+            # Make new entry
+            else:
+                item = {}
+                item['type_s'] = 'cycle'
+                item['dataset_s'] = dataset_name
+                item['start_date_dt'] = start_date_str
+                item['center_date_dt'] = center_time_str
+                item['end_date_dt'] = end_date_str
+                item['granules_in_cycle_i'] = granule_count
+                item['filename_s'] = filename
+                item['filepath_s'] = save_path
+                item['checksum_s'] = checksum
+                item['file_size_l'] = file_size
+                item['processing_success_b'] = processing_success
+                item['processing_time_dt'] = datetime.utcnow().strftime(date_regex)
+                item['processing_version_f'] = version
 
             r = solr_update(config, [item], r=True)
             if r.status_code == 200:
@@ -505,7 +517,7 @@ def processing(config_path='', output_path=''):
         if not successful_processing:
             processing_status = f'No cycles successfully processed (either all failed or no granules to process)'
         else:
-            processing_status = f'{len(failed_harvesting)} harvested granules failed'
+            processing_status = f'{len(failed_harvesting)} cycles failed'
 
     ds_metadata['processing_status_s'] = {"set": processing_status}
     r = solr_update(config, [ds_metadata], r=True)
