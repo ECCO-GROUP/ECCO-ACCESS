@@ -178,7 +178,7 @@ def run_processing(datasets, path_to_processors, output_dir):
         '================ \033[36mRunning processing\033[0m ===================')
     print('=========================================================\n')
     for ds in datasets:
-        agg_logger = logging.getLogger(f'pipeline.{ds}.processing')
+        proc_logger = logging.getLogger(f'pipeline.{ds}.processing')
         try:
             print(f'\033[93mRunning processing for {ds}\033[0m')
             print('=========================================================')
@@ -202,12 +202,12 @@ def run_processing(datasets, path_to_processors, output_dir):
                                   output_path=output_dir)
 
             sys.path.remove(str(path_to_code))
-            agg_logger.info(f'Processing successful')
+            proc_logger.info(f'Processing successful')
             print('\033[92mProcessing successful\033[0m')
         except Exception as e:
             print(e)
             sys.path.remove(str(path_to_code))
-            agg_logger.info(f'Processing failed: {e}')
+            proc_logger.info(f'Processing failed: {e}')
             print('\033[91mProcessing failed\033[0m')
         print('=========================================================')
 
@@ -252,9 +252,9 @@ if __name__ == '__main__':
     # ------------------- Run pipeline -------------------
     while True:
         print('\n------------- OPTIONS -------------')
-        print('1) Harvest and aggregate all datasets')
+        print('1) Harvest and process all datasets')
         print('2) Harvest all datasets')
-        print('3) Aggregate all datasets')
+        print('3) Process all datasets')
         print('4) Dataset input')
         chosen_option = input('Enter option number: ')
 
@@ -328,7 +328,7 @@ if __name__ == '__main__':
         wanted_ds = ds_dict[int(ds_index)]
         print(f'\nUsing {wanted_ds} dataset')
 
-        steps = ['harvest', 'aggregate', 'all']
+        steps = ['harvest', 'process', 'all']
         steps_dict = {i: step for i, step in enumerate(steps, start=1)}
         while True:
             print(f'\nAvailable steps:\n')
@@ -346,7 +346,7 @@ if __name__ == '__main__':
 
         if 'harvest' in wanted_steps:
             run_harvester([wanted_ds], path_to_harvesters, output_dir)
-        if 'aggregate' in wanted_steps:
+        if 'process' in wanted_steps:
             run_processing([wanted_ds], path_to_processors, output_dir)
             # Run indexing here:
             # run_indexing()
