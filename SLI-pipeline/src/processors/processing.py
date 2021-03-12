@@ -176,9 +176,9 @@ def process_1812(cycle_granules, ds_metadata, cycle_dates):
     return cycle_ds, 1
 
 
-def process_shalin()
-   def testing(ds, var):
-        time_da = ds.Time
+def process_shalin(cycle_granules, ds_metadata, cycle_dates):
+    def testing(ds, var):
+        time_da = ds.time
         ssha_da = ds.ssha
         var_da = ds[var]
 
@@ -288,7 +288,8 @@ def process_shalin()
              'rad_rain_flag', 'ice_flag', 'rad_sea_ice_flag', 'rad_surf_type',
              'surface_type', 'alt_quality_flag', 'rad_quality_flag',
              'geophysical_quality_flag', 'ecmwf_meteo_map_avail']
-
+    var = 'gps_ssha'
+    tests = ['Mean', 'RMS', 'STD', 'Offset', 'Amplitude']
     granules = []
     data_start_time = None
     data_end_time = None
@@ -308,9 +309,9 @@ def process_shalin()
             uses_groups = True
 
             ds = xr.open_dataset(granule['granule_file_path_s'],
-                                    group='data_01/ku')
+                                 group='data_01/ku')
             ds_flags = xr.open_dataset(granule['granule_file_path_s'],
-                                        group='data_01')
+                                       group='data_01')
 
             ds_flags = ds_flags.rename({'longitude': 'Longitude'})
             ds_flags = ds_flags.rename({'latitude': 'Latitude'})
@@ -337,32 +338,32 @@ def process_shalin()
                         continue
 
                     ds[var].values = np.where(ds_flags[flag].values == 0,
-                                                ds[var].values,
-                                                default_fillvals['f8'])
+                                              ds[var].values,
+                                              default_fillvals['f8'])
                 else:
                     if np.isnan(ds[flag].values).all():
                         continue
                     ds[var].values = np.where(ds[flag].values == 0,
-                                                ds[var].values,
-                                                default_fillvals['f8'])
+                                              ds[var].values,
+                                              default_fillvals['f8'])
 
         # Replace nans with fill value
         ds[var].values = np.where(np.isnan(ds[var].values),
-                                    default_fillvals['f8'],
-                                    ds[var].values)
+                                  default_fillvals['f8'],
+                                  ds[var].values)
 
         keep_keys = tests + [var]
         ds = ds.drop([key for key in ds.keys()
-                        if key not in keep_keys])
+                      if key not in keep_keys])
+
+        ds = ds.rename_dims({'time': 'Time'})
+        ds = ds.rename({'time': 'Time'})
+        ds = ds.rename_vars({var: 'SSHA'})
 
         data_start_time = min(
             data_start_time, ds.Time.values[0]) if data_start_time else ds.Time.values[0]
         data_end_time = max(
             data_end_time, ds.Time.values[-1]) if data_end_time else ds.Time.values[-1]
-
-        ds = ds.rename_dims({'time': 'Time'})
-        ds = ds.rename({'time': 'Time'})
-        ds = ds.rename_vars({var: 'SSHA'})
 
         granules.append(ds)
 
@@ -371,12 +372,10 @@ def process_shalin()
 
     # Center time
     data_center_time = data_start_time + ((data_end_time - data_start_time)/2)
-    center_time = start_date + ((end_date - start_date) / 2)
-    center_time_str = datetime.strftime(center_time, date_regex)
 
     # Var Attributes
-    cycle_ds[var].attrs['valid_min'] = np.nanmin(cycle_ds[var].values)
-    cycle_ds[var].attrs['valid_max'] = np.nanmax(cycle_ds[var].values)
+    cycle_ds['SSHA'].attrs['valid_min'] = np.nanmin(cycle_ds['SSHA'].values)
+    cycle_ds['SSHA'].attrs['valid_max'] = np.nanmax(cycle_ds['SSHA'].values)
 
     # Time Attributes
     cycle_ds.Time.attrs['long_name'] = 'Time'
@@ -385,9 +384,9 @@ def process_shalin()
     cycle_ds.attrs = {}
     cycle_ds.attrs['title'] = 'Ten day aggregated GPSOGDR - Reduced dataset'
 
-    cycle_ds.attrs['cycle_start'] = start_date_str
-    cycle_ds.attrs['cycle_center'] = center_time_str
-    cycle_ds.attrs['cycle_end'] = end_date_str
+    cycle_ds.attrs['cycle_start'] = cycle_dates[0]
+    cycle_ds.attrs['cycle_center'] = cycle_dates[1]
+    cycle_ds.attrs['cycle_end'] = cycle_dates[2]
 
     cycle_ds.attrs['data_time_start'] = str(data_start_time)[:19]
     cycle_ds.attrs['data_time_center'] = str(data_center_time)[:19]
@@ -399,7 +398,6 @@ def process_shalin()
     cycle_ds.attrs['original_dataset_reference'] = ds_metadata['original_dataset_reference_s']
 
     return cycle_ds, len(granules)
-
 
 
 def processing(config_path='', output_path=''):
@@ -526,10 +524,9 @@ def processing(config_path='', output_path=''):
                      'shalin': process_shalin}
 
             try:
-                cycle_ds, granule_count = funcs[processor](
-                    cycle_granules, ds_metadata, date_strs)
-                print(cycle_ds)
-                exit()
+                cycle_ds, granule_count = funcs[processor](cycle_granules,
+                                                           ds_metadata,
+                                                           date_strs)
 
                 # NetCDF encoding
                 encoding_each = {'zlib': True,
@@ -539,7 +536,7 @@ def processing(config_path='', output_path=''):
                                  '_FillValue': default_fillvals['f8']}
 
                 coord_encoding = {}
-                for coord in merged_cycle_ds.coords:
+                for coord in cycle_ds.coords:
                     coord_encoding[coord] = {'_FillValue': None,
                                              'dtype': 'float32',
                                              'complevel': 6}
@@ -567,7 +564,7 @@ def processing(config_path='', output_path=''):
                                                  'dtype': 'float32'}
 
                 var_encoding = {
-                    var: encoding_each for var in merged_cycle_ds.data_vars}
+                    var: encoding_each for var in cycle_ds.data_vars}
 
                 encoding = {**coord_encoding, **var_encoding}
 
@@ -584,7 +581,7 @@ def processing(config_path='', output_path=''):
                     os.makedirs(save_dir)
 
                 # Save to netcdf
-                merged_cycle_ds.to_netcdf(save_path, encoding=encoding)
+                cycle_ds.to_netcdf(save_path, encoding=encoding)
                 checksum = md5(save_path)
                 file_size = os.path.getsize(save_path)
                 processing_success = True
