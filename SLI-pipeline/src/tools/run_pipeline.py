@@ -1,21 +1,18 @@
 import os
 import sys
-import yaml
 import logging
 import argparse
-import requests
 import importlib
-import numpy as np
 import tkinter as tk
 from pathlib import Path
-from shutil import copyfile
 from tkinter import filedialog
 from collections import defaultdict
-from multiprocessing import cpu_count
+import requests
+import yaml
 
 # Hardcoded output directory path for pipeline files
 # Leave blank to be prompted for an output directory
-output_dir = '/Users/kevinmarlis/Developer/JPL/sealevel_output/'
+OUTPUT_DIR = '/Users/kevinmarlis/Developer/JPL/sealevel_output/'
 
 
 def create_parser():
@@ -27,48 +24,36 @@ def create_parser():
     parser.add_argument('--options_menu', default=False, action='store_true',
                         help='Display the option menu to select which steps in the pipeline to run.')
 
-    parser.add_argument('--harvested_entry_validation', default=False, nargs='*',
-                        help='verifies each Solr harvester entry points to a valid file. if no args given, defaults to \
-                            hard coded Solr address. Otherwise takes two args: Solr host url and collection name')
+    parser.add_argument('--harvested_entry_validation', default=False,
+                        help='verifies each Solr harvester entry points to a valid file.')
 
     return parser
 
 
-def harvested_entry_validation(args=[]):
+def harvested_entry_validation():
     solr_host = 'http://localhost:8983/solr/'
     solr_collection_name = 'sealevel_datasets'
 
-    if args:
-        solr_host = args[0]
-        solr_collection_name = args[1]
+    response = requests.get(
+        f'{solr_host}{solr_collection_name}/select?fq=type_s%3Aharvested&q=*%3A*')
 
-    try:
-        response = requests.get(
-            f'{solr_host}{solr_collection_name}/select?fq=type_s%3Aharvested&q=*%3A*')
+    if response.status_code == 200:
+        docs_to_remove = []
+        harvested_docs = response.json()['response']['docs']
 
-        if response.status_code == 200:
-            docs_to_remove = []
-            harvested_docs = response.json()['response']['docs']
+        for doc in harvested_docs:
+            file_path = doc['pre_transformation_file_path_s']
+            if os.path.exists(file_path):
+                continue
+            docs_to_remove.append(doc['id'])
 
-            for doc in harvested_docs:
-                file_path = doc['pre_transformation_file_path_s']
-                if os.path.exists(file_path):
-                    continue
-                else:
-                    docs_to_remove.append(doc['id'])
+        url = f'{solr_host}{solr_collection_name}/update?commit=true'
+        requests.post(url, json={'delete': docs_to_remove})
 
-            url = f'{solr_host}{solr_collection_name}/update?commit=true'
-            requests.post(url, json={'delete': docs_to_remove})
+        print('Succesfully removed entries from Solr')
 
-            print('Succesfully removed entries from Solr')
-
-        else:
-            print('Solr not online or collection does not exist')
-            sys.exit()
-
-    except Exception as e:
-        print(e)
-        print('Bad Solr URL')
+    else:
+        print('Solr not online or collection does not exist')
         sys.exit()
 
 
@@ -81,13 +66,14 @@ def print_log(log_path):
     log_dict = []
     with open(log_path) as f:
         logs = f.read().splitlines()
-    for l in logs:
-        log_dict.append(eval(l))
+    for log in logs:
+        log_dict.append(eval(log))
 
     dataset_statuses = defaultdict(lambda: defaultdict(list))
 
     # Must add info level items first
     for d in log_dict:
+
         ds = d['name'].replace('pipeline.', '').replace(
             '.harvester', '').replace('.processing', '')
         preprocessing_step = d['name'].replace(
@@ -110,7 +96,7 @@ def print_log(log_path):
 
     for ds, steps in dataset_statuses.items():
         print(f'\033[93mPipeline status for {ds}\033[0m:')
-        for step, messages in steps.items():
+        for _, messages in steps.items():
             for (level, message) in messages:
                 if level == 'INFO':
                     if 'successful' in message:
@@ -162,11 +148,12 @@ def run_harvester(datasets, path_to_harvesters, output_dir):
                                      output_path=output_dir)
                 sys.path.remove(str(path_to_code))
 
-            harv_logger.info(f'Harvesting successful')
+            harv_logger.info('Harvesting successful')
             print('\033[92mHarvest successful\033[0m')
         except Exception as e:
             sys.path.remove(str(path_to_code))
-            harv_logger.info(f'Harvesting failed: {e}')
+            harv_logger.info('Harvesting failed: %s', e)
+
             print('\033[91mHarvesting failed\033[0m')
         print('=========================================================')
 
@@ -185,13 +172,6 @@ def run_processing(datasets, path_to_processors, output_dir):
                 f'{Path(__file__).resolve().parents[2]}/datasets/{ds}/processing_config.yaml'
             )
 
-            with open(config_path, 'r') as stream:
-                config = yaml.load(stream, yaml.Loader)
-
-            # processor = config['processor']
-
-            # path_to_code = Path(f'{path_to_processors}/{processor}')
-
             path_to_code = Path(f'{path_to_processors}')
 
             sys.path.insert(1, str(path_to_code))
@@ -203,19 +183,17 @@ def run_processing(datasets, path_to_processors, output_dir):
                                   output_path=output_dir)
 
             sys.path.remove(str(path_to_code))
-            proc_logger.info(f'Processing successful')
+            proc_logger.info('Processing successful')
             print('\033[92mProcessing successful\033[0m')
         except Exception as e:
             print(e)
             sys.path.remove(str(path_to_code))
-            proc_logger.info(f'Processing failed: {e}')
+            proc_logger.info('Processing failed: %s', e)
             print('\033[91mProcessing failed\033[0m')
         print('=========================================================')
 
 
 if __name__ == '__main__':
-    parser = create_parser()
-    args = parser.parse_args()
 
     print('\n=================================================')
     print('========= SEA LEVEL INDICATORS PIPELINE =========')
@@ -224,31 +202,34 @@ if __name__ == '__main__':
     # path to harvester and preprocessing folders
     pipeline_path = Path(__file__).resolve()
 
-    path_to_harvesters = Path(f'{pipeline_path.parents[1]}/harvesters')
-    path_to_processors = Path(f'{pipeline_path.parents[1]}/processors')
-    path_to_datasets = Path(f'{pipeline_path.parents[2]}/datasets')
+    PATH_TO_HARVESTERS = Path(f'{pipeline_path.parents[1]}/harvesters')
+    PATH_TO_PROCESSORS = Path(f'{pipeline_path.parents[1]}/processors')
+    PATH_TO_DATASETS = Path(f'{pipeline_path.parents[2]}/datasets')
+
+    PARSER = create_parser()
+    args = PARSER.parse_args()
 
     # ------------------- Harvested Entry Validation -------------------
-    if isinstance(args.harvested_entry_validation, list) and len(args.harvested_entry_validation) in [0, 2]:
-        harvested_entry_validation(args=args.harvested_entry_validation)
+    if args.harvested_entry_validation:
+        harvested_entry_validation()
 
     # ------------------- Output directory -------------------
-    if args.output_dir or not output_dir:
+    if args.output_dir or not OUTPUT_DIR:
         print('\nPlease choose your output directory')
 
         root = tk.Tk()
         root.attributes('-topmost', True)
         root.withdraw()
-        output_dir = f'{filedialog.askdirectory()}/'
+        OUTPUT_DIR = f'{filedialog.askdirectory()}/'
 
-        if output_dir == '/':
+        if OUTPUT_DIR == '/':
             print('No output directory given. Exiting.')
             sys.exit()
     else:
-        if not os.path.exists(output_dir):
-            print(f'{output_dir} is an invalid output directory. Exiting.')
+        if not os.path.exists(OUTPUT_DIR):
+            print(f'{OUTPUT_DIR} is an invalid output directory. Exiting.')
             sys.exit()
-    print(f'\nUsing output directory: {output_dir}')
+    print(f'\nUsing output directory: {OUTPUT_DIR}')
 
     # ------------------- Run pipeline -------------------
 
@@ -260,19 +241,17 @@ if __name__ == '__main__':
             print('2) Harvest all datasets')
             print('3) Process all datasets')
             print('4) Dataset input')
-            chosen_option = input('Enter option number: ')
+            CHOSEN_OPTION = input('Enter option number: ')
 
-            if chosen_option in ['1', '2', '3', '4']:
+            if CHOSEN_OPTION in ['1', '2', '3', '4']:
                 break
-            else:
-                print(
-                    f'Unknown option entered, "{chosen_option}", please enter a valid option\n'
-                )
+            print(
+                f'Unknown option entered, "{CHOSEN_OPTION}", please enter a valid option\n')
     else:
-        chosen_option = '1'
+        CHOSEN_OPTION = '1'
 
     # Initialize logger
-    logger_path = f'{output_dir}/pipeline.log'
+    logger_path = f'{OUTPUT_DIR}/pipeline.log'
     logger = logging.getLogger('pipeline')
     logger.setLevel(logging.DEBUG)
 
@@ -292,55 +271,56 @@ if __name__ == '__main__':
     ch.setFormatter(ch_formatter)
     logger.addHandler(ch)
 
-    datasets = [ds for ds in os.listdir(path_to_datasets) if ds != '.DS_Store']
+    DATASETS = [ds for ds in os.listdir(PATH_TO_DATASETS) if ds != '.DS_Store']
 
     # Run all
-    if chosen_option == '1':
-        for ds in datasets:
-            run_harvester([ds], path_to_harvesters, output_dir)
-            run_processing([ds], path_to_processors, output_dir)
+    if CHOSEN_OPTION == '1':
+        for dataset in DATASETS:
+            run_harvester([dataset], PATH_TO_HARVESTERS, OUTPUT_DIR)
+            run_processing([dataset], PATH_TO_PROCESSORS, OUTPUT_DIR)
         # Run indexing here:
         # run_indexing()
 
     # Run harvester
-    elif chosen_option == '2':
-        for ds in datasets:
-            run_harvester([ds], path_to_harvesters, output_dir)
+    elif CHOSEN_OPTION == '2':
+        for dataset in DATASETS:
+            run_harvester([dataset], PATH_TO_HARVESTERS, OUTPUT_DIR)
 
     # Run processing
-    elif chosen_option == '3':
-        for ds in datasets:
-            run_processing([ds], path_to_processors, output_dir)
+    elif CHOSEN_OPTION == '3':
+        for dataset in DATASETS:
+            run_processing([dataset], PATH_TO_PROCESSORS, OUTPUT_DIR)
         # Run indexing here:
         # run_indexing()
 
     # Manually enter dataset and pipeline step(s)
-    elif chosen_option == '4':
-        ds_dict = {i: ds for i, ds in enumerate(datasets, start=1)}
+    elif CHOSEN_OPTION == '4':
+        ds_dict = dict(enumerate(DATASETS, start=1))
         while True:
-            print(f'\nAvailable datasets:\n')
+            print('\nAvailable datasets:\n')
             for i, dataset in ds_dict.items():
                 print(f'{i}) {dataset}')
             ds_index = input('\nEnter dataset number: ')
 
-            if not ds_index.isdigit() or int(ds_index) not in range(1, len(datasets)+1):
+            if not ds_index.isdigit() or int(ds_index) not in range(1, len(DATASETS)+1):
                 print(
                     f'Invalid dataset, "{ds_index}", please enter a valid selection')
             else:
                 break
 
-        wanted_ds = ds_dict[int(ds_index)]
-        print(f'\nUsing {wanted_ds} dataset')
+        CHOSEN_DS = ds_dict[int(ds_index)]
+        print(f'\nUsing {CHOSEN_DS} dataset')
 
-        steps = ['harvest', 'process', 'all']
-        steps_dict = {i: step for i, step in enumerate(steps, start=1)}
+        STEPS = ['harvest', 'process', 'all']
+        steps_dict = dict(enumerate(STEPS, start=1))
+
         while True:
-            print(f'\nAvailable steps:\n')
+            print('\nAvailable steps:\n')
             for i, step in steps_dict.items():
                 print(f'{i}) {step}')
             steps_index = input('\nEnter pipeline step(s) number: ')
 
-            if not steps_index.isdigit() or int(steps_index) not in range(1, len(steps)+1):
+            if not steps_index.isdigit() or int(steps_index) not in range(1, len(STEPS)+1):
                 print(
                     f'Invalid step(s), "{steps_index}", please enter a valid selection')
             else:
@@ -349,14 +329,14 @@ if __name__ == '__main__':
         wanted_steps = steps_dict[int(steps_index)]
 
         if 'harvest' in wanted_steps:
-            run_harvester([wanted_ds], path_to_harvesters, output_dir)
+            run_harvester([CHOSEN_DS], PATH_TO_HARVESTERS, OUTPUT_DIR)
         if 'process' in wanted_steps:
-            run_processing([wanted_ds], path_to_processors, output_dir)
+            run_processing([CHOSEN_DS], PATH_TO_PROCESSORS, OUTPUT_DIR)
             # Run indexing here:
             # run_indexing()
         if wanted_steps == 'all':
-            run_harvester([wanted_ds], path_to_harvesters, output_dir)
-            run_processing([wanted_ds], path_to_processors, output_dir)
+            run_harvester([CHOSEN_DS], PATH_TO_HARVESTERS, OUTPUT_DIR)
+            run_processing([CHOSEN_DS], PATH_TO_PROCESSORS, OUTPUT_DIR)
             # Run indexing here:
             # run_indexing()
 
