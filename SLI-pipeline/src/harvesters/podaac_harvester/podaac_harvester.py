@@ -1,18 +1,13 @@
 import os
-import sys
-import gzip
-import yaml
-import shutil
 import hashlib
 import logging
-import requests
-from requests.auth import HTTPBasicAuth
-import numpy as np
-import xarray as xr
-from pathlib import Path
+from datetime import datetime
+from urllib.request import urlopen, urlcleanup
 from xml.etree.ElementTree import parse
-from datetime import datetime, timedelta
-from urllib.request import urlopen, urlcleanup, urlretrieve
+import requests
+import yaml
+from requests.auth import HTTPBasicAuth
+
 
 log = logging.getLogger(__name__)
 
@@ -37,16 +32,16 @@ def solr_query(config, fq):
     solr_host = config['solr_host_local']
     solr_collection_name = config['solr_collection_name']
 
-    getVars = {'q': '*:*',
-               'fq': fq,
-               'rows': 300000}
+    query_params = {'q': '*:*',
+                    'fq': fq,
+                    'rows': 300000}
 
     url = f'{solr_host}{solr_collection_name}/select?'
-    response = requests.get(url, params=getVars)
+    response = requests.get(url, params=query_params)
     return response.json()['response']['docs']
 
 
-def solr_update(config, update_body, r=False):
+def solr_update(config, update_body):
     """
     Posts an update to Solr database with the update body passed in.
     For each item in update_body, a new entry is created in Solr, unless
@@ -59,10 +54,7 @@ def solr_update(config, update_body, r=False):
 
     url = f'{solr_host}{solr_collection_name}/update?commit=true'
 
-    if r:
-        return requests.post(url, json=update_body)
-    else:
-        requests.post(url, json=update_body)
+    return requests.post(url, json=update_body)
 
 
 def harvester(config_path='', output_path=''):
@@ -147,7 +139,7 @@ def harvester(config_path='', output_path=''):
                  "dc": "http://purl.org/dc/terms/",
                  "time": "http://a9.com/-/opensearch/extensions/time/1.0/"}
 
-    next = None
+    next_page = None
     more = True
 
     # =====================================================
@@ -226,11 +218,11 @@ def harvester(config_path='', output_path=''):
 
                         urlcleanup()
                         if password:
-                            r = requests.get(
+                            resp = requests.get(
                                 link, auth=HTTPBasicAuth(name, password))
                         else:
-                            r = requests.get(link)
-                        open(local_fp, 'wb').write(r.content)
+                            resp = requests.get(link)
+                        open(local_fp, 'wb').write(resp.content)
 
                     # If file exists locally, but is out of date, download it
                     elif datetime.fromtimestamp(os.path.getmtime(local_fp)) <= mod_date_time:
@@ -238,11 +230,11 @@ def harvester(config_path='', output_path=''):
                             f' - Updating {newfile} and downloading to {local_fp}')
                         urlcleanup()
                         if password:
-                            r = requests.get(
+                            resp = requests.get(
                                 link, auth=HTTPBasicAuth(name, password))
                         else:
-                            r = requests.get(link)
-                        open(local_fp, 'wb').write(r.content)
+                            resp = requests.get(link)
+                        open(local_fp, 'wb').write(resp.content)
 
                     else:
                         print(
@@ -284,38 +276,36 @@ def harvester(config_path='', output_path=''):
                     last_success_item = item
 
         # Check if more granules are available on next page
-        # Should only need next if more than 30000 granules exist
-        # Hemispherical seaice data should have roughly 30*365*2=21900
-        next = xml.find("{%(atom)s}link[@rel='next']" % namespace)
-        if next is None:
+        next_page = xml.find("{%(atom)s}link[@rel='next']" % namespace)
+        if next_page is None:
             more = False
             print(f'\nDownloading {dataset_name} complete\n')
         else:
-            url = next.attrib['href']
+            url = next_page.attrib['href']
 
     # Only update Solr harvested entries if there are fresh downloads
     if entries_for_solr:
         # Update Solr with downloaded granule metadata entries
-        r = solr_update(config, entries_for_solr, r=True)
-        if r.status_code == 200:
+        resp = solr_update(config, entries_for_solr)
+        if resp.status_code == 200:
             print('Successfully created or updated Solr harvested documents')
         else:
             print('Failed to create Solr harvested documents')
 
     # Query for Solr failed harvest documents
     fq = ['type_s:harvested', f'dataset_s:{dataset_name}',
-          f'harvest_success_b:false']
+          'harvest_success_b:false']
     failed_harvesting = solr_query(config, fq)
 
     # Query for Solr successful harvest documents
     fq = ['type_s:harvested',
-          f'dataset_s:{dataset_name}', f'harvest_success_b:true']
+          f'dataset_s:{dataset_name}', 'harvest_success_b:true']
     successful_harvesting = solr_query(config, fq)
 
-    harvest_status = f'All granules successfully harvested'
+    harvest_status = 'All granules successfully harvested'
 
     if not successful_harvesting:
-        harvest_status = f'No usable granules harvested (either all failed or no data collected)'
+        harvest_status = 'No usable granules harvested (either all failed or no data collected)'
     elif failed_harvesting:
         harvest_status = f'{len(failed_harvesting)} harvested granules failed'
 
@@ -360,9 +350,9 @@ def harvester(config_path='', output_path=''):
         ds_meta['harvest_status_s'] = harvest_status
 
         # Update Solr with dataset metadata
-        r = solr_update(config, [ds_meta], r=True)
+        resp = solr_update(config, [ds_meta])
 
-        if r.status_code == 200:
+        if resp.status_code == 200:
             print('Successfully created Solr dataset document')
         else:
             print('Failed to create Solr dataset document')
@@ -375,13 +365,13 @@ def harvester(config_path='', output_path=''):
         dataset_metadata = dataset_query[0]
 
         # Query for dates of all harvested docs
-        getVars = {'q': '*:*',
-                   'fq': [f'dataset_s:{dataset_name}', 'type_s:harvested', 'harvest_success_b:true'],
-                   'fl': 'date_dt',
-                   'rows': 300000}
+        query_params = {'q': '*:*',
+                        'fq': [f'dataset_s:{dataset_name}', 'type_s:harvested', 'harvest_success_b:true'],
+                        'fl': 'date_dt',
+                        'rows': 300000}
 
         url = f'{solr_host}{solr_collection_name}/select?'
-        response = requests.get(url, params=getVars)
+        response = requests.get(url, params=query_params)
         dates = [x['date_dt'] for x in response.json()['response']['docs']]
 
         # Build update document body
@@ -400,9 +390,9 @@ def harvester(config_path='', output_path=''):
                     "set": last_success_item['download_time_dt']}
 
         # Update Solr with modified dataset entry
-        r = solr_update(config, [update_doc], r=True)
+        resp = solr_update(config, [update_doc])
 
-        if r.status_code == 200:
+        if resp.status_code == 200:
             print('Successfully updated Solr dataset document\n')
         else:
             print('Failed to update Solr dataset document\n')
