@@ -1,12 +1,10 @@
 import os
-import sys
+import hashlib
+from datetime import datetime, timedelta
 import yaml
 import requests
-import hashlib
-import logging
 import numpy as np
 import xarray as xr
-from datetime import datetime, timedelta
 from netCDF4 import default_fillvals  # pylint: disable=no-name-in-module
 
 
@@ -30,17 +28,17 @@ def solr_query(config, fq):
     solr_host = config['solr_host_local']
     solr_collection_name = config['solr_collection_name']
 
-    getVars = {'q': '*:*',
-               'fq': fq,
-               'rows': 300000,
-               'sort': 'date_dt asc'}
+    query_params = {'q': '*:*',
+                    'fq': fq,
+                    'rows': 300000,
+                    'sort': 'date_dt asc'}
 
     url = f'{solr_host}{solr_collection_name}/select?'
-    response = requests.get(url, params=getVars)
+    response = requests.get(url, params=query_params)
     return response.json()['response']['docs']
 
 
-def solr_update(config, update_body, r=False):
+def solr_update(config, update_body):
     """
     Posts an update to Solr database with the update body passed in.
     For each item in update_body, a new entry is created in Solr, unless
@@ -53,13 +51,13 @@ def solr_update(config, update_body, r=False):
 
     url = f'{solr_host}{solr_collection_name}/update?commit=true'
 
-    if r:
-        return requests.post(url, json=update_body)
-    else:
-        requests.post(url, json=update_body)
+    return requests.post(url, json=update_body)
 
 
 def process_along_track(cycle_granules, ds_metadata, cycle_dates):
+    """
+    Performs all processing required for along track datasets
+    """
     var = 'ssh_smoothed'
     reference_date = datetime(1985, 1, 1, 0, 0, 0)
     granules = []
@@ -137,6 +135,9 @@ def process_along_track(cycle_granules, ds_metadata, cycle_dates):
 
 
 def process_1812(cycle_granules, ds_metadata, cycle_dates):
+    """
+    Performs all processing required for the 1812 dataset
+    """
     var = 'SLA'
     granule = cycle_granules[0]
 
@@ -177,32 +178,32 @@ def process_1812(cycle_granules, ds_metadata, cycle_dates):
 
 
 def process_shalin(cycle_granules, ds_metadata, cycle_dates):
+    """
+    Performs all processing required for Shalin's GPS dataset
+    """
     def testing(ds, var):
-        time_da = ds.time
-        ssha_da = ds.ssha
-        var_da = ds[var]
-
-        vals = ds[var].values
-        non_nan_vals = vals[~np.isnan(vals)]
+        non_nan_vals = ds[var].values[~np.isnan(ds[var].values)]
 
         mean = np.nanmean(ds[var].values)
         rms = np.sqrt(np.mean(non_nan_vals**2))
         std = np.std(non_nan_vals)
 
         try:
-            OFFSET, AMPLITUDE, _, _ = delta_orbit_altitude_offset_amplitude(
-                time_da, ssha_da, var_da)
+            offset, amplitude, _, _ = delta_orbit_altitude_offset_amplitude(
+                ds.time, ds.ssha, ds[var])
         except Exception as e:
             print(e)
-            OFFSET = 100
-            AMPLITUDE = 100
+            offset = 100
+            amplitude = 100
+
         tests = [('Mean', mean), ('RMS', rms), ('STD', std),
-                 ('Offset', OFFSET), ('Amplitude', AMPLITUDE)]
+                 ('Offset', offset), ('Amplitude', amplitude)]
 
         for (test, result) in tests:
             test_array = np.full(len(ds[var]), result, dtype='float32')
             ds[test] = xr.DataArray(test_array, ds[var].coords, ds[var].dims)
             ds[test].attrs['comment'] = f'{test} test value from original granule in cycle.'
+
         return ds
 
     def delta_orbit_altitude_offset_amplitude(time_da, ssha_da, gps_ssha_da):
@@ -231,17 +232,17 @@ def process_shalin(cycle_granules, ds_metadata, cycle_dates):
         # calculate time (in seconds) from the first to last observations in
         # record
         if type(time_da.values[0]) == np.datetime64:
-            td = (time_da.values - time_da[0].values)/1e9
-            td = td.astype('float')
+            time_data = (time_da.values - time_da[0].values)/1e9
+            time_data = time_data.astype('float')
         else:
-            td = time_da.values
+            time_data = time_da.values
         # plt.plot(td, delta_orbit_altitude, 'k.')
         # plt.xlabel('time delta (s)')
         # plt.grid()
         # plt.title('delta orbit altitude [m]')
         # calculate omega * t
         omega = 2.*np.pi/6745.756
-        omega_t = omega * td
+        omega_t = omega * time_data
         # pull values of omega_t and the delta_orbit_altitude only where
         # the delta_orbit_altitude is not nan (i.e., not missing)
         omega_t_nn = omega_t[~np.isnan(delta_orbit_altitude)]
@@ -259,29 +260,27 @@ def process_shalin(cycle_granules, ds_metadata, cycle_dates):
         A = np.column_stack((CONST_TERM, COS_TERM, SIN_TERM))
         c = np.matmul(np.matmul(np.linalg.inv(np.matmul(A.T, A)),
                                 A.T), delta_orbit_altitude_nn.T)
-        OFFSET = c[0]
-        AMPLITUDE = np.sqrt(c[1]**2 + c[2]**2)
+        offset = c[0]
+        amplitude = np.sqrt(c[1]**2 + c[2]**2)
         # estimated time series
         y_e = c[0] + c[1]*np.cos(omega_t) + c[2] * np.sin(omega_t)
         # the c vector will have 3 elements
-        return OFFSET, AMPLITUDE, delta_orbit_altitude, y_e
+        return offset, amplitude, delta_orbit_altitude, y_e
 
-    """
-    Flags
-    - DS field names change after a certain date
-    - All possible flag names are used by checking if each flag
-      is in the keys of a DS
-    1.  rad_surface_type_flag (rad_surf_type) = 0 (open ocean)
-    2.  surface_classification_flag (surface_type) = 0 (open ocean)
-    3.  alt_qual (alt_quality_flag)= 0 (good)
-    4.  rad_qual (rad_quality_flag) = 0 (good)
-    5.  geo_qual (geophysical_quality_flag)= 0 (good)
-    6.  meteo_map_availability_flag (ecmwf_meteo_map_avail) = 0 ('2_maps_nominal')
-    7.  rain_flag = 0 (no rain)
-    8.  rad_rain_flag = 0 (no rain)
-    9.  ice_flag = 0 (no ice)
-    10. rad_sea_ice_flag = 0 (no ice)
-    """
+    # Flags
+    # - DS field names change after a certain date
+    # - All possible flag names are used by checking if each flag
+    #   is in the keys of a DS
+    # 1.  rad_surface_type_flag (rad_surf_type) = 0 (open ocean)
+    # 2.  surface_classification_flag (surface_type) = 0 (open ocean)
+    # 3.  alt_qual (alt_quality_flag)= 0 (good)
+    # 4.  rad_qual (rad_quality_flag) = 0 (good)
+    # 5.  geo_qual (geophysical_quality_flag)= 0 (good)
+    # 6.  meteo_map_availability_flag (ecmwf_meteo_map_avail) = 0 ('2_maps_nominal')
+    # 7.  rain_flag = 0 (no rain)
+    # 8.  rad_rain_flag = 0 (no rain)
+    # 9.  ice_flag = 0 (no ice)
+    # 10. rad_sea_ice_flag = 0 (no ice)
 
     flags = ['rad_surface_type_flag', 'surface_classification_flag', 'alt_qual',
              'rad_qual', 'geo_qual', 'meteo_map_availability_flag', 'rain_flag',
@@ -421,11 +420,7 @@ def processing(config_path='', output_path=''):
     fq = ['type_s:cycle', f'dataset_s:{dataset_name}']
     solr_cycles = solr_query(config, fq)
 
-    cycles = {}
-
-    if solr_cycles:
-        for cycle in solr_cycles:
-            cycles[cycle['start_date_dt']] = cycle
+    cycles = {cycle['start_date_dt']: cycle for cycle in solr_cycles}
 
     # Generate list of cycle date tuples (start, end)
     cycle_dates = []
@@ -454,28 +449,28 @@ def processing(config_path='', output_path=''):
 
         date_strs = (start_date_str, center_date_str, end_date_str)
 
+        # Find the granule with date closest to center of cycle
+        # Uses special Solr query function to automatically return granules in proximal order
         if '1812' in dataset_name:
-            # Find the granule with date closest to center of cycle
-            # Uses special Solr query function to automatically return granules in proximal order
             query_start = datetime.strftime(start_date, solr_regex)
             query_end = datetime.strftime(end_date, solr_regex)
             fq = ['type_s:harvested', f'dataset_s:{dataset_name}', 'harvest_success_b:true',
                   f'date_dt:[{query_start} TO {query_end}}}']
-            bf = f'recip(abs(ms({center_date_str}Z,date_dt)),3.16e-11,1,1)'
+            boost_function = f'recip(abs(ms({center_date_str}Z,date_dt)),3.16e-11,1,1)'
 
-            getVars = {'q': '*:*',
-                       'fq': fq,
-                       'bf': bf,
-                       'defType': 'edismax',
-                       'rows': 300000,
-                       'sort': 'date_s asc'}
+            query_params = {'q': '*:*',
+                            'fq': fq,
+                            'bf': boost_function,
+                            'defType': 'edismax',
+                            'rows': 300000,
+                            'sort': 'date_s asc'}
 
             url = f'{solr_host}{solr_collection_name}/select?'
-            response = requests.get(url, params=getVars)
+            response = requests.get(url, params=query_params)
             cycle_granules = response.json()['response']['docs']
 
+        # Get granules within start_date and end_date
         else:
-            # Get granules within start_date and end_date
             query_start = datetime.strftime(start_date, solr_regex)
             query_end = datetime.strftime(end_date, solr_regex)
             fq = ['type_s:harvested', f'dataset_s:{dataset_name}', 'harvest_success_b:true',
@@ -483,11 +478,12 @@ def processing(config_path='', output_path=''):
 
             cycle_granules = solr_query(config, fq)
 
+        # Skip cycle if no granules harvested
         if not cycle_granules:
             print(f'No granules for cycle {start_date_str} to {end_date_str}')
             continue
 
-        updating = True
+        updating = False
 
         # If any single granule in a cycle satisfies any of the following conditions:
         # - has been updated,
@@ -537,29 +533,24 @@ def processing(config_path='', output_path=''):
 
                 coord_encoding = {}
                 for coord in cycle_ds.coords:
-                    coord_encoding[coord] = {'_FillValue': None,
-                                             'dtype': 'float32',
-                                             'complevel': 6}
 
-                    if 'ssha' in coord:
-                        coord_encoding[coord] = {
-                            '_FillValue': default_fillvals['f8']}
-
-                    if 'time' in coord or 'Time' in coord:
+                    if 'Time' in coord:
                         coord_encoding[coord] = {'_FillValue': None,
                                                  'zlib': True,
                                                  'contiguous': False,
                                                  'calendar': 'gregorian',
                                                  'shuffle': False}
+
+                    # To account for time bounds in 1812 dataset
                     if 'Time' in coord and '1812' in dataset_name:
                         units_time = datetime.strftime(
                             center_date, "%Y-%m-%d %H:%M:%S")
                         coord_encoding[coord]['units'] = f'days since {units_time}'
 
-                    if 'lat' in coord:
+                    if 'Lat' in coord:
                         coord_encoding[coord] = {'_FillValue': None,
                                                  'dtype': 'float32'}
-                    if 'lon' in coord:
+                    if 'Lon' in coord:
                         coord_encoding[coord] = {'_FillValue': None,
                                                  'dtype': 'float32'}
 
@@ -623,8 +614,8 @@ def processing(config_path='', output_path=''):
                 item['processing_time_dt'] = datetime.utcnow().strftime(date_regex)
                 item['processing_version_f'] = version
 
-            r = solr_update(config, [item], r=True)
-            if r.status_code == 200:
+            resp = solr_update(config, [item])
+            if resp.status_code == 200:
                 print('\tSuccessfully created or updated Solr cycle documents')
 
                 # Give harvested documents the id of the corresponding cycle document
@@ -640,7 +631,7 @@ def processing(config_path='', output_path=''):
                     for granule in cycle_granules:
                         granule['cycle_id_s'] = cycle_id
 
-                    r = solr_update(config, cycle_granules)
+                    resp = solr_update(config, cycle_granules)
 
             else:
                 print('\tFailed to create Solr cycle documents')
@@ -649,26 +640,26 @@ def processing(config_path='', output_path=''):
 
     # Query for Solr failed harvest documents
     fq = ['type_s:cycle',
-          f'dataset_s:{dataset_name}', f'processing_success_b:false']
+          f'dataset_s:{dataset_name}', 'processing_success_b:false']
     failed_processing = solr_query(config, fq)
 
     if not failed_processing:
-        processing_status = f'All cycles successfully processed'
+        processing_status = 'All cycles successfully processed'
     else:
         # Query for Solr successful harvest documents
         fq = ['type_s:cycle',
-              f'dataset_s:{dataset_name}', f'processing_success_b:true']
+              f'dataset_s:{dataset_name}', 'processing_success_b:true']
         successful_processing = solr_query(config, fq)
 
         if not successful_processing:
-            processing_status = f'No cycles successfully processed (either all failed or no granules to process)'
+            processing_status = 'No cycles successfully processed (either all failed or no granules to process)'
         else:
-            processing_status = f'{len(failed_harvesting)} cycles failed'
+            processing_status = f'{len(failed_processing)} cycles failed'
 
     ds_metadata['processing_status_s'] = {"set": processing_status}
-    r = solr_update(config, [ds_metadata], r=True)
+    resp = solr_update(config, [ds_metadata])
 
-    if r.status_code == 200:
+    if resp.status_code == 200:
         print('Successfully updated Solr dataset document\n')
     else:
         print('Failed to update Solr dataset document\n')
