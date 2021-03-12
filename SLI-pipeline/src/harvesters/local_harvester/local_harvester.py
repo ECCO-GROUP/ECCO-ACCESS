@@ -263,10 +263,11 @@ def harvester(config_path='', output_path=''):
         # Update Solr dataset entry
         # -----------------------------------------------------
         dataset_metadata = dataset_query[0]
-
+        fq = [f'dataset_s:{dataset_name}',
+              'type_s:harvested', 'harvest_success_b:true']
         # Query for dates of all harvested docs
         query_params = {'q': '*:*',
-                        'fq': [f'dataset_s:{dataset_name}', 'type_s:harvested', 'harvest_success_b:true'],
+                        'fq': fq,
                         'fl': 'date_dt',
                         'rows': 300000}
 
