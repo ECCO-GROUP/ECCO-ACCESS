@@ -188,9 +188,11 @@ def run_processing(datasets, path_to_processors, output_dir):
             with open(config_path, 'r') as stream:
                 config = yaml.load(stream, yaml.Loader)
 
-            processor = config['processor']
+            # processor = config['processor']
 
-            path_to_code = Path(f'{path_to_processors}/{processor}')
+            # path_to_code = Path(f'{path_to_processors}/{processor}')
+
+            path_to_code = Path(f'{path_to_processors}')
 
             sys.path.insert(1, str(path_to_code))
 
