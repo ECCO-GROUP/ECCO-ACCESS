@@ -449,8 +449,8 @@ def processing(config_path='', output_path=''):
         # Make strings for cycle start, center, and end dates
         start_date_str = datetime.strftime(start_date, date_regex)
         end_date_str = datetime.strftime(end_date, date_regex)
-        cycle_center_time = start_date + ((end_date - start_date)/2)
-        center_date_str = datetime.strftime(cycle_center_time, date_regex)
+        center_date = start_date + ((end_date - start_date)/2)
+        center_date_str = datetime.strftime(center_date, date_regex)
 
         date_strs = (start_date_str, center_date_str, end_date_str)
 
@@ -461,7 +461,7 @@ def processing(config_path='', output_path=''):
             query_end = datetime.strftime(end_date, solr_regex)
             fq = ['type_s:harvested', f'dataset_s:{dataset_name}', 'harvest_success_b:true',
                   f'date_dt:[{query_start} TO {query_end}}}']
-            bf = f'recip(abs(ms({center_time_str},date_dt)),3.16e-11,1,1)'
+            bf = f'recip(abs(ms({center_date_str}Z,date_dt)),3.16e-11,1,1)'
 
             getVars = {'q': '*:*',
                        'fq': fq,
@@ -545,15 +545,15 @@ def processing(config_path='', output_path=''):
                         coord_encoding[coord] = {
                             '_FillValue': default_fillvals['f8']}
 
-                    if 'time' in coord:
+                    if 'time' in coord or 'Time' in coord:
                         coord_encoding[coord] = {'_FillValue': None,
                                                  'zlib': True,
                                                  'contiguous': False,
                                                  'calendar': 'gregorian',
                                                  'shuffle': False}
-                    if 'time' in coord and '1812' in dataset_name:
+                    if 'Time' in coord and '1812' in dataset_name:
                         units_time = datetime.strftime(
-                            center_time, "%Y-%m-%d %H:%M:%S")
+                            center_date, "%Y-%m-%d %H:%M:%S")
                         coord_encoding[coord]['units'] = f'days since {units_time}'
 
                     if 'lat' in coord:
@@ -568,8 +568,7 @@ def processing(config_path='', output_path=''):
 
                 encoding = {**coord_encoding, **var_encoding}
 
-                filename_time = datetime.strftime(
-                    cycle_center_time, '%Y%m%dT%H%M%S')
+                filename_time = datetime.strftime(center_date, '%Y%m%dT%H%M%S')
 
                 filename = f'ssha_{filename_time}.nc'
 
