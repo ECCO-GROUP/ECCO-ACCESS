@@ -1,0 +1,57 @@
+#PBS -S /bin/tcsh
+#PBS -W group_list=g26113
+#PBS -l select=20:ncpus=28:model=bro
+##PBS -q long 
+##PBS -l walltime=24:00:00
+
+#PBS -l walltime=02:00:00
+#PBS -q devel
+
+##PBS -j oe
+
+echo "cd into workdir"
+cd $PBS_O_WORKDIR
+
+#https://www.nas.nasa.gov/hecc/resources/pleiades.html
+
+# NATIVE GRID groupings
+# ---- 2D
+# 0 dynamic sea surface height and model sea level anomaly
+# 1 ocean bottom pressure and model ocean bottom pressure anomaly
+# 2 ocean and sea-ice surface freshwater fluxes
+# 3 ocean and sea-ice surface heat fluxes
+# 4 atmosphere surface temperature, humidity, wind, and pressure
+# 5 ocean mixed layer depth
+# 6 ocean and sea-ice surface stress
+# 7 sea-ice and snow concentration and thickness
+# 8 sea-ice velocity
+# 9 sea-ice and snow horizontal volume fluxes
+
+# ---- 3D
+# 10 Gent-McWilliams ocean bolus transport streamfunction
+# 11 ocean three-dimensional volume fluxes
+# 12 ocean three-dimensional potential temperature fluxes
+# 13 ocean three-dimensional salinity fluxes
+# 14 sea-ice salt plume fluxes
+# 15 ocean potential temperature and salinity
+# 16 ocean density, stratification, and hydrostatic pressure
+# 17 ocean velocity
+# 18 Gent-McWilliams ocean bolus velocity
+# 19 ocean three-dimensional momentum tendency
+
+rm pbs_nodefile
+cat "$PBS_NODEFILE" > pbs_nodefile
+
+set g_start = 0
+set g_end = 19
+
+set ecco_access_dir = '/home5/ifenty/git_repos_others/ECCO-GROUP/ECCO-ACCESS/generating_netcdf'
+set base_dir = '/nobackupp2/ifenty/podaac/podaac_20201216/final_delivered/'
+
+set output_dir = '/nobackupp2/ifenty/podaac/podaac_20201216/valid_minmax_20210312_v5/native/day_mean'
+set time_type = "day_mean"
+set grid_type = "native"
+set run_description = 'calc_minmax_native_day_mean'
+
+seq ${g_start} ${g_end} | parallel -j 1 -u --sshloginfile "$PBS_NODEFILE" \
+    "cd $PWD; /bin/tcsh ${ecco_access_dir}/invoke_python_valid_minmax_v5.csh ${run_description} ${ecco_access_dir} ${base_dir} ${output_dir} ${time_type} ${grid_type} {}"
