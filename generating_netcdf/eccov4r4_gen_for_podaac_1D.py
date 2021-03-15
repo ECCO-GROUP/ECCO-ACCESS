@@ -606,7 +606,7 @@ def generate_netcdfs(output_freq_code,
 
     # add one final comment (PODAAC request)
     G.attrs["coordinates_comment"] = \
-        "Note: the global 'coordinates' attribute descibes auxillary coordinates."
+        "Note: the global 'coordinates' attribute describes auxillary coordinates."
 
     #%%
     # SAVE
