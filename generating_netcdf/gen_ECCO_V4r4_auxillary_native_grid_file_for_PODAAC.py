@@ -192,7 +192,7 @@ G.attrs = ecco.sort_attrs(G.attrs)
 
 # add one final comment (PODAAC request)
 G.attrs["coordinates_comment"] = \
-    "Note: the global 'coordinates' attribute descibes auxillary coordinates."
+    "Note: the global 'coordinates' attribute describes auxillary coordinates."
 
 # Make encodings
 netcdf_fill_value = ecco.get_netcdf_fill_val(output_array_precision)
@@ -607,7 +607,7 @@ if make_latlon_grid_geometry:
 
     # add one final comment (PODAAC request)
     ecco_grid_ll.attrs["coordinates_comment"] = \
-        "Note: the global 'coordinates' attribute descibes auxillary coordinates."
+        "Note: the global 'coordinates' attribute describes auxillary coordinates."
 
     print(ecco_grid_ll)
 
