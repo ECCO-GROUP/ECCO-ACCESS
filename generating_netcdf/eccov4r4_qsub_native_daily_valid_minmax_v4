@@ -1,31 +1,18 @@
 #PBS -S /bin/tcsh
 #PBS -W group_list=g26113
-#PBS -l select=20:ncpus=14:model=bro
-#PBS -q normal
-#PBS -l walltime=08:00:00
+#PBS -l select=20:ncpus=8:model=bro
+#PBS -q long 
+#PBS -l walltime=24:00:00
 
-##PBS -l walltime=02:00:00
+##PBS -l walltime=00:10:00
 ##PBS -q devel
 
 ##PBS -j oe
-
-##PBS -l select=78:ncpus=4:model=bro
-##PBS -l select=40:ncpus=12:model=bro
 
 echo "cd into workdir"
 cd $PBS_O_WORKDIR
 
 #https://www.nas.nasa.gov/hecc/resources/pleiades.html
-
-echo "set cpus"
-
-# total number of cpus. 
-set totcpus = 280 
-
-echo "Total CPUS ${totcpus}"
-
-set cpuspernode = 14 
-echo "CPUS per node ${cpuspernode}"
 
 # NATIVE GRID groupings
 # ---- 2D
@@ -55,22 +42,21 @@ echo "CPUS per node ${cpuspernode}"
 rm pbs_nodefile
 cat "$PBS_NODEFILE" > pbs_nodefile
 
-set cpu_start = 0
-echo "cpu_start ${cpu_start}"
-
-set cpu_end = `expr $totcpus - 1`
-echo "cpu_end ${cpu_end}"
+set g_start = 0
+set g_end = 20 
 
 set ecco_access_dir = '/home5/ifenty/git_repos_others/ECCO-GROUP/ECCO-ACCESS/generating_netcdf'
-set output_dir = '/nobackupp2/ifenty/podaac/podaac_20201216/valid_minmax_20210311/native/day_mean'
-set base_dir = '/nobackupp2/ifenty/podaac_20201216/final_delivered'
+set output_dir = '/nobackupp2/ifenty/podaac/podaac_20201216/valid_minmax_20210312/native/day_mean'
+set base_dir = '/nobackupp2/ifenty/podaac/podaac_20201216/final_delivered/'
 set time_type = "day_mean"
 set grid_type = "native"
-set n_workers = 7
-set threads_per_worker = 2
+set n_workers = 1 
+set threads_per_worker = 8
 set run_description = 'calc_minmax_native_day_mean'
 
 #>python ./valid_minmax_v4.py --dataset_base_dir=/nobackupp2/ifenty/podaac/podaac_20201216/final_delivered --grid_type=native --time_type=mon_mean --grouping_id=1 --output_dir=/nobackupp2/ifenty/podaac/podaac_20201216/valid_minmax_20210311b --n_workers=7 --threads_per_worker=2
 
-seq ${cpu_start} ${cpu_end} | parallel -j ${cpuspernode} -u --sshloginfile "$PBS_NODEFILE" \
+#seq ${cpu_start} ${cpu_end} | parallel -j ${cpuspernode} -u --sshloginfile "$PBS_NODEFILE" \
+#    "cd $PWD; /bin/tcsh ${ecco_access_dir}/invoke_python_valid_minmax_v4.csh ${run_description} ${ecco_access_dir} ${base_dir} ${output_dir} ${time_type} ${grid_type} ${n_workers} ${threads_per_worker} {}"
+seq ${g_start} ${g_end} | parallel -j 1 -u --sshloginfile "$PBS_NODEFILE" \
     "cd $PWD; /bin/tcsh ${ecco_access_dir}/invoke_python_valid_minmax_v4.csh ${run_description} ${ecco_access_dir} ${base_dir} ${output_dir} ${time_type} ${grid_type} ${n_workers} ${threads_per_worker} {}"

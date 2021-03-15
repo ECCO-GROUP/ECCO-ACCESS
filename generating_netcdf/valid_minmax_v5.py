@@ -120,11 +120,11 @@ def create_parser():
                         choices=['day_inst','mon_mean','day_mean'],\
                         help='')
 
-    parser.add_argument('--n_workers', type=int, required=True,\
-                        help='n_workers (int)')
+#    parser.add_argument('--n_workers', type=int, required=True,\
+#                        help='n_workers (int)')
 
-    parser.add_argument('--threads_per_worker', type=int, required=True,\
-                        help='threads_per_worker (int)')
+#    parser.add_argument('--threads_per_worker', type=int, required=True,\
+#                        help='threads_per_worker (int)')
 
     parser.add_argument('--grouping_id', type=int, required=True,\
                         help='which grouping num to process (int)')
@@ -158,8 +158,8 @@ if __name__ == "__main__":
     grid_type = args.grid_type
     time_type = args.time_type
     grouping_id = args.grouping_id
-    n_workers = args.n_workers
-    threads_per_worker = args.threads_per_worker
+    #n_workers = args.n_workers
+    #threads_per_worker = args.threads_per_worker
     output_dir = Path(args.output_dir)
 
     if args.debug:
@@ -174,13 +174,13 @@ if __name__ == "__main__":
     print('time_type', time_type)
     print('grid_type', grid_type)
     print('grouping_id', grouping_id)
-    print('n_workers', n_workers)
-    print('threads_per_worker', threads_per_worker)
+    #print('n_workers', n_workers)
+    #print('threads_per_worker', threads_per_worker)
     print('output_dir', output_dir)
     print('debug', debug)
     print('\n')
 
-    client = Client(processes=False, n_workers=n_workers, threads_per_worker=threads_per_worker)#,memory_limit='128GB')
+    client = Client() #processes=False, n_workers=n_workers, threads_per_worker=threads_per_worker)#,memory_limit='128GB')
 
     glob_name = '*ECCO*nc'
 
