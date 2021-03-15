@@ -91,7 +91,8 @@ def apply_fixes(ecco_filename, minmax, comment_fix, summary_fix, qc_prob):
             # fix metadata link and summary
             print('\n>> fixing shortname and summary')
             # look for ds_id in summary_fix keys
-            if ds_id not in summary_fix.keys():
+            if ds_id not in summary_fix_keys:
+
                 print(f'\n+ FAILURE: {ds_id} not in summary_fix.keys(): {ecco_filename.name}')
                 return -1
 
