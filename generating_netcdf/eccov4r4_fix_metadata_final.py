@@ -247,31 +247,30 @@ def apply_fixes(ecco_filename, minmax, comment_fix, summary_fix, qc_prob):
                              'ECCO Consortium, Fukumori, I., Wang, O., Fenty, I., Forget, G., Heimbach, P., & Ponte, R. M. 2020. Synopsis of the ECCO Central Production Global Ocean and Sea-Ice State Estimate (Version 4 Release 4). doi:10.5281/zenodo.3765928')
             tmp_ds.setncattr('source', \
                              'The ECCO V4r4 state estimate was produced by fitting a free-running solution of the MITgcm (checkpoint 66g) to satellite and in situ observational data in a least squares sense using the adjoint method')
-            metadata_updated = True
+
+            # fix coordinate comment typo
+            tmp_ds.setncattr('coordinates_comment', "Note: the global 'coordinates' attribute describes auxillary coordinates.")
 
 
-            if metadata_updated:
-                # update date of modified metadata
-                current_time = datetime.datetime.now().isoformat()[0:19]
-                tmp_ds.setncattr('date_modified', current_time)
-                tmp_ds.setncattr('date_metadata_modified', current_time)
+            # update date of modified metadata
+            current_time = datetime.datetime.now().isoformat()[0:19]
+            tmp_ds.setncattr('date_modified', current_time)
+            tmp_ds.setncattr('date_metadata_modified', current_time)
 
-                # alphabetically sort all attributes
-                sorted_attr_dict = sort_attrs(tmp_ds.__dict__)
+            # alphabetically sort all attributes
+            sorted_attr_dict = sort_attrs(tmp_ds.__dict__)
 
-                # delete all attributes one at a time
-                for attr in tmp_ds.ncattrs():
-                    tmp_ds.delncattr(attr)
+            # delete all attributes one at a time
+            for attr in tmp_ds.ncattrs():
+                tmp_ds.delncattr(attr)
 
-                # replace all one at a time (in alphabetical order)
-                for attr in sorted_attr_dict:
-                    tmp_ds.setncattr(attr, sorted_attr_dict[attr])
+            # replace all one at a time (in alphabetical order)
+            for attr in sorted_attr_dict:
+                tmp_ds.setncattr(attr, sorted_attr_dict[attr])
 
-                print(f"\n+ SUCCESS: changes applied {ecco_filename.name}\n")
-                return 1
-            else:
-                print(f"\n+ SUCCESS: no changes applied to {ecco_filename.name}\n")
-                return 0
+            print(f"\n+ SUCCESS: changes applied {ecco_filename.name}\n")
+            return 1
+
 
     except Exception as e:
         raise e
