@@ -85,8 +85,7 @@ def process_along_track(cycle_granules, ds_metadata, cycle_dates):
 
         ds.Time.attrs['long_name'] = 'Time'
         ds.Time.attrs['standard_name'] = 'Time'
-        adjusted_times = [reference_date + timedelta(seconds=time) for
-                          time in ds.Time.values]
+        adjusted_times = [reference_date + timedelta(seconds=time) for time in ds.Time.values]
         ds = ds.assign_coords(Time=adjusted_times)
 
         data_start_time = min(
@@ -97,8 +96,7 @@ def process_along_track(cycle_granules, ds_metadata, cycle_dates):
         granules.append(ds)
 
     # Merge opened granules if needed
-    cycle_ds = xr.concat((granules), dim='Time') if len(
-        granules) > 1 else granules[0]
+    cycle_ds = xr.concat((granules), dim='Time') if len(granules) > 1 else granules[0]
 
     # Time bounds
 
@@ -179,8 +177,9 @@ def process_shalin(cycle_granules, ds_metadata, cycle_dates):
         std = np.std(non_nan_vals)
 
         try:
-            offset, amplitude, _, _ = delta_orbit_altitude_offset_amplitude(
-                ds.time, ds.ssha, ds[var])
+            offset, amplitude, _, _ = delta_orbit_altitude_offset_amplitude(ds.time,
+                                                                            ds.ssha, ds[var])
+
         except Exception as e:
             print(e)
             offset = 100
@@ -236,8 +235,7 @@ def process_shalin(cycle_granules, ds_metadata, cycle_dates):
         # pull values of omega_t and the delta_orbit_altitude only where
         # the delta_orbit_altitude is not nan (i.e., not missing)
         omega_t_nn = omega_t[~np.isnan(delta_orbit_altitude)]
-        delta_orbit_altitude_nn = delta_orbit_altitude[~np.isnan(
-            delta_orbit_altitude)]
+        delta_orbit_altitude_nn = delta_orbit_altitude[~np.isnan(delta_orbit_altitude)]
 
         # Least squares solution will take the form:
         # c = inv(A.T A) A.T  delta_orbit_altitude.T
@@ -250,8 +248,7 @@ def process_shalin(cycle_granules, ds_metadata, cycle_dates):
 
         # construct A matrix
         A = np.column_stack((CONST_TERM, COS_TERM, SIN_TERM))
-        c = np.matmul(np.matmul(np.linalg.inv(np.matmul(A.T, A)),
-                                A.T), delta_orbit_altitude_nn.T)
+        c = np.matmul(np.matmul(np.linalg.inv(np.matmul(A.T, A)), A.T), delta_orbit_altitude_nn.T)
 
         offset = c[0]
         amplitude = np.sqrt(c[1]**2 + c[2]**2)
@@ -295,31 +292,22 @@ def process_shalin(cycle_granules, ds_metadata, cycle_dates):
         ds = xr.open_dataset(granule['granule_file_path_s'])
 
         if 'lon' in ds.coords:
-            ds = ds.rename({'lon': 'Longitude'})
-            ds = ds.rename({'lat': 'Latitude'})
+            ds = ds.rename({'lon': 'Longitude', 'lat': 'Latitude'})
             ds[var].encoding['coordinates'] = 'Longitude Latitude'
             ds_keys = list(ds.keys())
         else:
             uses_groups = True
 
-            ds = xr.open_dataset(granule['granule_file_path_s'],
-                                 group='data_01/ku')
-            ds_flags = xr.open_dataset(granule['granule_file_path_s'],
-                                       group='data_01')
-
-            ds_flags = ds_flags.rename({'longitude': 'Longitude'})
-            ds_flags = ds_flags.rename({'latitude': 'Latitude'})
+            ds = xr.open_dataset(granule['granule_file_path_s'], group='data_01/ku')
+            ds_flags = xr.open_dataset(granule['granule_file_path_s'], group='data_01')
+            ds_flags = ds_flags.rename({'longitude': 'Longitude', 'latitude': 'Latitude'})
+            ds = ds.assign_coords({"Longitude": ds_flags.Longitude, "Latitude": ds_flags.Latitude})
 
             ds_keys = list(ds_flags.keys())
 
-            ds = ds.assign_coords(
-                {"Longitude": ds_flags.Longitude})
-            ds = ds.assign_coords(
-                {"Latitude": ds_flags.Latitude})
-
         # Remove outliers before running tests
-        ds[var].values[np.greater(
-            abs(ds[var].values), 1.5, where=~np.isnan(ds[var].values))] = np.nan
+        ds[var].values[np.greater(abs(ds[var].values), 1.5, where=~
+                                  np.isnan(ds[var].values))] = np.nan
 
         # Run tests, returns byte results convert to int
         ds = testing(ds, var)
@@ -331,20 +319,16 @@ def process_shalin(cycle_granules, ds_metadata, cycle_dates):
                     if np.isnan(ds_flags[flag].values).all():
                         continue
 
-                    ds[var].values = np.where(ds_flags[flag].values == 0,
-                                              ds[var].values,
+                    ds[var].values = np.where(ds_flags[flag].values == 0, ds[var].values,
                                               default_fillvals['f8'])
                 else:
                     if np.isnan(ds[flag].values).all():
                         continue
-                    ds[var].values = np.where(ds[flag].values == 0,
-                                              ds[var].values,
+                    ds[var].values = np.where(ds[flag].values == 0, ds[var].values,
                                               default_fillvals['f8'])
 
         # Replace nans with fill value
-        ds[var].values = np.where(np.isnan(ds[var].values),
-                                  default_fillvals['f8'],
-                                  ds[var].values)
+        ds[var].values = np.where(np.isnan(ds[var].values), default_fillvals['f8'], ds[var].values)
 
         ds = ds.drop([key for key in ds.keys() if key not in tests + [var]])
 
@@ -482,8 +466,7 @@ def cycle_ds_encoding(cycle_ds, ds_name, center_date):
                                      'shuffle': False}
             # To account for time bounds in 1812 dataset
             if '1812' in ds_name:
-                units_time = datetime.strftime(
-                    center_date, "%Y-%m-%d %H:%M:%S")
+                units_time = datetime.strftime(center_date, "%Y-%m-%d %H:%M:%S")
                 coord_encoding[coord]['units'] = f'days since {units_time}'
 
         if 'Lat' in coord or 'Lon' in coord:
@@ -506,8 +489,7 @@ def post_process_solr_update(config, ds_metadata):
 
     if failed_processing:
         # Query for successful harvest documents
-        fq = ['type_s:cycle', f'dataset_s:{ds_name}',
-              'processing_success_b:true']
+        fq = ['type_s:cycle', f'dataset_s:{ds_name}', 'processing_success_b:true']
         successful_processing = solr_query(config, fq)
 
         processing_status = 'No cycles successfully processed (all failed or no granules to process)'
@@ -537,8 +519,7 @@ def processing(config_path='', output_path=''):
     date_regex = '%Y-%m-%dT%H:%M:%S'
 
     # Query for dataset metadata
-    ds_metadata = solr_query(
-        config, ['type_s:dataset', f'dataset_s:{ds_name}'])[0]
+    ds_metadata = solr_query(config, ['type_s:dataset', f'dataset_s:{ds_name}'])[0]
 
     # Query for all existing cycles in Solr
     solr_cycles = solr_query(config, ['type_s:cycle', f'dataset_s:{ds_name}'])
@@ -599,9 +580,7 @@ def processing(config_path='', output_path=''):
 
             try:
                 # Dataset specific processing of cycle
-                cycle_ds, granule_count = funcs[processor](cycle_granules,
-                                                           ds_metadata,
-                                                           date_strs)
+                cycle_ds, granule_count = funcs[processor](cycle_granules, ds_metadata, date_strs)
 
                 # Create netcdf encoding for cycle
                 encoding = cycle_ds_encoding(cycle_ds, ds_name, center_date)
@@ -661,8 +640,7 @@ def processing(config_path='', output_path=''):
                     if 'id' in item.keys():
                         cycle_id = item['id']
                     else:
-                        fq = ['type_s:cycle', f'dataset_s:{ds_name}',
-                              f'filename_s:{filename}']
+                        fq = ['type_s:cycle', f'dataset_s:{ds_name}', f'filename_s:{filename}']
                         cycle_doc = solr_query(config, fq)
                         cycle_id = cycle_doc[0]['id']
 
