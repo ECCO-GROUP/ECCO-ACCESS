@@ -74,10 +74,8 @@ def process_along_track(cycle_granules, ds_metadata, cycle_dates):
         else:
             ds = ds.rename_dims({'phony_dim_1': 'Time'})
 
-        ds = ds.rename_vars({'time': 'Time'})
-        ds = ds.rename_vars({var: 'SSHA'})
-        ds = ds.rename({'lats': 'Latitude'})
-        ds = ds.rename({'lons': 'Longitude'})
+        ds = ds.rename_vars({'time': 'Time', var: 'SSHA'})
+        ds = ds.rename({'lats': 'Latitude', 'lons': 'Longitude'})
 
         ds = ds.drop([var for var in ds.data_vars if var[0] == '_'])
         ds = ds.drop_vars(['ssh'])
@@ -115,21 +113,19 @@ def process_along_track(cycle_granules, ds_metadata, cycle_dates):
     cycle_ds.Time.attrs['long_name'] = 'Time'
 
     # Global Attributes
-    cycle_ds.attrs = {}
-    cycle_ds.attrs['title'] = 'Sea Level Anormaly Estimate based on Altimeter Data'
-
-    cycle_ds.attrs['cycle_start'] = cycle_dates[0]
-    cycle_ds.attrs['cycle_center'] = cycle_dates[1]
-    cycle_ds.attrs['cycle_end'] = cycle_dates[2]
-
-    cycle_ds.attrs['data_time_start'] = str(data_start_time)[:19]
-    cycle_ds.attrs['data_time_center'] = str(data_center_time)[:19]
-    cycle_ds.attrs['data_time_end'] = str(data_end_time)[:19]
-
-    cycle_ds.attrs['original_dataset_title'] = ds_metadata['original_dataset_title_s']
-    cycle_ds.attrs['original_dataset_short_name'] = ds_metadata['original_dataset_short_name_s']
-    cycle_ds.attrs['original_dataset_url'] = ds_metadata['original_dataset_url_s']
-    cycle_ds.attrs['original_dataset_reference'] = ds_metadata['original_dataset_reference_s']
+    cycle_ds.attrs = {
+        'title': 'Sea Level Anormaly Estimate based on Altimeter Data',
+        'cycle_start': cycle_dates[0],
+        'cycle_center': cycle_dates[1],
+        'cycle_end': cycle_dates[2],
+        'data_time_start': str(data_start_time)[:19],
+        'data_time_center': str(data_center_time)[:19],
+        'data_time_end': str(data_end_time)[:19],
+        'original_dataset_title': ds_metadata['original_dataset_title_s'],
+        'original_dataset_short_name': ds_metadata['original_dataset_short_name_s'],
+        'original_dataset_url': ds_metadata['original_dataset_url_s'],
+        'original_dataset_reference': ds_metadata['original_dataset_reference_s']
+    }
 
     return cycle_ds, len(granules)
 
@@ -149,30 +145,24 @@ def process_1812(cycle_granules, ds_metadata, cycle_dates):
     cycle_ds['SSHA'].attrs['valid_min'] = np.nanmin(cycle_ds['SSHA'].values)
     cycle_ds['SSHA'].attrs['valid_max'] = np.nanmax(cycle_ds['SSHA'].values)
 
-    # Global attributes
-    cycle_ds.attrs = {}
-
-    cycle_ds.attrs['title'] = 'Sea Level Anormaly Estimate based on Altimeter Data'
-
-    cycle_ds.attrs['cycle_start'] = cycle_dates[0]
-    cycle_ds.attrs['cycle_center'] = cycle_dates[1]
-    cycle_ds.attrs['cycle_end'] = cycle_dates[2]
-
-    data_time_start = ds.Time_bounds.values[0][0]
-    data_time_end = ds.Time_bounds.values[-1][1]
+    data_time_start = cycle_ds.Time_bounds.values[0][0]
+    data_time_end = cycle_ds.Time_bounds.values[-1][1]
     data_time_center = data_time_start + ((data_time_end - data_time_start)/2)
 
-    cycle_ds.attrs['data_time_start'] = np.datetime_as_string(
-        data_time_start, unit='s')
-    cycle_ds.attrs['data_time_center'] = np.datetime_as_string(
-        data_time_center, unit='s')
-    cycle_ds.attrs['data_time_end'] = np.datetime_as_string(
-        data_time_end, unit='s')
-
-    cycle_ds.attrs['original_dataset_title'] = ds_metadata['original_dataset_title_s']
-    cycle_ds.attrs['original_dataset_short_name'] = ds_metadata['original_dataset_short_name_s']
-    cycle_ds.attrs['original_dataset_url'] = ds_metadata['original_dataset_url_s']
-    cycle_ds.attrs['original_dataset_reference'] = ds_metadata['original_dataset_reference_s']
+    # Global attributes
+    cycle_ds.attrs = {
+        'title': 'Sea Level Anormaly Estimate based on Altimeter Data',
+        'cycle_start': cycle_dates[0],
+        'cycle_center': cycle_dates[1],
+        'cycle_end': cycle_dates[2],
+        'data_time_start': np.datetime_as_string(data_time_start, unit='s'),
+        'data_time_center': np.datetime_as_string(data_time_center, unit='s'),
+        'data_time_end': np.datetime_as_string(data_time_end, unit='s'),
+        'original_dataset_title': ds_metadata['original_dataset_title_s'],
+        'original_dataset_short_name': ds_metadata['original_dataset_short_name_s'],
+        'original_dataset_url': ds_metadata['original_dataset_url_s'],
+        'original_dataset_reference': ds_metadata['original_dataset_reference_s']
+    }
 
     return cycle_ds, 1
 
@@ -227,27 +217,28 @@ def process_shalin(cycle_granules, ds_metadata, cycle_dates):
         # C1, C2 : AMPLITUDES of cosine and sine terms comprising a phase shifted oscillation
         # omega  : period of one orbit resolution in seconds
         # t      : time in seconds
+
         # calculate delta orbit altitude
         delta_orbit_altitude = gps_ssha_da.values - ssha_da.values
+
         # calculate time (in seconds) from the first to last observations in
         # record
-        if type(time_da.values[0]) == np.datetime64:
+        if isinstance(time_da.values[0], np.datetime64):
             time_data = (time_da.values - time_da[0].values)/1e9
             time_data = time_data.astype('float')
         else:
             time_data = time_da.values
-        # plt.plot(td, delta_orbit_altitude, 'k.')
-        # plt.xlabel('time delta (s)')
-        # plt.grid()
-        # plt.title('delta orbit altitude [m]')
+
         # calculate omega * t
         omega = 2.*np.pi/6745.756
         omega_t = omega * time_data
+
         # pull values of omega_t and the delta_orbit_altitude only where
         # the delta_orbit_altitude is not nan (i.e., not missing)
         omega_t_nn = omega_t[~np.isnan(delta_orbit_altitude)]
         delta_orbit_altitude_nn = delta_orbit_altitude[~np.isnan(
             delta_orbit_altitude)]
+
         # Least squares solution will take the form:
         # c = inv(A.T A) A.T  delta_orbit_altitude.T
         # where *.T indicates transpose
@@ -256,14 +247,18 @@ def process_shalin(cycle_granules, ds_metadata, cycle_dates):
         CONST_TERM = np.ones(len(omega_t_nn))
         COS_TERM = np.cos(omega_t_nn)
         SIN_TERM = np.sin(omega_t_nn)
+
         # construct A matrix
         A = np.column_stack((CONST_TERM, COS_TERM, SIN_TERM))
         c = np.matmul(np.matmul(np.linalg.inv(np.matmul(A.T, A)),
                                 A.T), delta_orbit_altitude_nn.T)
+
         offset = c[0]
         amplitude = np.sqrt(c[1]**2 + c[2]**2)
+
         # estimated time series
         y_e = c[0] + c[1]*np.cos(omega_t) + c[2] * np.sin(omega_t)
+
         # the c vector will have 3 elements
         return offset, amplitude, delta_orbit_altitude, y_e
 
@@ -351,9 +346,7 @@ def process_shalin(cycle_granules, ds_metadata, cycle_dates):
                                   default_fillvals['f8'],
                                   ds[var].values)
 
-        keep_keys = tests + [var]
-        ds = ds.drop([key for key in ds.keys()
-                      if key not in keep_keys])
+        ds = ds.drop([key for key in ds.keys() if key not in tests + [var]])
 
         ds = ds.rename_dims({'time': 'Time'})
         ds = ds.rename({'time': 'Time'})
@@ -380,138 +373,219 @@ def process_shalin(cycle_granules, ds_metadata, cycle_dates):
     cycle_ds.Time.attrs['long_name'] = 'Time'
 
     # Global Attributes
-    cycle_ds.attrs = {}
-    cycle_ds.attrs['title'] = 'Ten day aggregated GPSOGDR - Reduced dataset'
-
-    cycle_ds.attrs['cycle_start'] = cycle_dates[0]
-    cycle_ds.attrs['cycle_center'] = cycle_dates[1]
-    cycle_ds.attrs['cycle_end'] = cycle_dates[2]
-
-    cycle_ds.attrs['data_time_start'] = str(data_start_time)[:19]
-    cycle_ds.attrs['data_time_center'] = str(data_center_time)[:19]
-    cycle_ds.attrs['data_time_end'] = str(data_end_time)[:19]
-
-    cycle_ds.attrs['original_dataset_title'] = ds_metadata['original_dataset_title_s']
-    cycle_ds.attrs['original_dataset_short_name'] = ds_metadata['original_dataset_short_name_s']
-    cycle_ds.attrs['original_dataset_url'] = ds_metadata['original_dataset_url_s']
-    cycle_ds.attrs['original_dataset_reference'] = ds_metadata['original_dataset_reference_s']
+    cycle_ds.attrs = {
+        'title': 'Ten day aggregated GPSOGDR - Reduced dataset',
+        'cycle_start': cycle_dates[0],
+        'cycle_center': cycle_dates[1],
+        'cycle_end': cycle_dates[2],
+        'data_time_start': str(data_start_time)[:19],
+        'data_time_center': str(data_center_time)[:19],
+        'data_time_end': str(data_end_time)[:19],
+        'original_dataset_title': ds_metadata['original_dataset_title_s'],
+        'original_dataset_short_name': ds_metadata['original_dataset_short_name_s'],
+        'original_dataset_url': ds_metadata['original_dataset_url_s'],
+        'original_dataset_reference': ds_metadata['original_dataset_reference_s']
+    }
 
     return cycle_ds, len(granules)
 
 
+def collect_granules(ds_name, dates, date_strs, config):
+    """
+    Pulls appropriate harvested Solr documents for given cycle date range
+    """
+    solr_regex = '%Y-%m-%dT%H:%M:%SZ'
+    solr_host = config['solr_host_local']
+    solr_collection_name = config['solr_collection_name']
+
+    # Find the granule with date closest to center of cycle
+    # Uses special Solr query function to automatically return granules in proximal order
+    if '1812' in ds_name:
+        query_start = datetime.strftime(dates[0], solr_regex)
+        query_end = datetime.strftime(dates[2], solr_regex)
+        fq = ['type_s:harvested', f'dataset_s:{ds_name}', 'harvest_success_b:true',
+              f'date_dt:[{query_start} TO {query_end}}}']
+        boost_function = f'recip(abs(ms({date_strs[1]}Z,date_dt)),3.16e-11,1,1)'
+
+        query_params = {'q': '*:*',
+                        'fq': fq,
+                        'bf': boost_function,
+                        'defType': 'edismax',
+                        'rows': 300000,
+                        'sort': 'date_s asc'}
+
+        url = f'{solr_host}{solr_collection_name}/select?'
+        response = requests.get(url, params=query_params)
+        cycle_granules = response.json()['response']['docs']
+
+    # Get granules within start_date and end_date
+    else:
+        query_start = datetime.strftime(dates[0], solr_regex)
+        query_end = datetime.strftime(dates[2], solr_regex)
+        fq = ['type_s:harvested', f'dataset_s:{ds_name}', 'harvest_success_b:true',
+              f'date_dt:[{query_start} TO {query_end}}}']
+
+        cycle_granules = solr_query(config, fq)
+
+    return cycle_granules
+
+
+def check_updating(cycles, date_strs, cycle_granules, version):
+    """
+    Determines if a cycle requires processing:
+    If any single granule within the cycle:
+        - has been updated,
+        - previously failed,
+        - has a different version than what is in the config
+    cycle processing will be triggered.
+    """
+
+    if date_strs[0] + 'Z' in cycles.keys():
+        existing_cycle = cycles[date_strs[0] + 'Z']
+
+        prior_time = existing_cycle['processing_time_dt']
+        prior_success = existing_cycle['processing_success_b']
+        prior_version = existing_cycle['processing_version_f']
+
+        if not prior_success or prior_version != version:
+            return True
+
+        for granule in cycle_granules:
+            if prior_time < granule['modified_time_dt']:
+                return True
+
+        return False
+
+    return True
+
+
+def cycle_ds_encoding(cycle_ds, ds_name, center_date):
+    """
+    Generates encoding dictionary use for saving the cycle netCDF file.
+    Gridded datasets (1812) have additional encoding requirements. 
+    """
+
+    var_encoding = {'zlib': True,
+                    'complevel': 5,
+                    'dtype': 'float32',
+                    'shuffle': True,
+                    '_FillValue': default_fillvals['f8']}
+    var_encodings = {var: var_encoding for var in cycle_ds.data_vars}
+
+    coord_encoding = {}
+    for coord in cycle_ds.coords:
+        if 'Time' in coord:
+            coord_encoding[coord] = {'_FillValue': None,
+                                     'zlib': True,
+                                     'contiguous': False,
+                                     'calendar': 'gregorian',
+                                     'shuffle': False}
+            # To account for time bounds in 1812 dataset
+            if '1812' in ds_name:
+                units_time = datetime.strftime(
+                    center_date, "%Y-%m-%d %H:%M:%S")
+                coord_encoding[coord]['units'] = f'days since {units_time}'
+
+        if 'Lat' in coord or 'Lon' in coord:
+            coord_encoding[coord] = {'_FillValue': None, 'dtype': 'float32'}
+
+    encoding = {**coord_encoding, **var_encodings}
+    return encoding
+
+
+def post_process_solr_update(config, ds_metadata):
+    """
+    """
+    ds_name = config['ds_name']
+
+    processing_status = 'All cycles successfully processed'
+
+    # Query for failed harvest documents
+    fq = ['type_s:cycle', f'dataset_s:{ds_name}', 'processing_success_b:false']
+    failed_processing = solr_query(config, fq)
+
+    if failed_processing:
+        # Query for successful harvest documents
+        fq = ['type_s:cycle', f'dataset_s:{ds_name}',
+              'processing_success_b:true']
+        successful_processing = solr_query(config, fq)
+
+        processing_status = 'No cycles successfully processed (all failed or no granules to process)'
+
+        if successful_processing:
+            processing_status = f'{len(failed_processing)} cycles failed'
+
+    ds_metadata['processing_status_s'] = {"set": processing_status}
+    resp = solr_update(config, [ds_metadata])
+
+    if resp.status_code == 200:
+        print('Successfully updated Solr dataset document\n')
+    else:
+        print('Failed to update Solr dataset document\n')
+
+
 def processing(config_path='', output_path=''):
+    """
+    """
 
     with open(config_path, "r") as stream:
         config = yaml.load(stream, yaml.Loader)
 
-    dataset_name = config['ds_name']
+    ds_name = config['ds_name']
     version = config['version']
-    solr_host = config['solr_host_local']
-    solr_collection_name = config['solr_collection_name']
     processor = config['processor']
     date_regex = '%Y-%m-%dT%H:%M:%S'
-    solr_regex = f'{date_regex}Z'
 
     # Query for dataset metadata
-    fq = ['type_s:dataset', f'dataset_s:{dataset_name}']
-    ds_metadata = solr_query(config, fq)[0]
+    ds_metadata = solr_query(
+        config, ['type_s:dataset', f'dataset_s:{ds_name}'])[0]
 
     # Query for all existing cycles in Solr
-    fq = ['type_s:cycle', f'dataset_s:{dataset_name}']
-    solr_cycles = solr_query(config, fq)
+    solr_cycles = solr_query(config, ['type_s:cycle', f'dataset_s:{ds_name}'])
 
     cycles = {cycle['start_date_dt']: cycle for cycle in solr_cycles}
 
     # Generate list of cycle date tuples (start, end)
-    cycle_dates = []
-
-    start_date = datetime.strptime('1992-01-01T00:00:00', date_regex)
-    end_date = datetime.utcnow()
     delta = timedelta(days=10)
+    start_date = datetime.strptime('1992-01-01T00:00:00', date_regex)
+    end_date = start_date + delta
 
-    curr = start_date
-    while curr < end_date:
-
-        if datetime.strftime(curr + delta, date_regex) >= ds_metadata['start_date_dt']:
-            cycle_dates.append((curr, curr + delta))
-        if datetime.strftime(curr + delta, date_regex) > ds_metadata['end_date_dt']:
-            break
-
-        curr += delta
-
-    for (start_date, end_date) in cycle_dates:
-
+    while True:
         # Make strings for cycle start, center, and end dates
         start_date_str = datetime.strftime(start_date, date_regex)
         end_date_str = datetime.strftime(end_date, date_regex)
         center_date = start_date + ((end_date - start_date)/2)
         center_date_str = datetime.strftime(center_date, date_regex)
 
+        dates = (start_date, center_date, end_date)
         date_strs = (start_date_str, center_date_str, end_date_str)
 
-        # Find the granule with date closest to center of cycle
-        # Uses special Solr query function to automatically return granules in proximal order
-        if '1812' in dataset_name:
-            query_start = datetime.strftime(start_date, solr_regex)
-            query_end = datetime.strftime(end_date, solr_regex)
-            fq = ['type_s:harvested', f'dataset_s:{dataset_name}', 'harvest_success_b:true',
-                  f'date_dt:[{query_start} TO {query_end}}}']
-            boost_function = f'recip(abs(ms({center_date_str}Z,date_dt)),3.16e-11,1,1)'
+        # End cycle processing if cycles are outside of dataset date range
+        if start_date_str > ds_metadata['end_date_dt']:
+            break
 
-            query_params = {'q': '*:*',
-                            'fq': fq,
-                            'bf': boost_function,
-                            'defType': 'edismax',
-                            'rows': 300000,
-                            'sort': 'date_s asc'}
+        # Move to next cycle date range if end of cycle is before start of dataset
+        if end_date_str < ds_metadata['start_date_dt']:
+            start_date = end_date
+            end_date = start_date + delta
+            continue
 
-            url = f'{solr_host}{solr_collection_name}/select?'
-            response = requests.get(url, params=query_params)
-            cycle_granules = response.json()['response']['docs']
+        # ======================================================
+        # Collect granules within cycle
+        # ======================================================
 
-        # Get granules within start_date and end_date
-        else:
-            query_start = datetime.strftime(start_date, solr_regex)
-            query_end = datetime.strftime(end_date, solr_regex)
-            fq = ['type_s:harvested', f'dataset_s:{dataset_name}', 'harvest_success_b:true',
-                  f'date_dt:[{query_start} TO {query_end}}}']
-
-            cycle_granules = solr_query(config, fq)
+        cycle_granules = collect_granules(ds_name, dates, date_strs, config)
 
         # Skip cycle if no granules harvested
         if not cycle_granules:
             print(f'No granules for cycle {start_date_str} to {end_date_str}')
             continue
 
-        updating = False
+        # ======================================================
+        # Determine if cycle requires processing
+        # ======================================================
 
-        # If any single granule in a cycle satisfies any of the following conditions:
-        # - has been updated,
-        # - previously failed,
-        # - has a different version than what is in the config
-        # reprocess the entire cycle
-        if cycles:
-
-            if start_date_str + 'Z' in cycles.keys():
-                existing_cycle = cycles[start_date_str + 'Z']
-
-                prior_time = existing_cycle['processing_time_dt']
-                prior_success = existing_cycle['processing_success_b']
-                prior_version = existing_cycle['processing_version_f']
-
-                if not prior_success or prior_version != version:
-                    updating = True
-
-                for granule in cycle_granules:
-                    if prior_time < granule['modified_time_dt']:
-                        updating = True
-                        continue
-            else:
-                updating = True
-        else:
-            updating = True
-
-        if updating:
+        if check_updating(cycles, date_strs, cycle_granules, version):
             processing_success = False
             print(f'Processing cycle {start_date_str} to {end_date_str}')
 
@@ -519,59 +593,33 @@ def processing(config_path='', output_path=''):
                      'along_track': process_along_track,
                      'shalin': process_shalin}
 
+            # ======================================================
+            # Process the cycle
+            # ======================================================
+
             try:
+                # Dataset specific processing of cycle
                 cycle_ds, granule_count = funcs[processor](cycle_granules,
                                                            ds_metadata,
                                                            date_strs)
 
-                # NetCDF encoding
-                encoding_each = {'zlib': True,
-                                 'complevel': 5,
-                                 'dtype': 'float32',
-                                 'shuffle': True,
-                                 '_FillValue': default_fillvals['f8']}
+                # Create netcdf encoding for cycle
+                encoding = cycle_ds_encoding(cycle_ds, ds_name, center_date)
 
-                coord_encoding = {}
-                for coord in cycle_ds.coords:
-
-                    if 'Time' in coord:
-                        coord_encoding[coord] = {'_FillValue': None,
-                                                 'zlib': True,
-                                                 'contiguous': False,
-                                                 'calendar': 'gregorian',
-                                                 'shuffle': False}
-
-                    # To account for time bounds in 1812 dataset
-                    if 'Time' in coord and '1812' in dataset_name:
-                        units_time = datetime.strftime(
-                            center_date, "%Y-%m-%d %H:%M:%S")
-                        coord_encoding[coord]['units'] = f'days since {units_time}'
-
-                    if 'Lat' in coord:
-                        coord_encoding[coord] = {'_FillValue': None,
-                                                 'dtype': 'float32'}
-                    if 'Lon' in coord:
-                        coord_encoding[coord] = {'_FillValue': None,
-                                                 'dtype': 'float32'}
-
-                var_encoding = {
-                    var: encoding_each for var in cycle_ds.data_vars}
-
-                encoding = {**coord_encoding, **var_encoding}
-
+                # Save to netcdf
                 filename_time = datetime.strftime(center_date, '%Y%m%dT%H%M%S')
-
                 filename = f'ssha_{filename_time}.nc'
 
-                save_dir = f'{output_path}{dataset_name}/cycle_products/'
+                save_dir = f'{output_path}{ds_name}/cycle_products/'
                 save_path = f'{save_dir}{filename}'
 
                 # If paths don't exist, make them
                 if not os.path.exists(save_dir):
                     os.makedirs(save_dir)
 
-                # Save to netcdf
                 cycle_ds.to_netcdf(save_path, encoding=encoding)
+
+                # Determine checksum and file size
                 checksum = md5(save_path)
                 file_size = os.path.getsize(save_path)
                 processing_success = True
@@ -585,34 +633,24 @@ def processing(config_path='', output_path=''):
                 granule_count = 0
 
             # Add or update Solr cycle
-            # Update cycle entry
+            item = {
+                'type_s': 'cycle',
+                'dataset_s': ds_name,
+                'start_date_dt': start_date_str,
+                'center_date_dt': center_date_str,
+                'end_date_dt': end_date_str,
+                'granules_in_cycle_i': granule_count,
+                'filename_s': filename,
+                'filepath_s': save_path,
+                'checksum_s': checksum,
+                'file_size_l': file_size,
+                'processing_success_b': processing_success,
+                'processing_time_dt': datetime.utcnow().strftime(date_regex),
+                'processing_version_f': version
+            }
+
             if start_date_str + 'Z' in cycles.keys():
-                item = cycles[start_date_str + 'Z']
-                item['granules_in_cycle_i'] = {"set": granule_count}
-                item['filename_s'] = {"set": filename}
-                item['filepath_s'] = {"set": save_path}
-                item['checksum_s'] = {"set": checksum}
-                item['file_size_l'] = {"set": file_size}
-                item['processing_success_b'] = {"set": processing_success}
-                item['processing_time_dt'] = {
-                    "set": datetime.utcnow().strftime(solr_regex)}
-                item['processing_version_f'] = {"set": version}
-            # Make new entry
-            else:
-                item = {}
-                item['type_s'] = 'cycle'
-                item['dataset_s'] = dataset_name
-                item['start_date_dt'] = start_date_str
-                item['center_date_dt'] = center_date_str
-                item['end_date_dt'] = end_date_str
-                item['granules_in_cycle_i'] = granule_count
-                item['filename_s'] = filename
-                item['filepath_s'] = save_path
-                item['checksum_s'] = checksum
-                item['file_size_l'] = file_size
-                item['processing_success_b'] = processing_success
-                item['processing_time_dt'] = datetime.utcnow().strftime(date_regex)
-                item['processing_version_f'] = version
+                item['id'] = cycles[start_date_str + 'Z']['id']
 
             resp = solr_update(config, [item])
             if resp.status_code == 200:
@@ -623,7 +661,7 @@ def processing(config_path='', output_path=''):
                     if 'id' in item.keys():
                         cycle_id = item['id']
                     else:
-                        fq = ['type_s:cycle', f'dataset_s:{dataset_name}',
+                        fq = ['type_s:cycle', f'dataset_s:{ds_name}',
                               f'filename_s:{filename}']
                         cycle_doc = solr_query(config, fq)
                         cycle_id = cycle_doc[0]['id']
@@ -638,28 +676,10 @@ def processing(config_path='', output_path=''):
         else:
             print(f'No updates for cycle {start_date_str} to {end_date_str}')
 
-    # Query for Solr failed harvest documents
-    fq = ['type_s:cycle',
-          f'dataset_s:{dataset_name}', 'processing_success_b:false']
-    failed_processing = solr_query(config, fq)
+        start_date = end_date
+        end_date = start_date + delta
 
-    if not failed_processing:
-        processing_status = 'All cycles successfully processed'
-    else:
-        # Query for Solr successful harvest documents
-        fq = ['type_s:cycle',
-              f'dataset_s:{dataset_name}', 'processing_success_b:true']
-        successful_processing = solr_query(config, fq)
-
-        if not successful_processing:
-            processing_status = 'No cycles successfully processed (either all failed or no granules to process)'
-        else:
-            processing_status = f'{len(failed_processing)} cycles failed'
-
-    ds_metadata['processing_status_s'] = {"set": processing_status}
-    resp = solr_update(config, [ds_metadata])
-
-    if resp.status_code == 200:
-        print('Successfully updated Solr dataset document\n')
-    else:
-        print('Failed to update Solr dataset document\n')
+    # ======================================================
+    # Update dataset document with overall processing status
+    # ======================================================
+    post_process_solr_update(config, ds_metadata)
