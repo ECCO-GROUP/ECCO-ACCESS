@@ -641,8 +641,7 @@ def processing(config_path='', output_path=''):
                         cycle_id = item['id']
                     else:
                         fq = ['type_s:cycle', f'dataset_s:{ds_name}', f'filename_s:{filename}']
-                        cycle_doc = solr_query(config, fq)
-                        cycle_id = cycle_doc[0]['id']
+                        cycle_id = solr_query(config, fq)[0]['id']
 
                     for granule in cycle_granules:
                         granule['cycle_id_s'] = cycle_id
