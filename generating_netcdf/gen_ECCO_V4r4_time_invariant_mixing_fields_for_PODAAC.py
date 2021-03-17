@@ -31,19 +31,26 @@ import matplotlib.pyplot as plt
 from pandas import read_csv
 reload(ecco)
 
-#%%
+# uses the MITgcm simplegrid package by Greg Moore and Ian Fenty
+# https://github.com/nasa/simplegrid
+sys.path.append('/home/ifenty/git_repos_others/simplegrid')
+import simplegrid as sg
 
 
-#%%
-# NATIVE
-plt.close('all')
-netcdf_grid_dir = Path('/home/ifenty/data/grids/grid_ECCOV4r4_20210309')
-ecco_grid_native = xr.open_dataset(netcdf_grid_dir / 'GRID_GEOMETRY_ECCO_v4r4_native_llc0090.nc')
-latlon_grid_dir = Path('/home/ifenty/data/grids/grid_ECCOV4r4_20210309')
-ecco_grid_latlon = xr.open_dataset(netcdf_grid_dir / 'GRID_GEOMETRY_ECCO_v4r4_latlon_0p50deg.nc')
+
+def meta_fixes(G):
+    G.attrs['references'] ='ECCO Consortium, Fukumori, I., Wang, O., Fenty, I., Forget, G., Heimbach, P., & Ponte, R. M. 2020. Synopsis of the ECCO Central Production Global Ocean and Sea-Ice State Estimate (Version 4 Release 4). doi:10.5281/zenodo.3765928'
+    G.attrs['source'] ='The ECCO V4r4 state estimate was produced by fitting a free-running solution of the MITgcm (checkpoint 66g) to satellite and in situ observational data in a least squares sense using the adjoint method'
+    G.attrs['coordinates_comment'] = "Note: the global 'coordinates' attribute describes auxillary coordinates."
+    return G
 
 #%%
+
 output_array_precision = np.float32
+
+
+## GRID DIR -- MAKE SURE USE GRID FIELDS WITHOUT BLANK TILES!!
+#mds_grid_dir = Path('/Users/ifenty/tmp/no_blank_all')
 
 ## METADATA
 metadata_json_dir = Path('/home/ifenty/git_repos_others/ECCO-GROUP/ECCO-ACCESS/metadata/ECCOv4r4_metadata_json')
@@ -60,7 +67,8 @@ metadata_fields = ['ECCOv4r4_global_metadata_for_all_datasets',
                    'ECCOv4r4_groupings_for_latlon_datasets',
                    'ECCOv4r4_groupings_for_native_datasets',
                    'ECCOv4r4_variable_metadata',
-                   'ECCOv4r4_variable_metadata_for_latlon_datasets']
+                   'ECCOv4r4_variable_metadata_for_latlon_datasets',
+                   'ECCOv4r4_dataset_summary']
 
 
 print('\nLOADING METADATA')
@@ -90,98 +98,113 @@ coordinate_metadata_for_native_datasets = metadata['ECCOv4r4_coordinate_metadata
 geometry_metadata_for_native_datasets = metadata['ECCOv4r4_geometry_metadata_for_native_datasets']
 variable_metadata = metadata['ECCOv4r4_variable_metadata']
 
+dataset_summary = metadata['ECCOv4r4_dataset_summary']
 podaac_dir = metadata_json_dir
-podaac_dataset_table = read_csv(podaac_dir / 'PODAAC_datasets-revised_20210226.4.csv')
+podaac_dataset_table = read_csv(podaac_dir / 'PODAAC_datasets-revised_20210226.5.csv')
 
-ecco_grid_dir_mds = Path('/home/ifenty/data/grids/grid_ECCOV4r4')
+ecco_grid_dir = Path('/home/ifenty/data/grids/grid_ECCOV4r4')
 
+title='ECCO Geometry Parameters for the 0.5 degree Lat-Lon Model Grid (Version 4 Release 4'
 
-
-#%%
-
-    # get podaac metadata based on filename
-    print('\n... getting PODAAC metadata')
-    podaac_metadata = \
-        ecco.find_podaac_metadata(podaac_dataset_table,
-                                  filename,
-                                  less_output=False)
-
-
-
-
-#%%
-
-#%%
 mixing_dir = Path('/home/ifenty/ian1/ifenty/ECCOv4/binary_output/3dmixingparameters')
-kapgm_fname = 'xx_kapgm.effective.0000000129.data'
-kapredi_fname = 'xx_kapredi.effective.0000000129.data'
-diffkr_fname = 'xx_diffkr.effective.0000000129.data'
-
-#mds_var_dir,\
-#                                   mds_grid_dir = mds_grid_dir, \
-#                                   mds_files = short_mds_name,\
-#                                   vars_to_load = vars_to_load,
-
-kapgm = ecco.read_llc_to_tiles(mixing_dir, kapgm_fname, nk=50, use_xmitgcm=False)
-kapredi = ecco.read_llc_to_tiles(mixing_dir, kapredi_fname, nk=50, use_xmitgcm=False)
-diffkr = ecco.read_llc_to_tiles(mixing_dir, diffkr_fname, nk=50, use_xmitgcm=False)
-
-kapgm_DA = ecco_grid_native.hFacC.copy(deep=True)
-kapgm_DA.values = kapgm
-kapgm_DA.name = 'kapgm'
-
-kapredi_DA = ecco_grid_native.hFacC.copy(deep=True)
-kapredi_DA.values = kapredi
-kapredi_DA.name = 'kapredi'
-
-diffkr_DA = ecco_grid_native.hFacC.copy(deep=True)
-diffkr_DA.values = diffkr
-diffkr_DA.name = 'diffkr'
-
-#% Mask land
-kapgm_DA = kapgm_DA.where(ecco_grid_native.maskC == True)
-kapredi_DA = kapredi_DA.where(ecco_grid_native.maskC == True)
-diffkr_DA = diffkr_DA.where(ecco_grid_native.maskC == True)
-
-
-#%%
-#def read_llc_to_tiles(fdir, fname, llc=90, skip=0, nk=1, nl=1,
-#              	      filetype = '>f', less_output = False,
-#                      use_xmitgcm=False):
-#    """
-
-F =  ecco.load_ecco_vars_from_mds(mixing_dir,
-                             ecco_grid_dir_mds,
-                             mds_files = 'xx_kapgm.effective',
-                             vars_to_load = 'all',
-                             drop_unused_coords = False,
-                             grid_vars_to_coords = False,
-                             coordinate_metadata = geometry_metadata_for_native_datasets,
-                             variable_metadata = variable_metadata,
-                             global_metadata = global_metadata_for_all_datasets,
-                             ignore_unknown_vars=True)
 
 #%%
 
-output_dir = Path('/home/ifenty/data/grids/grid_ECCOV4r4_20210309/')
-G =ecco.create_ecco_grid_geometry_from_mds(ecco_grid_dir_mds,
-                                           grid_output_dir=None,
-                                           title = title,
-                                           file_basename = file_basename,
-                                           coordinate_metadata = coordinate_metadata_for_native_datasets,
-                                           geometry_metadata   = geometry_metadata_for_native_datasets,
-                                           global_metadata     = global_metadata_native,
-                                           cell_bounds = XC_YC_bnds,
-                                           less_output=True).load()
+output_dir = Path('/home/ifenty/tmp/time-invariant_20210317/')
+output_dir.mkdir(parents=True, exist_ok=True)
+
+#%%
+plt.close('all')
+
+ecco_grid = xr.open_dataset(ecco_grid_dir / 'GRID_GEOMETRY_ECCO_V4r4_native_llc0090.nc')
+
+#%%
+xx_diffkr = ecco.read_llc_to_tiles(mixing_dir, 'xx_diffkr.effective.0000000129.data', nk=50)
+xx_diffkr_DA = xr.ones_like(ecco_grid.hFacC)
+xx_diffkr_DA.name = 'DIFFKR'
+xx_diffkr_DA.attrs = dict()
+xx_diffkr_DA.values = xx_diffkr
+xx_diffkr_DA = xx_diffkr_DA.where(ecco_grid.hFacC > 0)
+ecco.plot_tiles(xx_diffkr_DA.isel(k=10), layout='latlon',rotate_to_latlon=True, show_colorbar=True,
+                show_tile_labels=(False))
+print(xx_diffkr_DA )
 
 
 #%%
+xx_kapgm = ecco.read_llc_to_tiles(mixing_dir, 'xx_kapgm.effective.0000000129.data', nk=50)
+xx_kapgm_DA = xr.ones_like(ecco_grid.hFacC)
+xx_kapgm_DA.name = 'KAPGM'
+xx_kapgm_DA.attrs = dict()
+xx_kapgm_DA.values = xx_kapgm
+xx_kapgm_DA = xx_kapgm_DA.where(ecco_grid.hFacC > 0)
+ecco.plot_tiles(xx_kapgm_DA.isel(k=10), layout='latlon',rotate_to_latlon=True, show_colorbar=True, show_tile_labels=(False),cmap='jet')
+print(xx_kapgm_DA)
 
-filename ='GRID_GEOMETRY_ECCO_v4r4_native_llc0090.nc'
+#%%
+xx_kapredi = ecco.read_llc_to_tiles(mixing_dir, 'xx_kapredi.effective.0000000129.data', nk=50)
+xx_kapredi_DA = xr.ones_like(ecco_grid.hFacC)
+xx_kapredi_DA.name = 'KAPREDI'
+xx_kapredi_DA.attrs = dict()
+xx_kapredi_DA.values = xx_kapredi
+xx_kapredi_DA = xx_kapredi_DA.where(ecco_grid.hFacC > 0)
+ecco.plot_tiles(xx_kapredi_DA.isel(k=10), layout='latlon',rotate_to_latlon=True, show_colorbar=True, show_tile_labels=(False),cmap='jet')
+print(xx_kapredi_DA)
+
+#%%
+G = ecco_grid.copy(deep=True)
+
+for dv in G.data_vars:
+    G = G.drop_vars(G)
+
+G = xr.merge([G, xx_diffkr_DA, xx_kapgm_DA, xx_kapredi_DA])
+
+
+
+# current time and date
+current_time = datetime.datetime.now().isoformat()[0:19]
+G.attrs['date_created'] = current_time
+G.attrs['date_modified'] = current_time
+G.attrs['date_metadata_modified'] = current_time
+G.attrs['date_issued'] = current_time
+pprint(G)
+
+#%%
+grouping_gcmd_keywords = []
+# ADD VARIABLE SPECIFIC METADATA TO VARIABLE ATTRIBUTES (DATA ARRAYS)
+print('\n... adding metadata specific to the variable')
+G, grouping_gcmd_keywords = \
+    ecco.add_variable_metadata(variable_metadata, G, grouping_gcmd_keywords)
+
+#print('\n... using 1D dataseta metadata specific to the variable')
+#G, grouping_gcmd_keywords = \
+#    ecco.add_variable_metadata(variable_metadata_1D, G, grouping_gcmd_keywords)
+
+for dv in G.data_vars:
+    pprint(G[dv].attrs)
+
+#%%
+pprint(G)
+#%%
+
+#print('\n... adding coordinate metadata for 1D dataset')
+#G = ecco.add_coordinate_metadata(coordinate_metadata_for_1D_datasets,G)
+#pprint(G)
+
+#%%
+# ADD GLOBAL METADATA
+dataset_dim='3D'
+print("\n... adding global metadata for all datasets")
+G = ecco.add_global_metadata(global_metadata_for_all_datasets, G,\
+                        dataset_dim)
+print('\n... adding global metadata for 1D dataset')
+G = ecco.add_global_metadata(global_metadata_for_native_datasets, G,\
+                                dataset_dim)
+
+
+
+#%%
+filename ='OCEAN_3D_MIXING_COEFFS_ECCO_V4r4_native_llc0090.nc'
 G.attrs['product_name'] = filename
-
-# add summary attribute = description of dataset
-G.attrs['summary'] = summary
 
 # get podaac metadata based on filename
 print('\n... getting PODAAC metadata')
@@ -195,15 +218,48 @@ print('\n... applying PODAAC metadata')
 #pprint(podaac_metadata)
 G = ecco.apply_podaac_metadata(G, podaac_metadata)
 
+#%%
+shortname = G.id.split('/')[1]
+print(shortname)
+
+G.attrs['summary']= dataset_summary[shortname]['summary']
+G.attrs['title'] = dataset_summary[shortname]['title']
+print(G.title)
+
+pprint(G)
+
+#%%
+# current time and date
+current_time = datetime.datetime.now().isoformat()[0:19]
+G.attrs['date_created'] = current_time
+G.attrs['date_modified'] = current_time
+G.attrs['date_metadata_modified'] = current_time
+G.attrs['date_issued'] = current_time
+pprint(G)
+
+
+#%%
+
+# ADD GLOBAL METADATA ASSOCIATED WITH TIME AND DATE
+print('\n... adding time / data global attrs')
+G.attrs['time_coverage_start'] = G.attrs['product_time_coverage_start']
+G.attrs['time_coverage_end']   = G.attrs['product_time_coverage_end']
+
+#%%
+# uuic
+print('\n... adding uuid')
+G.attrs['uuid'] = str(uuid.uuid1())
+
+G = meta_fixes(G)
+
+#%%
 # sort comments alphabetically
 print('\n... sorting global attributes')
 G.attrs = ecco.sort_attrs(G.attrs)
 
-# add one final comment (PODAAC request)
-G.attrs["coordinates_comment"] = \
-    "Note: the global 'coordinates' attribute describes auxillary coordinates."
 
-# Make encodings
+#%%
+## Make encodings
 netcdf_fill_value = ecco.get_netcdf_fill_val(output_array_precision)
 encoding = ecco.create_dataset_netcdf_encoding(G)
 
@@ -220,15 +276,17 @@ if not output_dir.exists():
 # create full pathname for netcdf file
 netcdf_output_filename = output_dir / filename
 
+#%%
 G.to_netcdf(netcdf_output_filename, encoding=encoding)
 G.close()
 
 
 #%%
 
-make_latlon_grid_geometry = True;
+make_latlon_3D_fields = False;
 
-if make_latlon_grid_geometry:
+#%%
+if make_latlon_3D_fields:
 
     #%%
 
@@ -538,12 +596,8 @@ if make_latlon_grid_geometry:
                             dims = 'Z', coords = [ecco_grid.Z.values])
     drF_ll_DA.name = 'drF'
 
-    drC_ll_DA= xr.DataArray(ecco_grid.drC.values, \
-                            dims = 'Zp1', coords = [ecco_grid.Zp1.values])
-    drC_ll_DA.name = 'drC'
-
     # Merge
-    ecco_grid_ll = xr.merge([A,B, area_latlon_DA, drF_ll_DA, drC_ll_DA, maskC])
+    ecco_grid_ll = xr.merge([A,B, area_latlon_DA, drF_ll_DA, maskC])
 
 
     #   assign lat and lon bounds
@@ -561,13 +615,10 @@ if make_latlon_grid_geometry:
     print(ecco_grid_ll)
 
 
-    ecco_grid_ll_summary = 'This dataset provides geometric parameters for the regular 0.5-degree lat-lon grid from the ECCO Version 4 Release 4 (V4r4) ocean and sea-ice state estimate. Parameters include areas and lengths of grid cell sides and the horizontal and vertical coordinates of grid cell centers and corners. Additional information related to the global domain geometry (e.g., bathymetry and land/ocean masks) are also included. However, users should note these domain geometry fields are approximations because they have been interpolated from the ECCO lat-lon-cap 90 (llc90) native model grid. Users interested in exact budget closure calculations for volume, heat, salt, or momentum should use ECCO fields provided on the llc90 grid. Estimating the Circulation and Climate of the Ocean (ECCO) state estimates are dynamically and kinematically-consistent reconstructions of the three-dimensional, time-evolving ocean, sea-ice, and surface atmospheric states. ECCO V4r4 is a free-running solution of a global, nominally 1-degree configuration of the MIT general circulation model (MITgcm) that has been fit to observations in a least-squares sense. Observational data constraints used in V4r4 include sea surface height (SSH) from satellite altimeters [ERS-1/2, TOPEX/Poseidon, GFO, ENVISAT, Jason-1,2,3, CryoSat-2, and SARAL/AltiKa]; sea surface temperature (SST) from satellite radiometers [AVHRR], sea surface salinity (SSS) from the Aquarius satellite radiometer/scatterometer, ocean bottom pressure (OBP) from the GRACE satellite gravimeter; sea ice concentration from satellite radiometers [SSM/I and SSMIS], and in-situ ocean temperature and salinity measured with conductivity-temperature-depth (CTD) sensors and expendable bathythermographs (XBTs) from several programs [e.g., WOCE, GO-SHIP, Argo, and others] and platforms [e.g., research vessels, gliders, moorings, ice-tethered profilers, and instrumented pinnipeds]. V4r4 covers the period 1992-01-01T12:00:00 to 2018-01-01T00:00:00.'
-
-
     filename = 'GRID_GEOMETRY_ECCO_v4r4_latlon_0p50deg.nc'
 
     # add summary attribute = description of dataset
-    ecco_grid_ll.attrs['summary'] = ecco_grid_ll_summary
+  #  ecco_grid_ll.attrs['summary'] = ecco_grid_ll_summary
 
     # get podaac metadata based on filename
     print('\n... getting PODAAC metadata')
@@ -591,6 +642,28 @@ if make_latlon_grid_geometry:
     ecco_grid_ll.attrs['date_issued'] = G.attrs['date_issued']
     ecco_grid_ll.attrs['date_metadata_modified'] = G.attrs['date_metadata_modified']
 
+
+#filename ='GRID_GEOMETRY_ECCO_v4r4_native_llc0090.nc'
+#G.attrs['product_name'] = filename
+
+
+    #%%
+    shortname = ecco_grid_ll.id.split('/')[1]
+    print(shortname)
+
+    ecco_grid_ll.attrs['summary']= dataset_summary[shortname]['summary']
+    ecco_grid_ll.attrs['title'] = dataset_summary[shortname]['title']
+    print(ecco_grid_ll.title)
+
+    ecco_grid_ll = meta_fixes(ecco_grid_ll)
+
+    #%%
+    # sort comments alphabetically
+    print('\n... sorting global attributes')
+    ecco_grid_ll.attrs = ecco.sort_attrs(ecco_grid_ll.attrs)
+
+
+    #%%
     # remove granule time coverage attrs
     if 'time_coverage_end' in list(ecco_grid_ll.attrs.keys()):
         ecco_grid_ll.attrs.pop('time_coverage_end')
@@ -610,13 +683,14 @@ if make_latlon_grid_geometry:
 
     ecco_grid_ll.attrs['uuid'] = str(uuid.uuid1())
 
+    # add one final comment (PODAAC request)
+    ecco_grid_ll.attrs["coordinates_comment"] = \
+        "Note: the global 'coordinates' attribute describes auxillary coordinates."
+
     # sort comments alphabetically
     print('\n... sorting global attributes')
     ecco_grid_ll.attrs = ecco.sort_attrs(ecco_grid_ll.attrs)
 
-    # add one final comment (PODAAC request)
-    ecco_grid_ll.attrs["coordinates_comment"] = \
-        "Note: the global 'coordinates' attribute describes auxillary coordinates."
 
     print(ecco_grid_ll)
 

@@ -37,14 +37,16 @@ sys.path.append('/home/ifenty/git_repos_others/simplegrid')
 import simplegrid as sg
 
 
+
+def meta_fixes(G):
+    G.attrs['references'] ='ECCO Consortium, Fukumori, I., Wang, O., Fenty, I., Forget, G., Heimbach, P., & Ponte, R. M. 2020. Synopsis of the ECCO Central Production Global Ocean and Sea-Ice State Estimate (Version 4 Release 4). doi:10.5281/zenodo.3765928'
+    G.attrs['source'] ='The ECCO V4r4 state estimate was produced by fitting a free-running solution of the MITgcm (checkpoint 66g) to satellite and in situ observational data in a least squares sense using the adjoint method'
+    G.attrs['coordinates_comment'] = "Note: the global 'coordinates' attribute describes auxillary coordinates."
+    return G
+
 #%%
 
 output_array_precision = np.float32
-
-
-#%%
-
-summary  = 'This dataset provides geometric parameters for the lat-lon-cap 90 (llc90) native model grid from the ECCO Version 4 Release 4 (V4r4) ocean and sea-ice state estimate. Parameters include areas and lengths of grid cell sides; horizontal and vertical coordinates of grid cell centers and corners; grid rotation angles; and global domain geometry including bathymetry and land/ocean masks. Estimating the Circulation and Climate of the Ocean (ECCO) state estimates are dynamically and kinematically-consistent reconstructions of the three-dimensional, time-evolving ocean, sea-ice, and surface atmospheric states. ECCO V4r4 is a free-running solution of a global, nominally 1-degree configuration of the MIT general circulation model (MITgcm) that has been fit to observations in a least-squares sense. Observational data constraints used in V4r4 include sea surface height (SSH) from satellite altimeters [ERS-1/2, TOPEX/Poseidon, GFO, ENVISAT, Jason-1,2,3, CryoSat-2, and SARAL/AltiKa]; sea surface temperature (SST) from satellite radiometers [AVHRR], sea surface salinity (SSS) from the Aquarius satellite radiometer/scatterometer, ocean bottom pressure (OBP) from the GRACE satellite gravimeter; sea ice concentration from satellite radiometers [SSM/I and SSMIS], and in-situ ocean temperature and salinity measured with conductivity-temperature-depth (CTD) sensors and expendable bathythermographs (XBTs) from several programs [e.g., WOCE, GO-SHIP, Argo, and others] and platforms [e.g., research vessels, gliders, moorings, ice-tethered profilers, and instrumented pinnipeds]. V4r4 covers the period 1992-01-01T12:00:00 to 2018-01-01T00:00:00.'
 
 
 ## GRID DIR -- MAKE SURE USE GRID FIELDS WITHOUT BLANK TILES!!
@@ -65,7 +67,8 @@ metadata_fields = ['ECCOv4r4_global_metadata_for_all_datasets',
                    'ECCOv4r4_groupings_for_latlon_datasets',
                    'ECCOv4r4_groupings_for_native_datasets',
                    'ECCOv4r4_variable_metadata',
-                   'ECCOv4r4_variable_metadata_for_latlon_datasets']
+                   'ECCOv4r4_variable_metadata_for_latlon_datasets',
+                   'ECCOv4r4_dataset_summary']
 
 
 print('\nLOADING METADATA')
@@ -95,12 +98,13 @@ coordinate_metadata_for_native_datasets = metadata['ECCOv4r4_coordinate_metadata
 geometry_metadata_for_native_datasets = metadata['ECCOv4r4_geometry_metadata_for_native_datasets']
 variable_metadata = metadata['ECCOv4r4_variable_metadata']
 
+dataset_summary = metadata['ECCOv4r4_dataset_summary']
 podaac_dir = metadata_json_dir
-podaac_dataset_table = read_csv(podaac_dir / 'PODAAC_datasets-revised_20210226.4.csv')
+podaac_dataset_table = read_csv(podaac_dir / 'PODAAC_datasets-revised_20210226.5.csv')
 
 ecco_grid_dir_mds = Path('/home/ifenty/data/grids/grid_ECCOV4r4')
 
-title='ECCO V4r4 Grid Geometry for Lat-Lon-Cap 90 (llc90) Native Model Grid'
+title='ECCO Geometry Parameters for the 0.5 degree Lat-Lon Model Grid (Version 4 Release 4'
 
 
 #%%
@@ -154,7 +158,7 @@ print(XC_bnds_DA)
 #%%
 file_basename = 'GRID_GEOMETRY_ECCO'
 
-output_dir = Path('/home/ifenty/data/grids/grid_ECCOV4r4_20210309/')
+output_dir = Path('/home/ifenty/data/grids/grid_ECCOV4r4_20210316b/')
 G =ecco.create_ecco_grid_geometry_from_mds(ecco_grid_dir_mds,
                                            grid_output_dir=None,
                                            title = title,
@@ -168,11 +172,8 @@ G =ecco.create_ecco_grid_geometry_from_mds(ecco_grid_dir_mds,
 
 #%%
 
-filename ='GRID_GEOMETRY_ECCO_v4r4_native_llc0090.nc'
+filename ='GRID_GEOMETRY_ECCO_V4r4_native_llc0090.nc'
 G.attrs['product_name'] = filename
-
-# add summary attribute = description of dataset
-G.attrs['summary'] = summary
 
 # get podaac metadata based on filename
 print('\n... getting PODAAC metadata')
@@ -186,15 +187,22 @@ print('\n... applying PODAAC metadata')
 #pprint(podaac_metadata)
 G = ecco.apply_podaac_metadata(G, podaac_metadata)
 
+#%%
+shortname = G.id.split('/')[1]
+print(shortname)
+
+G.attrs['summary']= dataset_summary[shortname]['summary']
+G.attrs['title'] = dataset_summary[shortname]['title']
+print(G.title)
+
+G = meta_fixes(G)
+
+#%%
 # sort comments alphabetically
 print('\n... sorting global attributes')
 G.attrs = ecco.sort_attrs(G.attrs)
 
-# add one final comment (PODAAC request)
-G.attrs["coordinates_comment"] = \
-    "Note: the global 'coordinates' attribute describes auxillary coordinates."
-
-# Make encodings
+## Make encodings
 netcdf_fill_value = ecco.get_netcdf_fill_val(output_array_precision)
 encoding = ecco.create_dataset_netcdf_encoding(G)
 
@@ -211,6 +219,10 @@ if not output_dir.exists():
 # create full pathname for netcdf file
 netcdf_output_filename = output_dir / filename
 
+del G.attrs['original_mds_grid_dir']
+del G.attrs['original_mds_var_dir']
+
+#%%
 G.to_netcdf(netcdf_output_filename, encoding=encoding)
 G.close()
 
@@ -219,6 +231,7 @@ G.close()
 
 make_latlon_grid_geometry = True;
 
+#%%
 if make_latlon_grid_geometry:
 
     #%%
@@ -529,10 +542,6 @@ if make_latlon_grid_geometry:
                             dims = 'Z', coords = [ecco_grid.Z.values])
     drF_ll_DA.name = 'drF'
 
-    #drC_ll_DA= xr.DataArray(ecco_grid.drC.values, \
-    #                        dims = 'Zp1', coords = [ecco_grid.Zp1.values])
-    #drC_ll_DA.name = 'drC'
-
     # Merge
     ecco_grid_ll = xr.merge([A,B, area_latlon_DA, drF_ll_DA, maskC])
 
@@ -552,13 +561,10 @@ if make_latlon_grid_geometry:
     print(ecco_grid_ll)
 
 
-    ecco_grid_ll_summary = 'This dataset provides geometric parameters for the regular 0.5-degree lat-lon grid from the ECCO Version 4 Release 4 (V4r4) ocean and sea-ice state estimate. Parameters include areas and lengths of grid cell sides and the horizontal and vertical coordinates of grid cell centers and corners. Additional information related to the global domain geometry (e.g., bathymetry and land/ocean masks) are also included. However, users should note these domain geometry fields are approximations because they have been interpolated from the ECCO lat-lon-cap 90 (llc90) native model grid. Users interested in exact budget closure calculations for volume, heat, salt, or momentum should use ECCO fields provided on the llc90 grid. Estimating the Circulation and Climate of the Ocean (ECCO) state estimates are dynamically and kinematically-consistent reconstructions of the three-dimensional, time-evolving ocean, sea-ice, and surface atmospheric states. ECCO V4r4 is a free-running solution of a global, nominally 1-degree configuration of the MIT general circulation model (MITgcm) that has been fit to observations in a least-squares sense. Observational data constraints used in V4r4 include sea surface height (SSH) from satellite altimeters [ERS-1/2, TOPEX/Poseidon, GFO, ENVISAT, Jason-1,2,3, CryoSat-2, and SARAL/AltiKa]; sea surface temperature (SST) from satellite radiometers [AVHRR], sea surface salinity (SSS) from the Aquarius satellite radiometer/scatterometer, ocean bottom pressure (OBP) from the GRACE satellite gravimeter; sea ice concentration from satellite radiometers [SSM/I and SSMIS], and in-situ ocean temperature and salinity measured with conductivity-temperature-depth (CTD) sensors and expendable bathythermographs (XBTs) from several programs [e.g., WOCE, GO-SHIP, Argo, and others] and platforms [e.g., research vessels, gliders, moorings, ice-tethered profilers, and instrumented pinnipeds]. V4r4 covers the period 1992-01-01T12:00:00 to 2018-01-01T00:00:00.'
-
-
-    filename = 'GRID_GEOMETRY_ECCO_v4r4_latlon_0p50deg.nc'
+    filename = 'GRID_GEOMETRY_ECCO_V4r4_latlon_0p50deg.nc'
 
     # add summary attribute = description of dataset
-    ecco_grid_ll.attrs['summary'] = ecco_grid_ll_summary
+  #  ecco_grid_ll.attrs['summary'] = ecco_grid_ll_summary
 
     # get podaac metadata based on filename
     print('\n... getting PODAAC metadata')
@@ -582,6 +588,25 @@ if make_latlon_grid_geometry:
     ecco_grid_ll.attrs['date_issued'] = G.attrs['date_issued']
     ecco_grid_ll.attrs['date_metadata_modified'] = G.attrs['date_metadata_modified']
 
+
+
+    #%%
+    shortname = ecco_grid_ll.id.split('/')[1]
+    print(shortname)
+
+    ecco_grid_ll.attrs['summary']= dataset_summary[shortname]['summary']
+    ecco_grid_ll.attrs['title'] = dataset_summary[shortname]['title']
+    print(ecco_grid_ll.title)
+
+    ecco_grid_ll = meta_fixes(ecco_grid_ll)
+
+    #%%
+    # sort comments alphabetically
+    print('\n... sorting global attributes')
+    ecco_grid_ll.attrs = ecco.sort_attrs(ecco_grid_ll.attrs)
+
+
+    #%%
     # remove granule time coverage attrs
     if 'time_coverage_end' in list(ecco_grid_ll.attrs.keys()):
         ecco_grid_ll.attrs.pop('time_coverage_end')
@@ -601,13 +626,14 @@ if make_latlon_grid_geometry:
 
     ecco_grid_ll.attrs['uuid'] = str(uuid.uuid1())
 
+    # add one final comment (PODAAC request)
+    ecco_grid_ll.attrs["coordinates_comment"] = \
+        "Note: the global 'coordinates' attribute describes auxillary coordinates."
+
     # sort comments alphabetically
     print('\n... sorting global attributes')
     ecco_grid_ll.attrs = ecco.sort_attrs(ecco_grid_ll.attrs)
 
-    # add one final comment (PODAAC request)
-    ecco_grid_ll.attrs["coordinates_comment"] = \
-        "Note: the global 'coordinates' attribute describes auxillary coordinates."
 
     print(ecco_grid_ll)
 

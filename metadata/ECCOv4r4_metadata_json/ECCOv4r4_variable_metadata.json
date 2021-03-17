@@ -263,6 +263,17 @@
       "coverage_content_type": "modelResult"
    },
    {
+      "name": "DIFFKR",
+      "long_name": "Vertical diffusivity",
+      "units": "m2 s-1",
+      "comments_1": "Background vertical diffusion coefficient for temperature and salinity. Total vertical diffusivity includes background diffusivity plus contributions from the GGL90 vertical mixing and the Gent-McWilliams/Redi parameterizations.",
+      "comments_2": "Note: DIFFKR is a model control variable and has been optimized from a spatially-invariant first-guess value of 1e-5 m2 s-1.",
+      "GCMD_keywords" : "",
+      "grid_dimension": "3D",
+      "grid_location": "c",
+      "coverage_content_type": "modelResult"
+   },
+   {
       "name": "DRHODR",
       "long_name": "Density stratification",
       "units": "kg m-3 m-1",
@@ -542,6 +553,28 @@
       "GCMD_keywords" : "EARTH SCIENCE > OCEANS > OCEAN CIRCULATION",
       "grid_dimension": "3D",
       "grid_location": "v",
+      "coverage_content_type": "modelResult"
+   },
+   {
+      "name": "KAPGM",
+      "long_name": "Gent-McWilliams diffusivity",
+      "units": "m2 s-1",
+      "comments_1": "Gent-McWilliams diffusivity coefficient as described in Gent and McWilliams (1990, JPO)",
+      "comments_2": "Note: KAPGM is a model control variable and has been optimized from a spatially invariant first guess of 1e3 m2 s-1.",
+      "GCMD_keywords" : "",
+      "grid_dimension": "3D",
+      "grid_location": "c",
+      "coverage_content_type": "modelResult"
+   },
+   {
+     "name": "KAPREDI",
+      "long_name": "Along-isopycnal diffusivity",
+      "units": "m2 s-1",
+      "comments_1": "Redi along-isopycnal diffusivity coefficient as described in Redi (1982, JPO)",
+      "comments_2": "Note: KAPREDI is a model control variable and has been optimized from a spatially invariant first guess of 1e3 m2 s-1.",
+      "GCMD_keywords" : "",
+      "grid_dimension": "3D",
+      "grid_location": "c",
       "coverage_content_type": "modelResult"
    },
    {

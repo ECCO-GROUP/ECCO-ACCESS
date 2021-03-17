@@ -27,6 +27,14 @@ from collections import OrderedDict
 from pandas import read_csv
 
 
+
+def meta_fixes(G):
+    G.attrs['references'] ='ECCO Consortium, Fukumori, I., Wang, O., Fenty, I., Forget, G., Heimbach, P., & Ponte, R. M. 2020. Synopsis of the ECCO Central Production Global Ocean and Sea-Ice State Estimate (Version 4 Release 4). doi:10.5281/zenodo.3765928'
+    G.attrs['source'] ='The ECCO V4r4 state estimate was produced by fitting a free-running solution of the MITgcm (checkpoint 66g) to satellite and in situ observational data in a least squares sense using the adjoint method'
+    G.attrs['coordinates_comment'] = "Note: the global 'coordinates' attribute describes auxillary coordinates."
+    return G
+
+
 def find_podaac_metadata(podaac_dataset_table, filename, debug=False):
     """Return revised file metadata based on an input ECCO `filename`.
 
@@ -187,8 +195,6 @@ def generate_netcdfs(output_freq_code,
     ecco_start_time = np.datetime64('1992-01-01T12:00:00')
     ecco_end_time   = np.datetime64('2017-12-31T12:00:00')
 
-    filename_tail_latlon = '_ECCO_V4r4_latlon_0p50deg.nc'
-    filename_tail_native = '_ECCO_V4r4_native_llc0090.nc'
     filename_tail_1D = '_ECCO_V4r4_1D.nc'
 
     metadata_fields = ['ECCOv4r4_global_metadata_for_all_datasets',
@@ -205,7 +211,8 @@ def generate_netcdfs(output_freq_code,
                        'ECCOv4r4_groupings_for_native_datasets',
                        'ECCOv4r4_variable_metadata',
                        'ECCOv4r4_variable_metadata_for_latlon_datasets',
-                       'ECCOv4r4_variable_metadata_for_1D_datasets']
+                       'ECCOv4r4_variable_metadata_for_1D_datasets',
+                       'ECCOv4r4_dataset_summary']
 
 
     #%% -- -program start
@@ -235,28 +242,20 @@ def generate_netcdfs(output_freq_code,
     # metadata for different variables
     global_metadata_for_all_datasets = metadata['ECCOv4r4_global_metadata_for_all_datasets']
     global_metadata_for_1D_datasets = metadata['ECCOv4r4_global_metadata_for_1D_datasets']
-    global_metadata_for_latlon_datasets = metadata['ECCOv4r4_global_metadata_for_latlon_datasets']
-    global_metadata_for_native_datasets = metadata['ECCOv4r4_global_metadata_for_native_datasets']
 
     coordinate_metadata_for_1D_datasets     = metadata['ECCOv4r4_coordinate_metadata_for_1D_datasets']
-    coordinate_metadata_for_latlon_datasets = metadata['ECCOv4r4_coordinate_metadata_for_latlon_datasets']
-    coordinate_metadata_for_native_datasets = metadata['ECCOv4r4_coordinate_metadata_for_native_datasets']
 
-    geometry_metadata_for_latlon_datasets = metadata['ECCOv4r4_geometry_metadata_for_latlon_datasets']
-    geometry_metadata_for_native_datasets = metadata['ECCOv4r4_geometry_metadata_for_native_datasets']
 
     groupings_for_1D_datasets = metadata['ECCOv4r4_groupings_for_1D_datasets']
-    groupings_for_latlon_datasets = metadata['ECCOv4r4_groupings_for_latlon_datasets']
-    groupings_for_native_datasets = metadata['ECCOv4r4_groupings_for_native_datasets']
 
     variable_metadata_1D = metadata['ECCOv4r4_variable_metadata_for_1D_datasets']
 
-    variable_metadata_latlon = metadata['ECCOv4r4_variable_metadata_for_latlon_datasets']
     variable_metadata = metadata['ECCOv4r4_variable_metadata']
+    dataset_summary = metadata['ECCOv4r4_dataset_summary']
 
     #%%
     # load PODAAC fields
-    podaac_dataset_table = read_csv(podaac_dir / 'PODAAC_datasets-revised_20210226.4.csv')
+    podaac_dataset_table = read_csv(podaac_dir / 'PODAAC_datasets-revised_20210226.5.csv')
 
 
     # load ECCO grid
@@ -332,20 +331,18 @@ def generate_netcdfs(output_freq_code,
             G.resample(time='1D').mean()
 
         G = G.to_dataset()
-        summary_text = 'This dataset provides instantaneous hourly global mean atmospheric surface pressure over the ocean and sea-ice from the ECCO Version 4 Release 4 (V4r4) ocean and sea-ice state estimate. Estimating the Circulation and Climate of the Ocean (ECCO) state estimates are data-constrained, dynamically and kinematically-consistent reconstructions of the three-dimensional, time-evolving ocean, sea-ice, and surface atmospheric states and fluxes. ECCO V4r4 is a free-running solution of a global, nominally 1-degree configuration of the MIT general circulation model (MITgcm) that has been fit to observations in a least-squares sense. Observational data constraints used in V4r4 include sea surface height (SSH) from satellite altimeters [ERS-1/2, TOPEX/Poseidon, GFO, ENVISAT, Jason-1,2,3, CryoSat-2, and SARAL/AltiKa]; sea surface temperature (SST) from satellite radiometers [AVHRR], sea surface salinity (SSS) from the Aquarius satellite radiometer/scatterometer, ocean bottom pressure (OBP) from the GRACE satellite gravimeter; sea ice concentration from satellite radiometers [SSM/I and SSMIS], and in-situ ocean temperature and salinity measured with conductivity-temperature-depth (CTD) sensors and expendable bathythermographs (XBTs) from several programs [e.g., WOCE, GO-SHIP, Argo, and others] and platforms [e.g., research vessels, gliders, moorings, ice-tethered profilers, and instrumented pinnipeds]. V4r4 covers the period 1992-01-01T12:00:00 to 2018-01-01T00:00:00.'
+
 
     if grouping_to_process == 1: # GMSL
         if output_freq_code == 'AVG_MON':
             G = xr.open_dataset(diags_root / 'GMSL.nc')
             G_orig = G.copy(deep=True)
 
-            summary_text = 'This dataset provides monthly-averaged global mean sea-level anomalies including barystatic and sterodynamic terms from the ECCO Version 4 Release 4 (V4r4) ocean and sea-ice state estimate. Estimating the Circulation and Climate of the Ocean (ECCO) state estimates are data-constrained, dynamically and kinematically-consistent reconstructions of the three-dimensional, time-evolving ocean, sea-ice, and surface atmospheric states and fluxes. ECCO V4r4 is a free-running solution of a global, nominally 1-degree configuration of the MIT general circulation model (MITgcm) that has been fit to observations in a least-squares sense. Observational data constraints used in V4r4 include sea surface height (SSH) from satellite altimeters [ERS-1/2, TOPEX/Poseidon, GFO, ENVISAT, Jason-1,2,3, CryoSat-2, and SARAL/AltiKa]; sea surface temperature (SST) from satellite radiometers [AVHRR], sea surface salinity (SSS) from the Aquarius satellite radiometer/scatterometer, ocean bottom pressure (OBP) from the GRACE satellite gravimeter; sea ice concentration from satellite radiometers [SSM/I and SSMIS], and in-situ ocean temperature and salinity measured with conductivity-temperature-depth (CTD) sensors and expendable bathythermographs (XBTs) from several programs [e.g., WOCE, GO-SHIP, Argo, and others] and platforms [e.g., research vessels, gliders, moorings, ice-tethered profilers, and instrumented pinnipeds]. V4r4 covers the period 1992-01-01T12:00:00 to 2018-01-01T00:00:00.'
 
         if output_freq_code == 'AVG_DAY':
             G = xr.open_dataset(diags_root / 'GMSL_day.nc')
             G_orig = G.copy(deep=True)
 
-            summary_text = 'This dataset provides daily-averaged global mean sea-level anomalies including barystatic and sterodynamic terms from the ECCO Version 4 Release 4 (V4r4) ocean and sea-ice state estimate. Estimating the Circulation and Climate of the Ocean (ECCO) state estimates are data-constrained, dynamically and kinematically-consistent reconstructions of the three-dimensional, time-evolving ocean, sea-ice, and surface atmospheric states and fluxes. ECCO V4r4 is a free-running solution of a global, nominally 1-degree configuration of the MIT general circulation model (MITgcm) that has been fit to observations in a least-squares sense. Observational data constraints used in V4r4 include sea surface height (SSH) from satellite altimeters [ERS-1/2, TOPEX/Poseidon, GFO, ENVISAT, Jason-1,2,3, CryoSat-2, and SARAL/AltiKa]; sea surface temperature (SST) from satellite radiometers [AVHRR], sea surface salinity (SSS) from the Aquarius satellite radiometer/scatterometer, ocean bottom pressure (OBP) from the GRACE satellite gravimeter; sea ice concentration from satellite radiometers [SSM/I and SSMIS], and in-situ ocean temperature and salinity measured with conductivity-temperature-depth (CTD) sensors and expendable bathythermographs (XBTs) from several programs [e.g., WOCE, GO-SHIP, Argo, and others] and platforms [e.g., research vessels, gliders, moorings, ice-tethered profilers, and instrumented pinnipeds]. V4r4 covers the period 1992-01-01T12:00:00 to 2018-01-01T00:00:00.'
             # nan out the first time level because the barystatic sea level array as a discontinuity at t=0
             for gdv in G.data_vars:
                 G[gdv].values[0] = np.nan
@@ -358,7 +355,6 @@ def generate_netcdfs(output_freq_code,
         G = xr.open_dataset(diags_root / 'SBO_global.nc')
         # nan out the first time level because the barystatic sea level array as a discontinuity at t=0
 
-        summary_text = 'This dataset provides instantaneous hourly core products of the IERS Special Bureau for the Oceans from the ECCO Version 4 Release 4 (V4r4) ocean and sea-ice state estimate. Estimating the Circulation and Climate of the Ocean (ECCO) state estimates are data-constrained, dynamically and kinematically-consistent reconstructions of the three-dimensional, time-evolving ocean, sea-ice, and surface atmospheric states and fluxes. ECCO V4r4 is a free-running solution of a global, nominally 1-degree configuration of the MIT general circulation model (MITgcm) that has been fit to observations in a least-squares sense. Observational data constraints used in V4r4 include sea surface height (SSH) from satellite altimeters [ERS-1/2, TOPEX/Poseidon, GFO, ENVISAT, Jason-1,2,3, CryoSat-2, and SARAL/AltiKa]; sea surface temperature (SST) from satellite radiometers [AVHRR], sea surface salinity (SSS) from the Aquarius satellite radiometer/scatterometer, ocean bottom pressure (OBP) from the GRACE satellite gravimeter; sea ice concentration from satellite radiometers [SSM/I and SSMIS], and in-situ ocean temperature and salinity measured with conductivity-temperature-depth (CTD) sensors and expendable bathythermographs (XBTs) from several programs [e.g., WOCE, GO-SHIP, Argo, and others] and platforms [e.g., research vessels, gliders, moorings, ice-tethered profilers, and instrumented pinnipeds]. V4r4 covers the period 1992-01-01T12:00:00 to 2018-01-01T00:00:00.'
         G_orig = G.copy(deep=True)
 
         for gdv in G.data_vars:
@@ -459,6 +455,13 @@ def generate_netcdfs(output_freq_code,
 
         # overwrite default coordinates attribute (PODAAC REQUEST)
         G[dv].encoding['coordinates'] = dv_coordinate_attrs[dv]
+
+
+    for dv in G.data_vars:
+        valid_min = np.nanmin(G[dv].values)
+        valid_max = np.nanmax(G[dv].values)
+        G[dv].attrs['valid_min'] = valid_min
+        G[dv].attrs['valid_max'] = valid_max
 
     #%%
     # PROVIDE SPECIFIC ENCODING DIRECTIVES FOR EACH COORDINATE
@@ -568,6 +571,9 @@ def generate_netcdfs(output_freq_code,
     filename = grouping['filename'] + '_' + ppp_tttt + \
         filename_tail
 
+    # add product name attribute = filename
+    G.attrs['product_name'] = filename
+
     print(filename)
     # make subdirectory for the grouping
     output_dir = output_dir_freq / grouping['filename']
@@ -583,13 +589,7 @@ def generate_netcdfs(output_freq_code,
     # create full pathname for netcdf file
     netcdf_output_filename = output_dir / filename
 
-    # add product name attribute = filename
-    G.attrs['product_name'] = filename
 
-    # add summary attribute = description of dataset
-
-    G.attrs['summary'] = summary_text
-    # get podaac metadata based on filename
 
     #print('\n... getting PODAAC metadata')
     podaac_metadata = \
@@ -600,13 +600,19 @@ def generate_netcdfs(output_freq_code,
     pprint(podaac_metadata)
     G = apply_podaac_metadata(G, podaac_metadata)
 
+    #%%
+    shortname = G.id.split('/')[1]
+    print(shortname)
+
+    G.attrs['summary']= dataset_summary[shortname]['summary']
+    G.attrs['title'] = dataset_summary[shortname]['title']
+    print(G.title)
+
+    G = meta_fixes(G)
+
     # sort comments alphabetically
     print('\n... sorting global attributes')
     G.attrs = sort_attrs(G.attrs)
-
-    # add one final comment (PODAAC request)
-    G.attrs["coordinates_comment"] = \
-        "Note: the global 'coordinates' attribute describes auxillary coordinates."
 
     #%%
     # SAVE
@@ -641,7 +647,7 @@ if __name__ == "__main__":
 
     ecco_grid_dir = Path('/home/ifenty/data/grids/grid_ECCOV4r4')
     ecco_grid_dir_mds = Path('/home/ifenty/data/grids/grid_ECCOV4r4')
-    ecco_grid_filename = 'ECCO_V4r4_llc90_grid_geometry.nc'
+    ecco_grid_filename = 'GRID_GEOMETRY_ECCO_v4r4_native_llc0090.nc'
 
     #%%
     # Define precision of output files, float32 is standard
@@ -661,7 +667,7 @@ if __name__ == "__main__":
     G = []
 
     product_type = '1D'
-    output_dir_base = Path('/home/ifenty/tmp/1D_20210307')
+    output_dir_base = Path('/home/ifenty/tmp/1D_20210316')
     if not output_dir_base.exists():
         output_dir_base.mkdir()
 
