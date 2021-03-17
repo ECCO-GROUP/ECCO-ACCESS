@@ -132,20 +132,15 @@ def run_harvester(datasets, path_to_harvesters, output_dir):
                     print(f'{harvester_type} is not a supported harvester type.')
                     break
 
-                path_to_code = Path(
-                    f'{path_to_harvesters}/{harvester_type}_harvester/')
-
-                harvester = f'{harvester_type}_harvester'
-
+                path_to_code = Path(f'{path_to_harvesters}/')
                 sys.path.insert(1, str(path_to_code))
 
-                try:
-                    ret_import = importlib.reload(ret_import)
-                except:
-                    ret_import = importlib.import_module(harvester)
+                ret_import = importlib.import_module('harvester')
+                ret_import = importlib.reload(ret_import)
 
                 ret_import.harvester(config_path=config_path,
                                      output_path=output_dir)
+
                 sys.path.remove(str(path_to_code))
 
             harv_logger.info('Harvesting successful')
