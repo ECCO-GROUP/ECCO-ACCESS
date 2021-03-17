@@ -18,13 +18,13 @@ warnings.filterwarnings('ignore')
 
 def get_groupings(base_dir, grid_type, time_type):
     groupings = dict()
-    print('base_dir ', base_dir)
-    print('grid_type ', grid_type)
-    print('time_type ', time_type)
+    #print('base_dir ', base_dir)
+    #print('grid_type ', grid_type)
+    #print('time_type ', time_type)
     tmp = base_dir / grid_type/ time_type
 
-    print(tmp)
-    print('\n')
+    #print(tmp)
+    #print('\n')
     if tmp.exists():
         gdirs = np.sort(list( tmp.iterdir()))
         for pi, p in enumerate(gdirs):
@@ -246,21 +246,26 @@ def apply_fixes(ecco_filename, minmax, comment_fix, summary_fix, qc_prob):
             print ('\n>> fixing references')
             tmp_ds.setncattr('references', \
                              'ECCO Consortium, Fukumori, I., Wang, O., Fenty, I., Forget, G., Heimbach, P., & Ponte, R. M. 2020. Synopsis of the ECCO Central Production Global Ocean and Sea-Ice State Estimate (Version 4 Release 4). doi:10.5281/zenodo.3765928')
+            print ('\n>> fixing source')
             tmp_ds.setncattr('source', \
                              'The ECCO V4r4 state estimate was produced by fitting a free-running solution of the MITgcm (checkpoint 66g) to satellite and in situ observational data in a least squares sense using the adjoint method')
 
             # fix coordinate comment typo
+            print ('\n>> fixing coordinates comment')
             tmp_ds.setncattr('coordinates_comment', "Note: the global 'coordinates' attribute describes auxillary coordinates.")
 
 
             # update date of modified metadata
+            print ('\n>> updating date modified')
             current_time = datetime.datetime.now().isoformat()[0:19]
             tmp_ds.setncattr('date_modified', current_time)
             tmp_ds.setncattr('date_metadata_modified', current_time)
 
             # alphabetically sort all attributes
+            print ('\n>> sorting attributes')
             sorted_attr_dict = sort_attrs(tmp_ds.__dict__)
 
+            print ('\n>> removing/replacing global attributes')
             # delete all attributes one at a time
             for attr in tmp_ds.ncattrs():
                 tmp_ds.delncattr(attr)
@@ -346,7 +351,7 @@ if __name__ == "__main__":
     else:
         debug = False
 
-    print('\n\n===================================')
+    print('\n===================================')
     print('starting valid_minmax')
     print('\n')
     print('dataset_base_dir', dataset_base_dir)
@@ -379,8 +384,6 @@ if __name__ == "__main__":
 
 
     #%%
-
-
     print("get groupings")
     groupings = get_groupings(dataset_base_dir, grid_type, time_type)
 
@@ -392,49 +395,40 @@ if __name__ == "__main__":
     else:
         grouping_ids = list(range(len(groupings)))
 
-    print('grouping ids: ', grouping_ids)
+    print('\ngrouping ids to process: ', grouping_ids)
 
 
     print('loading summary fix')
     with open(summary_fix_dir / 'ECCOv4r4_dataset_summary.json') as f:
         summary_fix = json.load(f)
-        pprint(len(summary_fix.keys()))
-        pprint(list(summary_fix.keys()))
+        #pprint(len(summary_fix.keys()))
+        #pprint(list(summary_fix.keys()))
 
     # load minmax
     print('loading minmax')
     minmax = load_valid_minmax(valid_minmax_dir)
-    print(len(minmax.keys()))
-    pprint(list(minmax.keys()))
-
+    #print(len(minmax.keys()))
+    #pprint(list(minmax.keys()))
 
     glob_name = '**/*ECCO_V4r4*nc'
 
-    print('getting groupings')
-    print(dataset_base_dir, grid_type, time_type)
-
-
     start_group_loop = time.time()
-
     print('beginning the loop\n')
     for gi in grouping_ids:
         grouping_info = groupings[gi]
-        print('\n\n')
         print('-------------------------------------')
         print('Processing Grouping: ', gi)
         print(grouping_info)
-        print('\n')
 
         print('globbing files')
         start_time = time.time()
         ecco_files = np.sort(list(grouping_info['directory'].glob(glob_name)))
         print('...time to glob files ', time.time() - start_time)
 
-        print(f'found {len(ecco_files)} files')
+        print(f'# files found {len(ecco_files)}')
         if debug:
-            ecco_files = ecco_files[:30]
-
-        print('number of ecco files ', len(ecco_files))
+            ecco_files = ecco_files[2:4]
+        print(f'# files to process { len(ecco_files)} ')
 
         print('computing')
         start_time = time.time()
