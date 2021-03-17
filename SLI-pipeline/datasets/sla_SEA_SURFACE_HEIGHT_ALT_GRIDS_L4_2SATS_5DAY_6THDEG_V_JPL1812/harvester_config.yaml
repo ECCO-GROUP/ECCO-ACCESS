@@ -1,12 +1,11 @@
 # =====================================================
-# PODAAC
+# Harvester
 # =====================================================
-# PODAAC explicitly expects this date format
+harvester_type: "podaac"
+
 start: "19920101T00:00:00Z" # yyyymmddThh:mm:ssZ
 end: "20170101T00:00:00Z" # yyyymmddThh:mm:ssZ
 most_recent: True # Overrides end date to be current date at time of execution
-name: ""
-password: ""
 host: https://podaac.jpl.nasa.gov/ws/search/granule/?format=atom&pretty=false&itemsPerPage=300000 # does not change
 date_regex: "%Y-%m-%dT%H:%M:%SZ" # does not change
 
@@ -14,7 +13,6 @@ date_regex: "%Y-%m-%dT%H:%M:%SZ" # does not change
 # Dataset
 # =====================================================
 ds_name: "sla_SEA_SURFACE_HEIGHT_ALT_GRIDS_L4_2SATS_5DAY_6THDEG_V_JPL1812" # Name for dataset
-harvester_type: "podaac"
 podaac_id: "PODAAC-SLREF-CDRV2"
 
 # new_data_attrs:

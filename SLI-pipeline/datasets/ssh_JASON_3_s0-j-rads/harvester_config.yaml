@@ -1,21 +1,16 @@
 # =====================================================
-# PODAAC
+# Harvester
 # =====================================================
-# PODAAC explicitly expects this date format
+harvester_type: "local"
 start: "20170101T00:00:00Z" # yyyymmddThh:mm:ssZ
 end: "20181231T23:59:59Z" # yyyymmddThh:mm:ssZ
 most_recent: True # Overrides end date to be current date at time of execution
-name: ""
-password: ""
-host: https://podaac.jpl.nasa.gov/ws/search/granule/?format=atom&pretty=false&itemsPerPage=300000 # does not change
 date_regex: "%Y-%m-%dT%H:%M:%SZ" # does not change
 
 # =====================================================
 # Dataset
 # =====================================================
 ds_name: "ssh_JASON_3_s0-j-rads" # Name for dataset
-harvester_type: "local"
-podaac_id: ""
 
 # new_data_attrs:
 original_dataset_title: Jason-3 RADS s0-j-rads

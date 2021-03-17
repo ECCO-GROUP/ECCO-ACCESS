@@ -1,12 +1,11 @@
 # =====================================================
-# PODAAC
+# Harvester
 # =====================================================
-# PODAAC explicitly expects this date format
+harvester_type: "podaac"
+
 start: "20160101T00:00:00Z" # yyyymmddThh:mm:ssZ
 end: "20210112T23:59:59Z" # yyyymmddThh:mm:ssZ
 most_recent: True # Overrides end date to be current date at time of execution
-name: ""
-password: ""
 host: https://podaac.jpl.nasa.gov/ws/search/granule/?format=atom&pretty=false&itemsPerPage=300000 # does not change
 date_regex: "%Y-%m-%dT%H:%M:%SZ" # does not change
 
@@ -14,8 +13,7 @@ date_regex: "%Y-%m-%dT%H:%M:%SZ" # does not change
 # Dataset
 # =====================================================
 ds_name: "ssha_JASON_3_L2_OST_OGDR_GPS" # Name for dataset
-harvester_type: "podaac"
-podaac_id: ""
+podaac_id: "" # Dataset doesn't have a podaac_id. DS short name is used instead.
 
 # new_data_attrs:
 original_dataset_title: Jason-3 GPS based orbit and SSHA OGDR
