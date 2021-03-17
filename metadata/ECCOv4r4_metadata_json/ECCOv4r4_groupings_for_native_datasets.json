@@ -10,7 +10,7 @@
    {
     "name" : "ocean bottom pressure and model ocean bottom pressure anomaly",
     "fields": "OBP, OBPGMAP, PHIBOT",
-    "comment": "Ocean bottom pressure excluding (OBP) and including (OBPGMAP) the contribution from global mean atmospheric pressure. Note: PHIBOT is model hydrostatic bottom pressure anomaly and should not be compared with satellite bottom pressure products (e.g., from GRACE and GRACE-FO), see OBP and PHIBOT for more details.",    
+    "comment": "Ocean bottom pressure excluding (OBP) and including (OBPGMAP) the contribution from global mean atmospheric pressure. Note: PHIBOT is model hydrostatic bottom pressure anomaly and should not be compared with satellite bottom pressure products (e.g., from GRACE and GRACE-FO), see OBP and PHIBOT for more details.",
     "product": "native",
     "filename" : "OCEAN_BOTTOM_PRESSURE",
     "dimension" : "2D"
@@ -77,7 +77,7 @@
     "product": "native",
     "filename" : "OCEAN_BOLUS_STREAMFUNCTION",
     "dimension" : "3D"
-   },   
+   },
    {
     "name": "ocean three-dimensional volume fluxes",
     "fields": "UVELMASS, VVELMASS, WVELMASS",
@@ -85,7 +85,7 @@
     "product": "native",
     "filename" : "OCEAN_3D_VOLUME_FLUX",
     "dimension" : "3D"
-   },   
+   },
    {
     "name": "ocean three-dimensional potential temperature fluxes",
     "fields":"ADVx_TH, DFxE_TH, ADVy_TH, DFyE_TH, ADVr_TH, DFrE_TH, DFrI_TH",
@@ -146,5 +146,12 @@
     "product": "native",
     "filename" : "OCEAN_3D_MOMENTUM_TEND",
     "dimension" : "3D"
+   },
+   {
+    "name": "ocean three-dimensional Gent-Mcwilliams, Redi, and background vertical diffusivity coefficients",
+    "fields": "DIFFKR, KAPGM, KAPREDI",
+    "product": "native",
+    "filename" : "OCEAN_3D_MIXING_COEFFS",
+    "dimension" : "3D-TI"
    }
 ]

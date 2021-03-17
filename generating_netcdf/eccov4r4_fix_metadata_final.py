@@ -70,7 +70,6 @@ def apply_fixes(ecco_filename, minmax, comment_fix, summary_fix, qc_prob):
 
     comment_keys = list(comment_fix.keys())
     summary_fix_keys = list(summary_fix.keys())
-    minmax_keys = list(minmax.keys())
 
     print('\nApplying fixes for ', ecco_filename.name)
     try:
@@ -199,13 +198,13 @@ def apply_fixes(ecco_filename, minmax, comment_fix, summary_fix, qc_prob):
                             print(f'   QC new valid_min/max  : {new_valid_min:.12} {new_valid_max:.12}')
 
                             if (old_valid_min > v_min) or (old_valid_max < v_max):
-                                print(f'   QC old valid min/max was wrong')
+                                print('   QC old valid min/max was wrong')
                                 print(f'     1. old valid min >= vmin {old_valid_min:.12} {v_min:.12}\
                                     {old_valid_min > v_min}')
                                 print(f'     2. old valid max <= vmax {old_valid_max:.12} {v_max:.12}\
                                     {old_valid_max < v_max}')
                             else:
-                                print(f'   QC ... old valid min/max was ok')
+                                print('   QC ... old valid min/max was ok')
 
                             if (new_valid_min > v_min) or (new_valid_max < v_max):
                                 print(f'\n+ FAILURE: new valid min/max is wrong in {ds_id} {minmax_dv}')
@@ -227,11 +226,10 @@ def apply_fixes(ecco_filename, minmax, comment_fix, summary_fix, qc_prob):
                             v.setncattr("valid_min", new_valid_min)
                             v.setncattr("valid_max", new_valid_max)
 
-                            print(f'... new and old valid min/max are different!')
+                            print('... new and old valid min/max are different!')
                             print(f'... old/new valid min {old_valid_min:.12} {v.valid_min:.12}')
                             print(f'... old/new valid max {old_valid_max:.12} {v.valid_max:.12}')
 
-                            metadata_updated = True
 
                     else:
                         print(f'\n+ FAILURE: minmax key {minmax_dv} not in granule variables {nc_dvs}: {ecco_filename.name}')
@@ -303,11 +301,11 @@ def create_parser():
                         help='directory containing dataset grouping subdirectories')
 
     parser.add_argument('--grid_type', type=str, required=True,\
-                        choices=['native','lat-lon'],\
+                        choices=['native','lat-lon', '1D'],\
                         help='')
 
     parser.add_argument('--time_type', type=str, required=True,\
-                        choices=['day_inst','mon_mean','day_mean'],\
+                        choices=['day_inst','mon_mean','day_mean','hourly','time_invariant','grid_type'],\
                         help='')
 
     parser.add_argument('--summary_fix_dir', type=str, required=True,\

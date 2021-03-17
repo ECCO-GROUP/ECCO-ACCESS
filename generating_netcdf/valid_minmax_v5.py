@@ -32,7 +32,7 @@ def get_groupings(base_dir, grid_type, time_type):
             groupings[pi]['directory'] = p
     else:
         print('-- grouping directory does not exist')
- 
+
     return groupings
 
 @delayed
@@ -49,11 +49,11 @@ def get_minmax(ecco_field):
         results_da[dv] = dict()
         tmp_min = ecco_field[dv].min()
         tmp_max = ecco_field[dv].max()
-        
+
         results_da[dv]['valid_min'] = tmp_min.values
         results_da[dv]['valid_max'] = tmp_max.values
-    
-    return results_da   
+
+    return results_da
 
 def construct_DS(results, grouping_info, ds_title, ds_id, delta_time):
     dvs = list(results[0].keys())
@@ -74,9 +74,9 @@ def construct_DS(results, grouping_info, ds_title, ds_id, delta_time):
             X[dv]['valid_max'].append(r[dv]['valid_max'])
 
         # final min max for all records
-        valid_min = np.array(X[dv]['valid_min']).min() 
-        valid_max = np.array(X[dv]['valid_max']).max() 
-        
+        valid_min = np.array(X[dv]['valid_min']).min()
+        valid_max = np.array(X[dv]['valid_max']).max()
+
         # construct data array with valid min and max
         tmp = xr.DataArray([valid_min, valid_max], dims=['valid_min_max'])
         tmp.name = dv
@@ -120,12 +120,6 @@ def create_parser():
                         choices=['day_inst','mon_mean','day_mean'],\
                         help='')
 
-#    parser.add_argument('--n_workers', type=int, required=True,\
-#                        help='n_workers (int)')
-
-#    parser.add_argument('--threads_per_worker', type=int, required=True,\
-#                        help='threads_per_worker (int)')
-
     parser.add_argument('--grouping_id', type=int, required=True,\
                         help='which grouping num to process (int)')
 
@@ -139,12 +133,12 @@ def create_parser():
 
 def f(ecco_files):
     results = []
-    
+
     for file in ecco_files:
         ecco_field = load_ecco_file(file)
         result = get_minmax(ecco_field)
         results.append(result)
-        
+
     return results
 
 #%%
@@ -232,5 +226,5 @@ if __name__ == "__main__":
         DS = construct_DS(results_da_compute, grouping_info, ds_title, ds_id, delta_time)
         print('time to construct DS ', time.time() - start_time)
 
-        pprint(DS.attrs)    
+        pprint(DS.attrs)
         save_to_disk(DS, output_dir)
