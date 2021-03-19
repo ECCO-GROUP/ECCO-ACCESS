@@ -128,9 +128,9 @@ def process_along_track(cycle_granules, ds_metadata, cycle_dates):
     return cycle_ds, len(granules)
 
 
-def process_1812(cycle_granules, ds_metadata, cycle_dates):
+def process_measures_grids(cycle_granules, ds_metadata, cycle_dates):
     """
-    Performs all processing required for the 1812 dataset
+    Performs all processing required for the measures grids 1812 dataset
     """
     var = 'SLA'
     granule = cycle_granules[0]
@@ -570,7 +570,7 @@ def processing(config_path='', output_path=''):
             processing_success = False
             print(f'Processing cycle {start_date_str} to {end_date_str}')
 
-            funcs = {'1812': process_1812,
+            funcs = {'measures_grids': process_measures_grids,
                      'along_track': process_along_track,
                      'shalin': process_shalin}
 
