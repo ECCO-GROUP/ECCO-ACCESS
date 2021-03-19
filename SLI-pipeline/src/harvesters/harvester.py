@@ -2,11 +2,11 @@ import os
 import hashlib
 import logging
 from datetime import datetime
-from urllib.request import urlopen, urlcleanup
-from xml.etree.ElementTree import parse
+from timeit import default_timer as timer
+
+from xml.etree.ElementTree import fromstring
 import requests
 import yaml
-from requests.auth import HTTPBasicAuth
 
 
 log = logging.getLogger(__name__)
@@ -45,6 +45,9 @@ def solr_query(config, fq, sort=''):
 
 
 def print_resp(resp, msg=''):
+    """
+    Prints solr update success/fail message.
+    """
     if resp.status_code == 200:
         print(f'Successfully created or updated Solr {msg}')
     else:
@@ -72,9 +75,6 @@ def podaac_harvester(config, docs, target_dir):
     Downloads and creates new harvested doc for each data granule within a given date range
     for a given dataset hosted on PODAAC.
     """
-    # =====================================================
-    # Setup PODAAC loop variables
-    # =====================================================
 
     ds_name = config['ds_name']
     date_regex = config['date_regex']
@@ -88,9 +88,8 @@ def podaac_harvester(config, docs, target_dir):
     end_time = now.strftime("%Y%m%dT%H:%M:%SZ") if config['most_recent'] else config['end']
 
     entries_for_solr = []
-    last_success = {}
 
-    if config["podaac_id"]:
+    if config['podaac_id']:
         url_base = f'{host}&datasetId={config["podaac_id"]}'
     else:
         url_base = f'{host}&shortName={shortname}'
@@ -109,91 +108,62 @@ def podaac_harvester(config, docs, target_dir):
     # PODAAC loop
     # =====================================================
     while True:
-        xml = parse(urlopen(url))
+        print('Loading granule entries from PODAAC XML document...')
+
+        resp = requests.get(url)
+
+        xml = fromstring(resp.text)
         items = xml.findall('{%(atom)s}entry' % namespace)
+
         # Loop through all granules in XML returned from URL
         for elem in items:
             updating = False
 
             # Extract granule information from XML entry and attempt to download data file
-            try:
-                # Extract download link from XML entry
+
+            # Extract download link from XML entry
+            link = elem.find("{%(atom)s}link[@title='OPeNDAP URL']" % namespace).attrib['href'][:-5]
+            filename = link.split("/")[-1]
+            # Extract start date from XML entry
+            date_start_str = elem.find("{%(time)s}start" % namespace).text[:19] + 'Z'
+
+            # Extract modified time of file on podaac
+            mod = elem.find("{%(atom)s}updated" % namespace)
+            mod_time_str = mod.text
+
+            # Granule metadata used for Solr harvested entries
+            item = {
+                'type_s': 'harvested',
+                'date_dt': date_start_str,
+                'dataset_s': ds_name,
+                'filename_s': filename,
+                'source_s': link,
+                'modified_time_dt': mod_time_str
+            }
+
+            if filename in docs.keys():
+                item['id'] = docs[filename]['id']
+
+            year = date_start_str[:4]
+            local_fp = f'{target_dir}{year}/{filename}'
+
+            if not os.path.exists(f'{target_dir}{year}'):
+                os.makedirs(f'{target_dir}{year}')
+
+            # If granule doesn't exist or previously failed or has been updated since last harvest
+            # or exists in Solr but doesn't exist where it should
+            updating = (filename not in docs.keys()) or \
+                (not docs[filename]['harvest_success_b']) or \
+                (docs[filename]['download_time_dt'] <= mod_time_str) or \
+                (not os.path.exists(local_fp))
+
+            # If updating, download file if necessary
+            if updating:
                 try:
-                    link = elem.find(
-                        "{%(atom)s}link[@title='OPeNDAP URL']" % namespace).attrib['href']
-                    link = '.'.join(link.split('.')[:-1])
-                    newfile = link.split("/")[-1]
-                except:
-                    link = elem.find(
-                        "{%(atom)s}link[@title='HTTP URL']" % namespace).attrib['href']
-                    newfile = link.split("/")[-1]
+                    print(f' - Downloading {filename} to {local_fp}')
 
-                # Extract start and end dates from XML entry
-                date_start_str = elem.find("{%(time)s}start" % namespace).text
-                date_end_str = elem.find("{%(time)s}end" % namespace).text
-
-                # Remove nanoseconds from dates
-                if len(date_start_str) > 19:
-                    date_start_str = date_start_str[:19] + 'Z'
-                if len(date_end_str) > 19:
-                    date_end_str = date_end_str[:19] + 'Z'
-
-                # Attempt to get last modified time of file on podaac
-                # Not all PODAAC datasets contain last modified time
-                try:
-                    mod_time = elem.find("{%(atom)s}updated" % namespace).text
-                    try:
-                        mod_date_time = datetime.strptime(
-                            mod_time, '%Y-%m-%dT%H:%M:%S.%fZ')
-                    except:
-                        mod_date_time = datetime.strptime(mod_time, date_regex)
-                except:
-                    mod_time = str(now)
-                    mod_date_time = now
-
-                # Granule metadata used for Solr harvested entries
-                item = {
-                    'type_s': 'harvested',
-                    'date_dt': date_start_str,
-                    'dataset_s': ds_name,
-                    'filename_s': newfile,
-                    'source_s': link,
-                    'modified_time_dt': mod_date_time.strftime(date_regex)
-                }
-
-                # If granule doesn't exist or previously failed or has been updated since last harvest
-                updating = (newfile not in docs.keys()) or \
-                           (not docs[newfile]['harvest_success_b']) or \
-                           (datetime.strptime(
-                               docs[newfile]['download_time_dt'], date_regex) <= mod_date_time)
-
-                # If updating, download file if necessary
-                if updating:
-                    year = date_start_str[:4]
-                    local_fp = f'{target_dir}{year}/{newfile}'
-
-                    if not os.path.exists(f'{target_dir}{year}'):
-                        os.makedirs(f'{target_dir}{year}')
-
-                    # If file doesn't exist locally, download it
-                    if not os.path.exists(local_fp):
-                        print(f' - Downloading {newfile} to {local_fp}')
-                        urlcleanup()
-                        resp = requests.get(link)
-                        open(local_fp, 'wb').write(resp.content)
-
-                    # If file exists locally, but is out of date, download it
-                    elif datetime.fromtimestamp(os.path.getmtime(local_fp)) <= mod_date_time:
-                        print(f' - Updating {newfile} and downloading to {local_fp}')
-                        urlcleanup()
-                        resp = requests.get(link)
-                        open(local_fp, 'wb').write(resp.content)
-
-                    else:
-                        print(f' - {newfile} already downloaded and up to date')
-
-                    if newfile in docs.keys():
-                        item['id'] = docs[newfile]['id']
+                    resp = requests.get(link)
+                    open(local_fp, 'wb').write(resp.content)
 
                     # Create checksum for file
                     item['checksum_s'] = md5(local_fp)
@@ -201,26 +171,20 @@ def podaac_harvester(config, docs, target_dir):
                     item['harvest_success_b'] = True
                     item['file_size_l'] = os.path.getsize(local_fp)
 
-                else:
-                    print(f' - {newfile} already downloaded and up to date')
-
-            except Exception as e:
-                print(f'    - {e}')
-                if updating:
-
-                    print(f'    - {newfile} failed to download')
+                except Exception as e:
+                    print(f'    - {e}')
+                    print(f'    - {filename} failed to download')
 
                     item['harvest_success_b'] = False
                     item['checksum_s'] = ''
                     item['granule_file_path_s'] = ''
                     item['file_size_l'] = 0
 
-            if updating:
                 item['download_time_dt'] = now_str
                 entries_for_solr.append(item)
 
-                if item['harvest_success_b']:
-                    last_success = item
+            else:
+                print(f' - {filename} already downloaded and up to date')
 
         # Check if more granules are available on next page
         next_page = xml.find("{%(atom)s}link[@rel='next']" % namespace)
@@ -228,9 +192,9 @@ def podaac_harvester(config, docs, target_dir):
             print(f'\nDownloading {ds_name} complete\n')
             break
 
-        url = next_page.attrib['href']
+        url = next_page.attrib['href'] + '&itemsPerPage=10000'
 
-    return entries_for_solr, url_base, last_success
+    return entries_for_solr, url_base
 
 
 def local_harvester(config, docs, target_dir):
@@ -247,7 +211,6 @@ def local_harvester(config, docs, target_dir):
     end_time = now.strftime("%Y%m%dT%H:%M:%SZ") if config['most_recent'] else config['end']
 
     entries_for_solr = []
-    last_success = {}
 
     # Get local files
     data_files = []
@@ -255,21 +218,21 @@ def local_harvester(config, docs, target_dir):
     end = end_time[:8]
 
     for _, _, files in os.walk(target_dir):
-        for data_file in files:
-            if '.DS_Store' in data_file:
+        for filename in files:
+            if '.DS_Store' in filename:
                 continue
 
-            f_date = data_file[7:15]
+            f_date = filename[7:15]
             if f_date < start or f_date > end:
                 continue
 
-            data_files.append(data_file)
+            data_files.append(filename)
 
-    for data_file in data_files:
-        date = data_file[7:-3]
+    for filename in data_files:
+        date = filename[7:-3]
         date_start_str = f'{date[:4]}-{date[4:6]}-{date[6:8]}T00:00:00Z'
         year = date_start_str[:4]
-        local_fp = f'{target_dir}{year}/{data_file}'
+        local_fp = f'{target_dir}{year}/{filename}'
         mod_time = datetime.fromtimestamp(os.path.getmtime(local_fp))
         mod_time_string = mod_time.strftime(date_regex)
 
@@ -278,21 +241,21 @@ def local_harvester(config, docs, target_dir):
             'type_s': 'harvested',
             'date_dt': date_start_str,
             'dataset_s': ds_name,
-            'filename_s': data_file,
+            'filename_s': filename,
             'source_s': source,
             'modified_time_dt': mod_time_string
         }
 
-        if data_file in docs.keys():
-            item['id'] = docs[data_file]['id']
+        if filename in docs.keys():
+            item['id'] = docs[filename]['id']
 
         # If granule doesn't exist or previously failed or has been updated since last harvest
-        updating = (data_file not in docs.keys()) or \
-                   (not docs[data_file]['harvest_success_b']) or \
-                   (docs[data_file]['download_time_dt'] <= mod_time_string)
+        updating = (filename not in docs.keys()) or \
+                   (not docs[filename]['harvest_success_b']) or \
+                   (docs[filename]['download_time_dt'] <= mod_time_string)
 
         if updating:
-            print(f' - Adding {data_file}.')
+            print(f' - Adding {filename}.')
 
             # Create checksum for file
             item['checksum_s'] = md5(local_fp)
@@ -303,17 +266,15 @@ def local_harvester(config, docs, target_dir):
 
             entries_for_solr.append(item)
 
-            if item['harvest_success_b']:
-                last_success = item
         else:
-            print(f' - {data_file} already up to date.')
+            print(f' - {filename} already up to date.')
 
-    return entries_for_solr, source, last_success
+    return entries_for_solr, source
 
 
 def harvester(config_path='', output_path=''):
     """
-    Pulls data files for PODAAC id and date range given in harvester_config.yaml.
+
     Creates (or updates) Solr entries for dataset and harvested granules.
     """
 
@@ -326,7 +287,6 @@ def harvester(config_path='', output_path=''):
 
     ds_name = config['ds_name']
     shortname = config['original_dataset_short_name']
-    date_regex = config['date_regex']
 
     target_dir = f'{output_path}{ds_name}/harvested_granules/'
 
@@ -349,13 +309,13 @@ def harvester(config_path='', output_path=''):
     if harvested_docs:
         docs = {doc['filename_s']: doc for doc in harvested_docs}
 
-    now_str = datetime.utcnow().strftime(date_regex)
+    now_str = datetime.utcnow().strftime(config['date_regex'])
 
     # Actual downloading and generation of harvested docs for Solr
     if config['harvester_type'] == 'podaac':
-        entries_for_solr, source, last_success = podaac_harvester(config, docs, target_dir)
+        entries_for_solr, source = podaac_harvester(config, docs, target_dir)
     elif config['harvester_type'] == 'local':
-        entries_for_solr, source, last_success = local_harvester(config, docs, target_dir)
+        entries_for_solr, source = local_harvester(config, docs, target_dir)
 
     # Only update Solr harvested entries if there are fresh downloads
     if entries_for_solr:
@@ -382,49 +342,41 @@ def harvester(config_path='', output_path=''):
     else:
         harvest_status = 'All granules successfully harvested'
 
-    ds_start = successful_harvesting[0]['date_dt'] if successful_harvesting else None
-    ds_end = successful_harvesting[-1]['date_dt'] if successful_harvesting else None
-    last_dl = last_success['download_time_dt'] if last_success else None
-
     # Query for Solr Dataset-level Document
     dataset_query = solr_query(config, ['type_s:dataset', f'dataset_s:{ds_name}'])
 
-    if not dataset_query:
-        # -----------------------------------------------------
-        # Create Solr dataset entry
-        # -----------------------------------------------------
+    ds_start = successful_harvesting[0]['date_dt'] if successful_harvesting else None
+    ds_end = successful_harvesting[-1]['date_dt'] if successful_harvesting else None
 
-        ds_meta = {
-            'type_s': 'dataset',
-            'dataset_s': ds_name,
-            'start_date_dt': ds_start,
-            'end_date_dt': ds_end,
-            'short_name_s': shortname,
-            'source_s': source,
-            'last_checked_dt': now_str,
-            'last_download_dt': last_dl,
-            'harvest_status_s': harvest_status,
-            'original_dataset_title_s': config['original_dataset_title'],
-            'original_dataset_short_name_s': shortname,
-            'original_dataset_url_s': config['original_dataset_url'],
-            'original_dataset_reference_s': config['original_dataset_reference'],
-            'original_dataset_doi_s': config['original_dataset_doi']
-        }
+    # Query for Solr successful harvest documents
+    fq = ['type_s:harvested', f'dataset_s:{ds_name}', 'harvest_success_b:true']
+    successful_harvesting = solr_query(config, fq, sort='download_time_dt desc')
 
-    else:
-        # -----------------------------------------------------
-        # Update Solr dataset entry
-        # -----------------------------------------------------
-        ds_meta = dataset_query[0]
-        ds_meta['last_checked_dt'] = {"set": now_str}
+    last_dl = successful_harvesting[0]['download_time_dt'] if successful_harvesting else None
 
-        if entries_for_solr:
-            ds_meta['start_date_dt'] = {"set": ds_start}
-            ds_meta['end_date_dt'] = {"set": ds_end}
-            ds_meta['harvest_status_s'] = {"set": harvest_status}
+    # -----------------------------------------------------
+    # Create Solr dataset entry
+    # -----------------------------------------------------
 
-            if last_success:
-                ds_meta['last_download_dt'] = {"set": last_success['download_time_dt']}
+    ds_meta = {
+        'type_s': 'dataset',
+        'dataset_s': ds_name,
+        'start_date_dt': ds_start,
+        'end_date_dt': ds_end,
+        'short_name_s': shortname,
+        'source_s': source,
+        'last_checked_dt': now_str,
+        'last_download_dt': last_dl,
+        'harvest_status_s': harvest_status,
+        'original_dataset_title_s': config['original_dataset_title'],
+        'original_dataset_short_name_s': shortname,
+        'original_dataset_url_s': config['original_dataset_url'],
+        'original_dataset_reference_s': config['original_dataset_reference'],
+        'original_dataset_doi_s': config['original_dataset_doi']
+    }
+
+    if dataset_query:
+        ds_meta['id'] = dataset_query[0]['id']
 
     # Update Solr with modified dataset entry
     resp = solr_update(config, [ds_meta])
