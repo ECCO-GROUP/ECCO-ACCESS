@@ -506,7 +506,7 @@ def post_process_solr_update(config, ds_metadata):
         print('Failed to update Solr dataset document\n')
 
 
-def processing(config_path='', output_path=''):
+def processing(config_path='', output_path='', reprocess=False):
     """
     """
 
@@ -566,7 +566,7 @@ def processing(config_path='', output_path=''):
         # Determine if cycle requires processing
         # ======================================================
 
-        if check_updating(cycles, date_strs, cycle_granules, version):
+        if reprocess or check_updating(cycles, date_strs, cycle_granules, version):
             processing_success = False
             print(f'Processing cycle {start_date_str} to {end_date_str}')
 
