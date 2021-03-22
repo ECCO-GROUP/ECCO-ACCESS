@@ -16,13 +16,18 @@ OUTPUT_DIR = '/Users/kevinmarlis/Developer/JPL/sealevel_output/'
 
 
 def create_parser():
+    """
+    """
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--output_dir', default=False, action='store_true',
-                        help='runs prompt to select pipeline output directory')
+                        help='Runs prompt to select pipeline output directory.')
 
     parser.add_argument('--options_menu', default=False, action='store_true',
-                        help='Display the option menu to select which steps in the pipeline to run.')
+                        help='Display option menu to select which steps in the pipeline to run.')
+
+    parser.add_argument('--force_processing', default=False, action='store_true',
+                        help='Force reprocessing of any existing aggregated cycles.')
 
     parser.add_argument('--harvested_entry_validation', default=False,
                         help='verifies each Solr harvester entry points to a valid file.')
@@ -31,6 +36,8 @@ def create_parser():
 
 
 def harvested_entry_validation():
+    """
+    """
     solr_host = 'http://localhost:8983/solr/'
     solr_collection_name = 'sealevel_datasets'
 
@@ -58,53 +65,41 @@ def harvested_entry_validation():
 
 
 def print_log(log_path):
-    print('\n=========================================================')
-    print(
-        '===================== \033[36mPrinting log\033[0m ======================')
-    print('=========================================================')
+    """
+    """
 
-    log_dict = []
-    with open(log_path) as f:
-        logs = f.read().splitlines()
-    for log in logs:
-        log_dict.append(eval(log))
+    print('\n=========================================================')
+    print('===================== \033[36mPrinting log\033[0m ======================')
+    print('=========================================================')
 
     dataset_statuses = defaultdict(lambda: defaultdict(list))
 
-    # Must add info level items first
-    for d in log_dict:
+    # Parse logger for messages
+    with open(log_path) as log:
+        logs = log.read().splitlines()
 
-        ds = d['name'].replace('pipeline.', '').replace(
+    for line in logs:
+        log_line = yaml.load(line, yaml.Loader)
+        ds = log_line['name'].replace('pipeline.', '').replace(
             '.harvester', '').replace('.processing', '')
-        preprocessing_step = d['name'].replace(
-            'pipeline.', '').replace(f'{ds}.', '')
-        if len(ds) > 0:
-            if d['level'] == 'INFO':
-                dataset_statuses[ds][preprocessing_step].append(('INFO',
-                                                                 d["message"]))
-    # Then add errors
-    for d in log_dict:
-        ds = d['name'].replace('pipeline.', '').replace(
-            '.harvester', '').replace('.processing', '')
-        preprocessing_step = d['name'].replace(
-            'pipeline.', '').replace(f'{ds}.', '')
-        if len(ds) > 0:
-            if d['level'] == 'ERROR':
-                if ('ERROR', d["message"]) not in dataset_statuses[ds][preprocessing_step]:
-                    dataset_statuses[ds][preprocessing_step].append(
-                        ('ERROR', d["message"]))
+        preprocessing_step = log_line['name'].replace('pipeline.', '').replace(f'{ds}.', '')
 
+        if log_line['level'] == 'INFO':
+            dataset_statuses[ds][preprocessing_step].append(('INFO', log_line["message"]))
+
+        if log_line['level'] == 'ERROR':
+            if ('ERROR', log_line["message"]) not in dataset_statuses[ds][preprocessing_step]:
+                dataset_statuses[ds][preprocessing_step].append(('ERROR', log_line["message"]))
+
+    # Print dataset status summaries
     for ds, steps in dataset_statuses.items():
         print(f'\033[93mPipeline status for {ds}\033[0m:')
         for _, messages in steps.items():
-            for (level, message) in messages:
-                if level == 'INFO':
-                    if 'successful' in message:
-                        print(f'\t\033[92m{message}\033[0m')
-                    else:
-                        print(f'\t\033[91m{message}\033[0m')
-                elif level == 'ERROR':
-                    print(f'\t\t\033[91m{message}\033[0m')
+            for (_, message) in messages:
+                if 'successful' in message:
+                    print(f'\t\033[92m{message}\033[0m')
+                else:
+                    print(f'\t\033[91m{message}\033[0m')
 
 
 def run_harvester(datasets, path_to_harvesters, output_dir):
@@ -119,29 +114,18 @@ def run_harvester(datasets, path_to_harvesters, output_dir):
             print('=========================================================')
 
             config_path = Path(
-                f'{Path(__file__).resolve().parents[2]}/datasets/{ds}/harvester_config.yaml'
-            )
+                f'{Path(__file__).resolve().parents[2]}/datasets/{ds}/harvester_config.yaml')
 
-            with open(config_path, 'r') as stream:
-                config = yaml.load(stream, yaml.Loader)
+            path_to_code = Path(f'{path_to_harvesters}/')
 
-            if 'harvester_type' in config.keys():
-                harvester_type = config['harvester_type']
+            sys.path.insert(1, str(path_to_code))
 
-                if harvester_type not in ['podaac', 'local']:
-                    print(f'{harvester_type} is not a supported harvester type.')
-                    break
+            ret_import = importlib.import_module('harvester')
+            ret_import = importlib.reload(ret_import)
 
-                path_to_code = Path(f'{path_to_harvesters}/')
-                sys.path.insert(1, str(path_to_code))
+            ret_import.harvester(config_path=config_path, output_path=output_dir)
 
-                ret_import = importlib.import_module('harvester')
-                ret_import = importlib.reload(ret_import)
-
-                ret_import.harvester(config_path=config_path,
-                                     output_path=output_dir)
-
-                sys.path.remove(str(path_to_code))
+            sys.path.remove(str(path_to_code))
 
             harv_logger.info('Harvesting successful')
             print('\033[92mHarvest successful\033[0m')
@@ -153,10 +137,10 @@ def run_harvester(datasets, path_to_harvesters, output_dir):
         print('=========================================================')
 
 
-def run_processing(datasets, path_to_processors, output_dir):
+def run_processing(datasets, path_to_processors, output_dir, reprocess):
     print('\n=========================================================')
     print(
-        '================ \033[36mRunning processing\033[0m ===================')
+        '================= \033[36mRunning processing\033[0m ==================')
     print('=========================================================\n')
     for ds in datasets:
         proc_logger = logging.getLogger(f'pipeline.{ds}.processing')
@@ -175,9 +159,11 @@ def run_processing(datasets, path_to_processors, output_dir):
             ret_import = importlib.reload(ret_import)
 
             ret_import.processing(config_path=config_path,
-                                  output_path=output_dir)
+                                  output_path=output_dir,
+                                  reprocess=reprocess)
 
             sys.path.remove(str(path_to_code))
+
             proc_logger.info('Processing successful')
             print('\033[92mProcessing successful\033[0m')
         except Exception as e:
@@ -190,9 +176,9 @@ def run_processing(datasets, path_to_processors, output_dir):
 
 if __name__ == '__main__':
 
-    print('\n=================================================')
-    print('========= SEA LEVEL INDICATORS PIPELINE =========')
-    print('=================================================')
+    print('\n=========================================================')
+    print('============= SEA LEVEL INDICATORS PIPELINE =============')
+    print('=========================================================')
 
     # path to harvester and preprocessing folders
     pipeline_path = Path(__file__).resolve()
@@ -204,7 +190,7 @@ if __name__ == '__main__':
     PARSER = create_parser()
     args = PARSER.parse_args()
 
-    # ------------------- Harvested Entry Validation -------------------
+    # -------------- Harvested Entry Validation --------------
     if args.harvested_entry_validation:
         harvested_entry_validation()
 
@@ -226,7 +212,10 @@ if __name__ == '__main__':
             sys.exit()
     print(f'\nUsing output directory: {OUTPUT_DIR}')
 
-    # ------------------- Run pipeline -------------------
+    # ------------------ Force Reprocessing ------------------
+    REPROCESS = bool(args.force_processing)
+
+    # --------------------- Run pipeline ---------------------
 
     if args.options_menu:
 
@@ -261,8 +250,7 @@ if __name__ == '__main__':
     # Setup console handler to print to console
     ch = logging.StreamHandler()
     ch.setLevel(logging.ERROR)
-    ch_formatter = logging.Formatter(
-        "'%(filename)s':'%(lineno)d,  %(message)s'")
+    ch_formatter = logging.Formatter("'%(filename)s':'%(lineno)d,  %(message)s'")
     ch.setFormatter(ch_formatter)
     logger.addHandler(ch)
 
@@ -272,7 +260,7 @@ if __name__ == '__main__':
     if CHOSEN_OPTION == '1':
         for dataset in DATASETS:
             run_harvester([dataset], PATH_TO_HARVESTERS, OUTPUT_DIR)
-            run_processing([dataset], PATH_TO_PROCESSORS, OUTPUT_DIR)
+            run_processing([dataset], PATH_TO_PROCESSORS, OUTPUT_DIR, REPROCESS)
         # Run indexing here:
         # run_indexing()
 
@@ -284,7 +272,7 @@ if __name__ == '__main__':
     # Run processing
     elif CHOSEN_OPTION == '3':
         for dataset in DATASETS:
-            run_processing([dataset], PATH_TO_PROCESSORS, OUTPUT_DIR)
+            run_processing([dataset], PATH_TO_PROCESSORS, OUTPUT_DIR, REPROCESS)
         # Run indexing here:
         # run_indexing()
 
@@ -326,12 +314,12 @@ if __name__ == '__main__':
         if 'harvest' in wanted_steps:
             run_harvester([CHOSEN_DS], PATH_TO_HARVESTERS, OUTPUT_DIR)
         if 'process' in wanted_steps:
-            run_processing([CHOSEN_DS], PATH_TO_PROCESSORS, OUTPUT_DIR)
+            run_processing([CHOSEN_DS], PATH_TO_PROCESSORS, OUTPUT_DIR, REPROCESS)
             # Run indexing here:
             # run_indexing()
         if wanted_steps == 'all':
             run_harvester([CHOSEN_DS], PATH_TO_HARVESTERS, OUTPUT_DIR)
-            run_processing([CHOSEN_DS], PATH_TO_PROCESSORS, OUTPUT_DIR)
+            run_processing([CHOSEN_DS], PATH_TO_PROCESSORS, OUTPUT_DIR, REPROCESS)
             # Run indexing here:
             # run_indexing()
 
