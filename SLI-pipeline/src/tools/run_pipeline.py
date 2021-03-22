@@ -35,6 +35,18 @@ def create_parser():
     return parser
 
 
+def verify_solr_running():
+    solr_host = 'http://localhost:8983/solr/'
+    solr_collection_name = 'sealevel_datasets'
+
+    try:
+        requests.get(f'{solr_host}{solr_collection_name}/admin/ping')
+        return
+    except requests.ConnectionError:
+        print('\nSolr not currently running! Please double check and run pipeline again.\n')
+        sys.exit()
+
+
 def harvested_entry_validation():
     """
     """
@@ -62,6 +74,21 @@ def harvested_entry_validation():
     else:
         print('Solr not online or collection does not exist')
         sys.exit()
+
+
+def show_menu():
+    while True:
+        print('\n------------- OPTIONS -------------')
+        print('1) Harvest and process all datasets')
+        print('2) Harvest all datasets')
+        print('3) Process all datasets')
+        print('4) Dataset input')
+        selection = input('Enter option number: ')
+
+        if selection in ['1', '2', '3', '4']:
+            return selection
+        print(
+            f'Unknown option entered, "{selection}", please enter a valid option\n')
 
 
 def print_log(log_path):
@@ -175,7 +202,7 @@ def run_processing(datasets, path_to_processors, output_dir, reprocess):
 
 
 if __name__ == '__main__':
-
+    verify_solr_running()
     print('\n=========================================================')
     print('============= SEA LEVEL INDICATORS PIPELINE =============')
     print('=========================================================')
@@ -217,23 +244,6 @@ if __name__ == '__main__':
 
     # --------------------- Run pipeline ---------------------
 
-    if args.options_menu:
-
-        while True:
-            print('\n------------- OPTIONS -------------')
-            print('1) Harvest and process all datasets')
-            print('2) Harvest all datasets')
-            print('3) Process all datasets')
-            print('4) Dataset input')
-            CHOSEN_OPTION = input('Enter option number: ')
-
-            if CHOSEN_OPTION in ['1', '2', '3', '4']:
-                break
-            print(
-                f'Unknown option entered, "{CHOSEN_OPTION}", please enter a valid option\n')
-    else:
-        CHOSEN_OPTION = '1'
-
     # Initialize logger
     logger_path = f'{OUTPUT_DIR}/pipeline.log'
     logger = logging.getLogger('pipeline')
@@ -255,6 +265,8 @@ if __name__ == '__main__':
     logger.addHandler(ch)
 
     DATASETS = [ds for ds in os.listdir(PATH_TO_DATASETS) if ds != '.DS_Store']
+
+    CHOSEN_OPTION = show_menu() if args.options_menu else '1'
 
     # Run all
     if CHOSEN_OPTION == '1':
@@ -286,8 +298,7 @@ if __name__ == '__main__':
             ds_index = input('\nEnter dataset number: ')
 
             if not ds_index.isdigit() or int(ds_index) not in range(1, len(DATASETS)+1):
-                print(
-                    f'Invalid dataset, "{ds_index}", please enter a valid selection')
+                print(f'Invalid dataset, "{ds_index}", please enter a valid selection')
             else:
                 break
 
