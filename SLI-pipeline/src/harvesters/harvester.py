@@ -77,22 +77,19 @@ def podaac_harvester(config, docs, target_dir):
     """
 
     ds_name = config['ds_name']
-    date_regex = config['date_regex']
-    host = config['host']
     shortname = config['original_dataset_short_name']
 
     now = datetime.utcnow()
-    now_str = now.strftime(date_regex)
-
+    date_regex = config['date_regex']
     start_time = config['start']
     end_time = now.strftime("%Y%m%dT%H:%M:%SZ") if config['most_recent'] else config['end']
 
     entries_for_solr = []
 
     if config['podaac_id']:
-        url_base = f'{host}&datasetId={config["podaac_id"]}'
+        url_base = f'{config["host"]}&datasetId={config["podaac_id"]}'
     else:
-        url_base = f'{host}&shortName={shortname}'
+        url_base = f'{config["host"]}&shortName={shortname}'
 
     url = f'{url_base}&endTime={end_time}&startTime={start_time}'
 
@@ -110,9 +107,7 @@ def podaac_harvester(config, docs, target_dir):
     while True:
         print('Loading granule entries from PODAAC XML document...')
 
-        resp = requests.get(url)
-
-        xml = fromstring(resp.text)
+        xml = fromstring(requests.get(url).text)
         items = xml.findall('{%(atom)s}entry' % namespace)
 
         # Loop through all granules in XML returned from URL
@@ -162,14 +157,20 @@ def podaac_harvester(config, docs, target_dir):
                 try:
                     print(f' - Downloading {filename} to {local_fp}')
 
+                    expected_size = requests.head(link).headers.get('content-length', -1)
                     resp = requests.get(link)
                     open(local_fp, 'wb').write(resp.content)
 
                     # Create checksum for file
                     item['checksum_s'] = md5(local_fp)
                     item['granule_file_path_s'] = local_fp
-                    item['harvest_success_b'] = True
                     item['file_size_l'] = os.path.getsize(local_fp)
+
+                    # Make sure file properly downloaded by comparing sizes
+                    if expected_size == item['file_size_l']:
+                        item['harvest_success_b'] = True
+                    else:
+                        item['harvest_success_b'] = False
 
                 except Exception as e:
                     print(f'    - {e}')
@@ -180,7 +181,7 @@ def podaac_harvester(config, docs, target_dir):
                     item['granule_file_path_s'] = ''
                     item['file_size_l'] = 0
 
-                item['download_time_dt'] = now_str
+                item['download_time_dt'] = now.strftime(date_regex)
                 entries_for_solr.append(item)
 
             else:
@@ -274,14 +275,12 @@ def local_harvester(config, docs, target_dir):
 
 def harvester(config_path='', output_path=''):
     """
-
     Creates (or updates) Solr entries for dataset and harvested granules.
     """
 
     # =====================================================
     # Read harvester_config.yaml and setup variables
     # =====================================================
-
     with open(config_path, "r") as stream:
         config = yaml.load(stream, yaml.Loader)
 
