@@ -1,9 +1,9 @@
-# Run the following command from ECCO-ACCESS to install all necessary packages
-# in a conda environment called ecco_pipeline_env
+# Run the following command from Sea-Level-Indicators to install all necessary packages
+# in a conda environment called sli-pipeline
 
-# conda env create -f ecco-pipeline/src/tools/package.yaml -n ecco_pipeline_env
+# conda env create -f SLI-pipeline/src/tools/package.yaml -n sli-pipeline
 
-name: ecco-pipeline
+name: sli-pipeline
 
 channels:
   - defaults

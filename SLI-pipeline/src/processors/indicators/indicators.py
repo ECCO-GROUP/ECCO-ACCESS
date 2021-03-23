@@ -119,7 +119,7 @@ def indicators(config_path='', output_path='', s3=None, solr_info=''):
             opened_cycles.append(ds)
 
         # Calculate indicator value
-        indicator_value = np.random.random(1)[0]
+        indicator_value = np.random(1)[0]
         indicator_values.append((cycle_start_date, indicator_value))
 
     indicator_values.sort()

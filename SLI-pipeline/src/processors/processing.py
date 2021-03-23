@@ -8,12 +8,18 @@ import xarray as xr
 from netCDF4 import default_fillvals  # pylint: disable=no-name-in-module
 
 
-def md5(fname):
+def md5(fpath):
     """
     Creates md5 checksum from file
+
+    Params:
+        fpath (str): path of the file
+
+    Returns:
+        hash_md5.hexdigest (str): double length string containing only hexadecimal digits
     """
     hash_md5 = hashlib.md5()
-    with open(fname, 'rb') as f:
+    with open(fpath, 'rb') as f:
         for chunk in iter(lambda: f.read(4096), b""):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
@@ -22,7 +28,13 @@ def md5(fname):
 def solr_query(config, fq):
     """
     Queries Solr database using the filter query passed in.
-    Returns list of Solr entries that satisfies the query.
+
+    Params:
+        config (dict): the dataset specific config file
+        fq (List[str]): the list of filter query arguments
+
+    Returns:
+        response.json()['response']['docs'] (List[dict]): the Solr docs that satisfy the query
     """
 
     solr_host = config['solr_host_local']
@@ -40,10 +52,15 @@ def solr_query(config, fq):
 
 def solr_update(config, update_body):
     """
-    Posts an update to Solr database with the update body passed in.
-    For each item in update_body, a new entry is created in Solr, unless
-    that entry contains an id, in which case that entry is updated with new values.
-    Optional return of the request status code (ex: 200 for success)
+    Updates Solr database with list of docs. If a doc contains an existing id field,
+    Solr will update or replace that existing doc with the new doc.
+
+    Params:
+        config (dict): the dataset specific config file
+        update_body (List[dict]): the list of docs to update on Solr
+
+    Returns:
+        requests.post(url, json=update_body) (Response): the Response object from the post call
     """
 
     solr_host = config['solr_host_local']
@@ -54,9 +71,19 @@ def solr_update(config, update_body):
     return requests.post(url, json=update_body)
 
 
-def process_along_track(cycle_granules, ds_metadata, cycle_dates):
+def process_along_track(cycle_granules, ds_meta, dates):
     """
-    Performs all processing required for along track datasets
+    Processes and aggregates individual granules that fall within a cycle's date range for
+    a non GPS along track dataset.
+
+    Params:
+        cycle_granules (List[dict]): the dataset specific config file
+        ds_meta (dict): the list of docs to update on Solr
+        dates (Tuple[str, str, str]):
+
+    Returns:
+        cycle_ds (Dataset): the processed cycle Dataset object
+        len(granules) (int): the number of granules within the processed cycle Dataset object
     """
     var = 'ssh_smoothed'
     reference_date = datetime(1985, 1, 1, 0, 0, 0)
@@ -113,24 +140,34 @@ def process_along_track(cycle_granules, ds_metadata, cycle_dates):
     # Global Attributes
     cycle_ds.attrs = {
         'title': 'Sea Level Anormaly Estimate based on Altimeter Data',
-        'cycle_start': cycle_dates[0],
-        'cycle_center': cycle_dates[1],
-        'cycle_end': cycle_dates[2],
+        'cycle_start': dates[0],
+        'cycle_center': dates[1],
+        'cycle_end': dates[2],
         'data_time_start': str(data_start_time)[:19],
         'data_time_center': str(data_center_time)[:19],
         'data_time_end': str(data_end_time)[:19],
-        'original_dataset_title': ds_metadata['original_dataset_title_s'],
-        'original_dataset_short_name': ds_metadata['original_dataset_short_name_s'],
-        'original_dataset_url': ds_metadata['original_dataset_url_s'],
-        'original_dataset_reference': ds_metadata['original_dataset_reference_s']
+        'original_dataset_title': ds_meta['original_dataset_title_s'],
+        'original_dataset_short_name': ds_meta['original_dataset_short_name_s'],
+        'original_dataset_url': ds_meta['original_dataset_url_s'],
+        'original_dataset_reference': ds_meta['original_dataset_reference_s']
     }
 
     return cycle_ds, len(granules)
 
 
-def process_measures_grids(cycle_granules, ds_metadata, cycle_dates):
+def process_measures_grids(cycle_granules, ds_meta, dates):
     """
-    Performs all processing required for the measures grids 1812 dataset
+    Processes and aggregates individual granules that fall within a cycle's date range for
+    measures grids datasets (1812).
+
+    Params:
+        cycle_granules (List[dict]): the dataset specific config file
+        ds_meta (dict): the list of docs to update on Solr
+        dates (Tuple[str, str, str]):
+
+    Returns:
+        cycle_ds (Dataset): the processed cycle Dataset object
+        1 (int): the number of granules within the processed cycle Dataset object
     """
     var = 'SLA'
     granule = cycle_granules[0]
@@ -150,26 +187,50 @@ def process_measures_grids(cycle_granules, ds_metadata, cycle_dates):
     # Global attributes
     cycle_ds.attrs = {
         'title': 'Sea Level Anormaly Estimate based on Altimeter Data',
-        'cycle_start': cycle_dates[0],
-        'cycle_center': cycle_dates[1],
-        'cycle_end': cycle_dates[2],
+        'cycle_start': dates[0],
+        'cycle_center': dates[1],
+        'cycle_end': dates[2],
         'data_time_start': np.datetime_as_string(data_time_start, unit='s'),
         'data_time_center': np.datetime_as_string(data_time_center, unit='s'),
         'data_time_end': np.datetime_as_string(data_time_end, unit='s'),
-        'original_dataset_title': ds_metadata['original_dataset_title_s'],
-        'original_dataset_short_name': ds_metadata['original_dataset_short_name_s'],
-        'original_dataset_url': ds_metadata['original_dataset_url_s'],
-        'original_dataset_reference': ds_metadata['original_dataset_reference_s']
+        'original_dataset_title': ds_meta['original_dataset_title_s'],
+        'original_dataset_short_name': ds_meta['original_dataset_short_name_s'],
+        'original_dataset_url': ds_meta['original_dataset_url_s'],
+        'original_dataset_reference': ds_meta['original_dataset_reference_s']
     }
 
     return cycle_ds, 1
 
 
-def process_shalin(cycle_granules, ds_metadata, cycle_dates):
+def process_gps(cycle_granules, ds_meta, dates):
     """
-    Performs all processing required for Shalin's GPS dataset
+    Processes and aggregates individual granules that fall within a cycle's date range for
+    Shalin's gps along track dataset.
+
+    Dataset's netCDF files change format from 2020-10-29 onward. Groups are used beyond that date.
+
+    Params:
+        cycle_granules (List[dict]): the dataset specific config file
+        ds_meta (dict): the list of docs to update on Solr
+        dates (Tuple[str, str, str]):
+
+    Returns:
+        cycle_ds (Dataset): the processed cycle Dataset object
+        1 (int): the number of granules within the processed cycle Dataset object
     """
     def testing(ds, var):
+        """
+        Performs mean, rms, std, offset, and amplitude tests for a granule and includes
+        their results as individual Dataarrays within the Dataset object.
+
+        Params:
+            ds (Dataset): data granule
+            var (str): the datavar on which to perform the tests
+
+        Returns:
+            ds (Dataset): Dataset object with testing Dataarrays added
+
+        """
         non_nan_vals = ds[var].values[~np.isnan(ds[var].values)]
 
         mean = np.nanmean(ds[var].values)
@@ -177,8 +238,7 @@ def process_shalin(cycle_granules, ds_metadata, cycle_dates):
         std = np.std(non_nan_vals)
 
         try:
-            offset, amplitude, _, _ = delta_orbit_altitude_offset_amplitude(ds.time,
-                                                                            ds.ssha, ds[var])
+            offset, amplitude = delta_orbit_altitude_offset_amplitude(ds.time, ds.ssha, ds[var])
 
         except Exception as e:
             print(e)
@@ -196,32 +256,41 @@ def process_shalin(cycle_granules, ds_metadata, cycle_dates):
         return ds
 
     def delta_orbit_altitude_offset_amplitude(time_da, ssha_da, gps_ssha_da):
-        # time_da, ssha_da, and gps_ssha_da are xarray DataArray objects
-        # least squares fit for an OFFSET and AMPLITUDE of
-        # delta orbit altitude between the GPS orbit altitude
-        # and DORIS orbit altitude
-        # ssh = orbit_altitude - range - corrections
-        #
-        # in Shailen's SSH files, there is both 'gps_ssha', and 'ssha'
-        #
-        # gps_ssha - ssha = delta orbit_altitude
-        #    because range and corrections are the same for both ssha fields
-        #
-        # therefore we seek a solution the following equation
-        # y = C0 +  C1 cos(omega t) + C2 sin(omega t)
-        #
-        # where
-        # y      : delta GPS orbit altitude
-        # C0     : OFFSET
-        # C1, C2 : AMPLITUDES of cosine and sine terms comprising a phase shifted oscillation
-        # omega  : period of one orbit resolution in seconds
-        # t      : time in seconds
+        """
+        delta orbit altitude between the GPS orbit altitude
+        and DORIS orbit altitude
+        ssh = orbit_altitude - range - corrections
+
+        in Shailen's SSH files, there is both 'gps_ssha', and 'ssha'
+
+        gps_ssha - ssha = delta orbit_altitude
+           because range and corrections are the same for both ssha fields
+
+        therefore we seek a solution the following equation
+        y = C0 +  C1 cos(omega t) + C2 sin(omega t)
+
+        where
+        y      : delta GPS orbit altitude
+        C0     : OFFSET
+        C1, C2 : AMPLITUDES of cosine and sine terms comprising a phase shifted oscillation
+        omega  : period of one orbit resolution in seconds
+        t      : time in seconds
+
+        Params:
+            time_da (DataArray): time DataArray from the Dataset object being tested
+            ssha_da (DataArray): ssha DataArray from the Dataset object being tested
+            gps_ssha_da (DataArray): gps adjusted ssha DataArray from the Dataset object being tested
+
+        Returns:
+            offset (float):
+            amplitude (float):
+
+        """
 
         # calculate delta orbit altitude
         delta_orbit_altitude = gps_ssha_da.values - ssha_da.values
 
-        # calculate time (in seconds) from the first to last observations in
-        # record
+        # calculate time (in seconds) from the first to last observations in record
         if isinstance(time_da.values[0], np.datetime64):
             time_data = (time_da.values - time_da[0].values)/1e9
             time_data = time_data.astype('float')
@@ -253,32 +322,15 @@ def process_shalin(cycle_granules, ds_metadata, cycle_dates):
         offset = c[0]
         amplitude = np.sqrt(c[1]**2 + c[2]**2)
 
-        # estimated time series
-        y_e = c[0] + c[1]*np.cos(omega_t) + c[2] * np.sin(omega_t)
+        return offset, amplitude
 
-        # the c vector will have 3 elements
-        return offset, amplitude, delta_orbit_altitude, y_e
-
-    # Flags
-    # - DS field names change after a certain date
-    # - All possible flag names are used by checking if each flag
-    #   is in the keys of a DS
-    # 1.  rad_surface_type_flag (rad_surf_type) = 0 (open ocean)
-    # 2.  surface_classification_flag (surface_type) = 0 (open ocean)
-    # 3.  alt_qual (alt_quality_flag)= 0 (good)
-    # 4.  rad_qual (rad_quality_flag) = 0 (good)
-    # 5.  geo_qual (geophysical_quality_flag)= 0 (good)
-    # 6.  meteo_map_availability_flag (ecmwf_meteo_map_avail) = 0 ('2_maps_nominal')
-    # 7.  rain_flag = 0 (no rain)
-    # 8.  rad_rain_flag = 0 (no rain)
-    # 9.  ice_flag = 0 (no ice)
-    # 10. rad_sea_ice_flag = 0 (no ice)
-
+    # List of flags to use for data masking
     flags = ['rad_surface_type_flag', 'surface_classification_flag', 'alt_qual',
              'rad_qual', 'geo_qual', 'meteo_map_availability_flag', 'rain_flag',
              'rad_rain_flag', 'ice_flag', 'rad_sea_ice_flag', 'rad_surf_type',
              'surface_type', 'alt_quality_flag', 'rad_quality_flag',
              'geophysical_quality_flag', 'ecmwf_meteo_map_avail']
+
     var = 'gps_ssha'
     tests = ['Mean', 'RMS', 'STD', 'Offset', 'Amplitude']
     granules = []
@@ -288,7 +340,6 @@ def process_shalin(cycle_granules, ds_metadata, cycle_dates):
     for granule in cycle_granules:
         uses_groups = False
 
-        # netCDF granules from 2020-10-29 on contain groups
         ds = xr.open_dataset(granule['granule_file_path_s'])
 
         if 'lon' in ds.coords:
@@ -359,16 +410,16 @@ def process_shalin(cycle_granules, ds_metadata, cycle_dates):
     # Global Attributes
     cycle_ds.attrs = {
         'title': 'Ten day aggregated GPSOGDR - Reduced dataset',
-        'cycle_start': cycle_dates[0],
-        'cycle_center': cycle_dates[1],
-        'cycle_end': cycle_dates[2],
+        'cycle_start': dates[0],
+        'cycle_center': dates[1],
+        'cycle_end': dates[2],
         'data_time_start': str(data_start_time)[:19],
         'data_time_center': str(data_center_time)[:19],
         'data_time_end': str(data_end_time)[:19],
-        'original_dataset_title': ds_metadata['original_dataset_title_s'],
-        'original_dataset_short_name': ds_metadata['original_dataset_short_name_s'],
-        'original_dataset_url': ds_metadata['original_dataset_url_s'],
-        'original_dataset_reference': ds_metadata['original_dataset_reference_s']
+        'original_dataset_title': ds_meta['original_dataset_title_s'],
+        'original_dataset_short_name': ds_meta['original_dataset_short_name_s'],
+        'original_dataset_url': ds_meta['original_dataset_url_s'],
+        'original_dataset_reference': ds_meta['original_dataset_reference_s']
     }
 
     return cycle_ds, len(granules)
@@ -376,7 +427,20 @@ def process_shalin(cycle_granules, ds_metadata, cycle_dates):
 
 def collect_granules(ds_name, dates, date_strs, config):
     """
-    Pulls appropriate harvested Solr documents for given cycle date range
+    Collects granules that fall within a cycle's date range.
+    The measures gridded dataset (1812) needs to only select the single granule closest
+    to the center datetime of the cycle.
+
+    Params:
+        ds_name (str): the name of the dataset
+        dates (Tuple[datetime, datetime, datetime]): the start, center, and end of the cycle 
+                                                     in datetime format
+        date_strs (Tuple[str, str, str]): the start, center, and end of the cycle in string format
+        config (dict): the dataset specific config file
+
+
+    Returns:
+        cycle_granules (List[dict]): the Solr docs that satisfy the query
     """
     solr_regex = '%Y-%m-%dT%H:%M:%SZ'
     solr_host = config['solr_host_local']
@@ -387,7 +451,7 @@ def collect_granules(ds_name, dates, date_strs, config):
     if '1812' in ds_name:
         query_start = datetime.strftime(dates[0], solr_regex)
         query_end = datetime.strftime(dates[2], solr_regex)
-        fq = ['type_s:harvested', f'dataset_s:{ds_name}', 'harvest_success_b:true',
+        fq = ['type_s:granule', f'dataset_s:{ds_name}', 'harvest_success_b:true',
               f'date_dt:[{query_start} TO {query_end}}}']
         boost_function = f'recip(abs(ms({date_strs[1]}Z,date_dt)),3.16e-11,1,1)'
 
@@ -406,7 +470,7 @@ def collect_granules(ds_name, dates, date_strs, config):
     else:
         query_start = datetime.strftime(dates[0], solr_regex)
         query_end = datetime.strftime(dates[2], solr_regex)
-        fq = ['type_s:harvested', f'dataset_s:{ds_name}', 'harvest_success_b:true',
+        fq = ['type_s:granule', f'dataset_s:{ds_name}', 'harvest_success_b:true',
               f'date_dt:[{query_start} TO {query_end}}}']
 
         cycle_granules = solr_query(config, fq)
@@ -416,14 +480,26 @@ def collect_granules(ds_name, dates, date_strs, config):
 
 def check_updating(cycles, date_strs, cycle_granules, version):
     """
-    Determines if a cycle requires processing:
-    If any single granule within the cycle:
-        - has been updated,
-        - previously failed,
-        - has a different version than what is in the config
-    cycle processing will be triggered.
+    Checks whether a cycle requires reprocessing based on three conditions:
+    - If the prior processing attempt failed
+    - If the prior processing version differs from the current processing version
+    - If any of the granules within the cycle date range have been modified since
+        the prior processing attempt
+    If the cycle has not previously been processed, check_updating returns True.
+
+    Params:
+        cycles (dict): the existing cycles on Solr in dictionary format where the key is
+                        the start date string
+        date_strs (Tuple[str, str, str]): the start, center, and end of the cycle in string format
+        cycle_granules (List[dict]): the granules that make up the cycle
+        version (float): the processing version number as defined in the dataset's config file
+
+
+    Returns:
+        (bool): whether or not the cycle requires reprocessing
     """
 
+    # Cycles dict uses the PODAAC date format (with a trailing 'Z')
     if date_strs[0] + 'Z' in cycles.keys():
         existing_cycle = cycles[date_strs[0] + 'Z']
 
@@ -445,8 +521,16 @@ def check_updating(cycles, date_strs, cycle_granules, version):
 
 def cycle_ds_encoding(cycle_ds, ds_name, center_date):
     """
-    Generates encoding dictionary use for saving the cycle netCDF file.
-    Gridded datasets (1812) have additional encoding requirements. 
+    Generates encoding dictionary used for saving the cycle netCDF file.
+    The measures gridded dataset (1812) has additional units encoding requirements.
+
+    Params:
+        cycle_ds (Dataset): the Dataset object
+        ds_name (str): the name of the dataset (used to check if dataset is 1812)
+        center_date (datetime): used to set the units encoding in the 1812 dataset
+
+    Returns:
+        encoding (dict): the encoding dictionary for the cycle_ds Dataset object
     """
 
     var_encoding = {'zlib': True,
@@ -478,17 +562,23 @@ def cycle_ds_encoding(cycle_ds, ds_name, center_date):
 
 def post_process_solr_update(config, ds_metadata):
     """
+    Determines processing status by number of failed and successful cycle documents on Solr.
+    Updates dataset document on Solr with status message
+
+    Params:
+        config (dict): the dataset's config file
+        ds_metadata (dict): the dataset metadata document from Solr
     """
     ds_name = config['ds_name']
 
     processing_status = 'All cycles successfully processed'
 
-    # Query for failed harvest documents
+    # Query for failed cycle documents
     fq = ['type_s:cycle', f'dataset_s:{ds_name}', 'processing_success_b:false']
     failed_processing = solr_query(config, fq)
 
     if failed_processing:
-        # Query for successful harvest documents
+        # Query for successful cycle documents
         fq = ['type_s:cycle', f'dataset_s:{ds_name}', 'processing_success_b:true']
         successful_processing = solr_query(config, fq)
 
@@ -506,8 +596,15 @@ def post_process_solr_update(config, ds_metadata):
         print('Failed to update Solr dataset document\n')
 
 
-def processing(config_path='', output_path='', reprocess=False):
+def processing(config_path, output_path, reprocess):
     """
+    Generates encoding dictionary used for saving the cycle netCDF file.
+    The measures gridded dataset (1812) has additional units encoding requirements.
+
+    Params:
+        config_path (str): path to the dataset's config file
+        output_path (str): path to the pipeline's output directory
+        reprocess (bool): denotes if all cycles should be reprocessed
     """
 
     with open(config_path, "r") as stream:
@@ -572,7 +669,7 @@ def processing(config_path='', output_path='', reprocess=False):
 
             funcs = {'measures_grids': process_measures_grids,
                      'along_track': process_along_track,
-                     'shalin': process_shalin}
+                     'gps': process_gps}
 
             # ======================================================
             # Process the cycle
@@ -635,7 +732,7 @@ def processing(config_path='', output_path='', reprocess=False):
             if resp.status_code == 200:
                 print('\tSuccessfully created or updated Solr cycle documents')
 
-                # Give harvested documents the id of the corresponding cycle document
+                # Give granule documents the id of the corresponding cycle document
                 if processing_success:
                     if 'id' in item.keys():
                         cycle_id = item['id']
