@@ -3,14 +3,22 @@ import yaml
 import hashlib
 import logging
 import requests
+import warnings
 import pandas as pd
 import numpy as np
 import xarray as xr
+import pyresample as pr
+import xesmf as xe
 from datetime import datetime, timedelta
 from collections import defaultdict
 from netCDF4 import default_fillvals
+from pathlib import Path
+from scipy.optimize import leastsq
+from pyresample.utils import check_and_wrap
+
 
 log = logging.getLogger(__name__)
+warnings.filterwarnings("ignore")
 
 
 def md5(fname):
@@ -24,45 +32,175 @@ def md5(fname):
     return hash_md5.hexdigest()
 
 
-def solr_query(config, solr_host, fq, solr_collection_name):
+def solr_query(config, fq):
     """
     Queries Solr database using the filter query passed in.
-    Returns list of Solr entries that satisfies the query.
+
+    Params:
+        config (dict): the dataset specific config file
+        fq (List[str]): the list of filter query arguments
+
+    Returns:
+        response.json()['response']['docs'] (List[dict]): the Solr docs that satisfy the query
     """
-
-    getVars = {'q': '*:*',
-               'fq': fq,
-               'rows': 300000}
-
-    url = f'{solr_host}{solr_collection_name}/select?'
-    response = requests.get(url, params=getVars)
-    return response.json()['response']['docs']
-
-
-def solr_update(config, solr_host, update_body, solr_collection_name, r=False):
-    """
-    Posts an update to Solr database with the update body passed in.
-    For each item in update_body, a new entry is created in Solr, unless
-    that entry contains an id, in which case that entry is updated with new values.
-    Optional return of the request status code (ex: 200 for success)
-    """
-
-    url = f'{solr_host}{solr_collection_name}/update?commit=true'
-
-    if r:
-        return requests.post(url, json=update_body)
-    else:
-        requests.post(url, json=update_body)
-
-
-def indicators(config_path='', output_path='', s3=None, solr_info=''):
-    config_path = 'Sea-Level-Indicators/SLI-pipeline/src/indicators/indicators.yaml'
-    output_path = 'sealevel_output'
-    with open(config_path, "r") as stream:
-        config = yaml.load(stream, yaml.Loader)
 
     solr_host = config['solr_host_local']
     solr_collection_name = config['solr_collection_name']
+
+    query_params = {'q': '*:*',
+                    'fq': fq,
+                    'rows': 300000,
+                    'sort': 'date_dt asc'}
+
+    url = f'{solr_host}{solr_collection_name}/select?'
+    response = requests.get(url, params=query_params)
+    return response.json()['response']['docs']
+
+
+def solr_update(config, update_body):
+    """
+    Updates Solr database with list of docs. If a doc contains an existing id field,
+    Solr will update or replace that existing doc with the new doc.
+
+    Params:
+        config (dict): the dataset specific config file
+        update_body (List[dict]): the list of docs to update on Solr
+
+    Returns:
+        requests.post(url, json=update_body) (Response): the Response object from the post call
+    """
+
+    solr_host = config['solr_host_local']
+    solr_collection_name = config['solr_collection_name']
+
+    url = f'{solr_host}{solr_collection_name}/update?commit=true'
+
+    return requests.post(url, json=update_body)
+
+
+def calc_climate_index(agg_ds,
+                       pattern,
+                       pattern_ds,
+                       ann_cyc_in_pattern,
+                       weights_dir,
+                       method=2):
+
+    # extract center time of this agg field
+    if 'cycle_center' in agg_ds.attrs:
+        ct = agg_ds.Time[0].values
+
+    elif 'time_center' in agg_ds.attrs:
+        ct = np.datetime64(agg_ds.time_center)
+
+    # determine its month
+    agg_ds_center_mon = int(str(ct)[5:7])
+    print(ct, agg_ds_center_mon)
+
+    pattern_field = pattern_ds[pattern][f'{pattern}_pattern'].values
+
+    ds_in = (agg_ds['SSHA'].rename({'Longitude': 'lon', 'Latitude': 'lat'}).isel(Time=0)).T
+    ds_out = pattern_ds[pattern][f'{pattern}_pattern'].rename(
+        {'Longitude': 'lon', 'Latitude': 'lat'})
+
+    regridder = xe.Regridder(ds_in, ds_out, 'bilinear',
+                             filename=f'{weights_dir}/1812_to_{pattern}.nc',
+                             reuse_weights=True)
+
+    ssha_to_pattern_da = regridder(ds_in)
+
+    ssha_to_pattern_da = ssha_to_pattern_da.assign_coords(coords={'time': ct})
+
+    # remove the monthly mean pattern from the gridded ssha
+    # now ssha_anom is w.r.t. seasonal cycle and MDT
+    ssha_anom = ssha_to_pattern_da.values - \
+        ann_cyc_in_pattern[pattern].ann_pattern.sel(month=agg_ds_center_mon).values/1e3
+
+    # set ssha_anom to nan wherever the original pattern is nan
+    ssha_anom = np.where(~np.isnan(ds_out), ssha_anom, np.nan)
+
+    # extract out all non-nan values of ssha_anom, these are going to
+    # be the points that we fit
+    nn = ~np.isnan(ssha_anom)
+    ssha_anom_to_fit = ssha_anom[nn]
+
+    # do the same for the pattern
+    pattern_to_fit = pattern_field[nn]/1e3
+
+    # just for fun extract out same points from ssha, we'll see if
+    # removing the monthly climatology makes much of a difference
+    ssha_to_fit = ssha_to_pattern_da.copy(deep=True)
+    ssha_to_fit = ssha_to_pattern_da.values[nn]
+
+    if method == 1:
+        # Method 1, use scipy's least squares:
+        # some kind of first guess
+        params = [0, 0]
+
+        # minimizes func1
+        result = leastsq(func1, params, (pattern_to_fit, ssha_anom_to_fit))
+        offset = result[0][0]
+        index = result[0][1]
+
+        # now minimize against ssha_to_fit
+        params = [0, 0]
+        # minimizes func1
+        result = leastsq(func1, params, (pattern_to_fit, ssha_to_fit))
+
+        offset_b = result[0][0]
+        index_b = result[0][1]
+
+    elif method == 2:
+        # Method 2, like a boss
+        # B_hat = inv(X.TX)X.T Y
+
+        # constrct design matrix
+        # X: [1 x_0]
+        #    [1 x_1]
+        #    [1 x_2]
+        #    ....
+        #   [ 1 x_n-1]
+
+        # to minimize J = (y_e - y)**2
+        #     where y_e = b_0 * 1 + b_1 * x
+        #
+        # B_hat = [b_0]
+        #         [b_1]
+
+        # design matrix
+        X = np.vstack((np.ones(len(pattern_to_fit)), pattern_to_fit)).T
+
+        # Good old Gauss
+        B_hat = np.matmul(np.matmul(np.linalg.inv(np.matmul(X.T, X)), X.T),
+                          ssha_anom_to_fit.T)
+        offset = B_hat[0]
+        index = B_hat[1]
+
+        # now minimize ssha_to_fit
+        B_hat = np.matmul(np.matmul(np.linalg.inv(np.matmul(X.T, X)), X.T),
+                          ssha_to_fit.T)
+        offset_b = B_hat[0]
+        index_b = B_hat[1]
+
+    LS_result = [offset, index, offset_b,  index_b]
+
+    return LS_result, ct
+
+
+# one of the ways of doing the LS fit is with the scipy.optimize leastsq
+# requires defining a function with the following syntax
+def func1(params, x, y):
+    m, b = params[1], params[0]
+    # the expression connecting y and the parameters is arbitrary
+    # but here we just do the old standby
+    residual = y - (m*x + b)
+    return residual
+
+
+def indicators(config_path='', output_path=''):
+    config_path = f'{os.getcwd()}/Sea-Level-Indicators/SLI-pipeline/src/processors/indicators/indicators.yaml'
+    output_path = 'sealevel_output'
+    with open(config_path, "r") as stream:
+        config = yaml.load(stream, yaml.Loader)
 
     filename = 'indicator.nc'
     output_path = f'{output_path}/indicator/'
@@ -71,6 +209,28 @@ def indicators(config_path='', output_path='', s3=None, solr_info=''):
     if not os.path.exists(output_path):
         os.makedirs(output_path)
 
+    # Query for indicator doc on Solr
+    fq = ['type_s:indicator']
+    indicator_query = solr_query(config, fq)
+    update = len(indicator_query) == 1
+
+    if update:
+        indicator_metadata = indicator_query[0]
+        modified_time = indicator_metadata['modified_time_dt']
+    else:
+        modified_time = '1992-01-01T00:00:00Z'
+
+    modified_time = '2021-03-22T19:07:24Z'
+    # Query for update cycles after modified_time
+    fq = ['type_s:cycle', 'processing_success_b:true', 'dataset_s:*1812',
+          f'processing_time_dt:[{modified_time} TO NOW]']
+    updated_cycles = solr_query(config, fq)
+
+    # ONLY PROCEED IF THERE ARE CYCLES NEEDING CALCULATING
+    if not updated_cycles:
+        print('No cycles modified since last index calculation.')
+        return
+
     time_format = "%Y-%m-%dT%H:%M:%S"
 
     chk_time = datetime.utcnow().strftime(time_format)
@@ -78,108 +238,144 @@ def indicators(config_path='', output_path='', s3=None, solr_info=''):
     gridded_range = ['1992-01-01T00:00:00', '2018-12-31T00:00:00']
     along_track_range = [gridded_range[-1], chk_time]
 
-    # Query for indicator doc on Solr
-    fq = [f'type_s:indicator']
-    indicator_query = solr_query(config, solr_host, fq, solr_collection_name)
-
-    update = len(indicator_query) == 1
-
-    # ==============================================
-    # Create or update indicator netcdf file
-    # ==============================================
-
-    if update:
-        indicator_metadata = indicator_query[0]
-        modified_time = indicator_metadata['modified_time_dt']
-    else:
-        modified_time = '1992-01-01T:00:00:00'
-
-    # Query for update cycles after modified_time
-    fq = [f'type_s:cycle', 'aggregation_success_b:true',
-          f'aggregation_time_s:[{modified_time} TO NOW]']
-    updated_cycles = solr_query(
-        config, solr_host, fq, solr_collection_name)
-
     # cycle start dates that need modifying
     modified_cycle_start_dates = defaultdict(list)
     for cycle in updated_cycles:
-        modified_cycle_start_dates[cycle['start_date_s']].append(cycle)
+        modified_cycle_start_dates[cycle['start_date_dt']].append(cycle)
 
-    # Loop through cycles with modified data
-    # If cycle uses along track data, there will be multiple cycle data files to open
-    # Use each to calculate indicator value
+    # PRELIMINARY STUFF, CAN BE DONE BEFORE CALLING THE ROUTINE TO DO THE INDEXING
+    # ----------------------------------------------------------------------------
+    # load patterns and select out the monthly climatology of sla variation
+    # in each pattern
+    patterns = ['enso', 'pdo', 'iod']
 
-    indicator_values = []
-    for cycle_start_date, cycle_list in modified_cycle_start_dates.items():
-        opened_cycles = []
-        for cycle in cycle_list:
-            filepath = cycle['filepath_s']
-            start_date_s = cycle_start_date
-            ds = xr.open_dataset(filepath)
-            opened_cycles.append(ds)
+    # ben's patterns (in NetCDF form from his original matlab format)
+    bh_dir = Path(
+        '/Users/kevinmarlis/Downloads/Re_FW_ Daily track files20210331123807/v1_2021-03-29_netcdf')
 
-        # Calculate indicator value
-        indicator_value = np.random(1)[0]
-        indicator_values.append((cycle_start_date, indicator_value))
+    # weights dir is used to store remapping weights for xemsf regrid operation
+    weights_dir = Path('/Users/kevinmarlis/Developer/JPL/sealevel_output/indicator/weights')
+    agg_files = np.sort([cycle['filepath_s'] for cycle in updated_cycles])
 
-    indicator_values.sort()
+    # load each pattern
+    pattern_ds = dict()
+    for pattern in patterns:
+        pattern_fname = pattern + '_pattern_and_index.nc'
+        pattern_ds[pattern] = xr.open_dataset(bh_dir / pattern_fname)
 
-    # Either open existing indicator ds or create new one
+    # load the monthly global sla climatology
+    ann_ds = xr.open_dataset(bh_dir / 'ann_pattern.nc')
+
+    # get the geographic bounds of each sla pattern
+    pattern_geo_bnds = dict()
+    for pattern in patterns:
+        pattern_geo_bnds[pattern] = [float(pattern_ds[pattern].Latitude[0].values),
+                                     float(pattern_ds[pattern].Latitude[-1].values),
+                                     float(pattern_ds[pattern].Longitude[0].values),
+                                     float(pattern_ds[pattern].Longitude[-1].values)]
+
+    # extract the sla annual cycle in the region of each pattern
+    ann_cyc_in_pattern = dict()
+    for pattern in patterns:
+        ann_cyc_in_pattern[pattern] = ann_ds.sel(Latitude=slice(pattern_geo_bnds[pattern][0],
+                                                                pattern_geo_bnds[pattern][1]),
+                                                 Longitude=slice(pattern_geo_bnds[pattern][2],
+                                                                 pattern_geo_bnds[pattern][3]))
+
+    # Make Pyresample area definitions for each pattern
+    #  note: only needed for mapping alongtrack data to the patterns' spatial domain
+
+    # Annual Cycle
+    lon_m, lat_m = np.meshgrid(ann_ds.Longitude.values, ann_ds.Latitude.values)
+    tmp_lon, tmp_lat = check_and_wrap(lon_m, lat_m)
+    ann_area_def = pr.geometry.SwathDefinition(lons=tmp_lon, lats=tmp_lat)
+
+    # Individual Patterns
+    pattern_area_defs = dict()
+    for pattern in patterns:
+        lon_m, lat_m = np.meshgrid(pattern_ds[pattern].Longitude.values,
+                                   pattern_ds[pattern].Latitude.values)
+        tmp_lon, tmp_lat = check_and_wrap(lon_m, lat_m)
+        pattern_area_defs[pattern] = pr.geometry.SwathDefinition(lons=tmp_lon, lats=tmp_lat)
+
+    ############################
+    # THE MAIN LOOP
+    ############################
+
+    # regridder = None
+
+    # prepare dictionaries to hold results
+    all_indicators = []
+
+    # loop through patterns, one at a time.
+    for pattern in patterns:
+
+        indicators_agg_da = []
+        offsets_agg_da = []
+
+        # loop through granules
+        for agg_file_i, agg_file in enumerate(agg_files):
+
+            print(f'\n\n {agg_file_i}  {agg_file}')
+            agg_ds = xr.open_dataset(agg_file)
+            agg_ds.close()
+
+            # calculate index associated with this pattern
+            index_calc, ct = calc_climate_index(agg_ds,
+                                                pattern,
+                                                pattern_ds,
+                                                ann_cyc_in_pattern,
+                                                weights_dir)
+
+            # now we have the results, add them to our existing DataArrays
+            print(index_calc, ct)
+
+            # create a DataArray Object with a single scalar value, the index
+            # for this pattern at this one time.
+            indicator_da = xr.DataArray(index_calc[1], coords={'time': ct})
+            indicator_da.name = f'{pattern}_index'
+
+            # ADD new indicator DataArray to the END of the existing indicator DataArray
+            if isinstance(indicators_agg_da, xr.core.dataarray.DataArray):
+                indicators_agg_da = xr.concat([indicators_agg_da, indicator_da], 'time')
+            else:
+                indicators_agg_da = indicator_da
+
+            # create a DataArray Object with a single scalar value, the
+            # the offset of the climate indices (the constant term in the
+            # least squares fit, not really interesting but maybe good to have)
+            offsets_da = xr.DataArray(index_calc[0], coords={'time': ct})
+            offsets_da.name = f'{pattern}_offset'
+
+            # ADD new indicators DataArray to the END of the existing indicators
+            # DataArray
+            if isinstance(offsets_agg_da, xr.core.dataarray.DataArray):
+                offsets_agg_da = xr.concat([offsets_agg_da, offsets_da], 'time')
+            else:
+                offsets_agg_da = offsets_da
+
+        # append the indicator data array for this pattern to the list
+        # it's OK because the data arrays are named with the pattern
+        all_indicators.append(xr.merge([offsets_agg_da, indicators_agg_da]))
+
+    # FINISHED THROUGH ALL PATTERNS
+    # append all the datasets together into a single dataset to rule them all
+    new_indicators = xr.merge(all_indicators)
+
+    # Open existing indicator ds to add new values if needed
     if update:
-        indicator_ds = xr.open_dataset(
-            indicator_metadata['indicator_file_path_s'])
+        indicator_ds = xr.open_dataset(indicator_metadata['filepath_s'])
 
-        times = indicator_ds.Time.values
-        data = indicator_ds.Index.values
-        data_d = {time: val for time, val in zip(times, data)}
-
-        for time, value in indicator_values:
-            data_d[time] = value
-
-        time_vals = [(time, value) for time, value in data_d.items()]
-        time_vals.sort()
-
-        new_times = [time[0] for time in time_vals]
-        new_data = [vals[1] for vals in time_vals]
-
-        indicator_ds = xr.Dataset(
-            {
-                'Index': xr.DataArray(
-                    data=new_data,
-                    dims=['Time'],
-                    coords={"Time": new_times},
-                    attrs=indicator_ds.Index.attrs
-                )
-            },
-            attrs=indicator_ds.attrs
-        )
-
+        # Remove times of new indicator values from original indicator DS if they exist
+        # (this effectively updates the values)
+        indicator_ds = indicator_ds.where(~indicator_ds['time'].isin(
+            np.unique(new_indicators['time'])), drop=True)
+        # And use xr.concat to add in the new values.
+        indicator_ds = xr.concat([indicator_ds, new_indicators], 'time')
+        # Finally, sort to get things in the right order
+        indicator_ds = indicator_ds.sortby('time')
     else:
-        times = pd.date_range(start='1992-01-01',
-                              end=datetime.today(), freq='1D')
-        data = [np.nan]*len(times)
-
-        indicator_ds = xr.Dataset(
-            {
-                'Index': xr.DataArray(
-                    data=data,
-                    dims=['Time'],
-                    coords={"Time": times},
-                    attrs={
-                        'comment': 'index dataarray'
-                    }
-                )
-            },
-            attrs={'comment': 'global attribute'}
-        )
-
-        # Update values in indicator netcdf
-        for time, value in indicator_values:
-
-            # indicator_ds.Index.loc[time] = value
-            indicator_ds.Index.loc[{"Time": time}] = value
-
-            # dict(time=slice("2000-01-01", "2000-01-02"))
+        indicator_ds = new_indicators
 
     # NetCDF encoding
     encoding_each = {'zlib': True,
@@ -200,8 +396,7 @@ def indicators(config_path='', output_path='', s3=None, solr_info=''):
                                      'contiguous': False,
                                      'shuffle': False}
 
-    var_encoding = {
-        var: encoding_each for var in indicator_ds.data_vars}
+    var_encoding = {var: encoding_each for var in indicator_ds.data_vars}
 
     encoding = {**coord_encoding, **var_encoding}
 
@@ -211,54 +406,27 @@ def indicators(config_path='', output_path='', s3=None, solr_info=''):
     # Create or update indicator on Solr
     # ==============================================
 
-    # Create new entry
-    if not update:
-        indicator_meta = {}
-        indicator_meta['type_s'] = 'indicator'
-        indicator_meta['filename_s'] = filename
-        indicator_meta['indicator_file_path_s'] = output_path + filename
-        indicator_meta['modified_time_dt'] = chk_time
-        indicator_meta['start_date_dt'] = np.datetime_as_string(
-            indicator_ds.Time.values[0], unit='s')
+    indicator_meta = {
+        'type_s': 'indicator',
+        'start_date_dt': np.datetime_as_string(indicator_ds.time.values[0], unit='s'),
+        'end_date_dt': np.datetime_as_string(indicator_ds.time.values[-1], unit='s'),
+        'filename_s': filename,
+        'filepath_s': output_path + filename,
+        'modified_time_dt': chk_time,
+        'checksum_s': md5(output_path+filename),
+        'file_size_l': os.path.getsize(output_path)
+    }
 
-        indicator_meta['end_date_dt'] = np.datetime_as_string(
-            indicator_ds.Time.values[-1], unit='s')
-        indicator_meta['checksum_s'] = md5(output_path+filename)
-        indicator_meta['file_size_l'] = os.path.getsize(output_path)
+    if update:
+        indicator_meta['id'] = indicator_query[0]['id']
 
-        # Update Solr with dataset metadata
-        r = solr_update(config, solr_host, [indicator_meta],
-                        solr_collection_name, r=True)
+    # Update Solr with dataset metadata
+    resp = solr_update(config, [indicator_meta])
 
-        if r.status_code == 200:
-            print('Successfully created Solr dataset document')
-        else:
-            print('Failed to create Solr dataset document')
-
-    # Update existing entry
+    if resp.status_code == 200:
+        print('Successfully created Solr dataset document')
     else:
-        indicator_metadata = indicator_query[0]
-
-        update_meta = {}
-        update_meta['id'] = indicator_metadata['id']
-        update_meta['modified_time_dt'] = {"set": chk_time+'Z'}
-        update_meta['start_date_dt'] = {"set": np.datetime_as_string(
-            indicator_ds.Time.values[0], unit='s')+'Z'}
-        update_meta['end_date_dt'] = {"set": np.datetime_as_string(
-            indicator_ds.Time.values[-1], unit='s')+'Z'}
-        update_meta['checksum_s'] = {"set": md5(output_path+filename)}
-        update_meta['file_size_l'] = {"set": os.path.getsize(output_path)}
-
-        print(update_meta)
-
-        # Update Solr with dataset metadata
-        r = solr_update(config, solr_host, [update_meta],
-                        solr_collection_name, r=True)
-
-        if r.status_code == 200:
-            print('Successfully created Solr dataset document')
-        else:
-            print('Failed to create Solr dataset document')
+        print('Failed to create Solr dataset document')
 
 
 if __name__ == '__main__':

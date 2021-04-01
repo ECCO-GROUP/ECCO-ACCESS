@@ -101,7 +101,7 @@ def podaac_harvester(config, docs, target_dir):
         target_dir (str): the path of the dataset's harvested granules directory
 
     Returns:
-        entries_for_solr (List[dict]): all new or modified granule metadata docs to be posted to Solr
+        entries_for_solr (List[dict]): all new or modified granule docs to be posted to Solr
         url_base (str): PODAAC url for the specific dataset
     """
 
@@ -338,7 +338,7 @@ def harvester(config_path='', output_path=''):
     if not os.path.exists(target_dir):
         os.makedirs(target_dir)
 
-    print(f'Downloading {ds_name} files to {target_dir}\n')
+    print(f'Harvesting {ds_name} files to {target_dir}\n')
 
     # =====================================================
     # Pull existing entries from Solr
