@@ -184,11 +184,20 @@ def podaac_harvester(config, docs, target_dir):
             # If updating, download file if necessary
             if updating:
                 try:
-                    print(f' - Downloading {filename} to {local_fp}')
-
                     expected_size = requests.head(link).headers.get('content-length', -1)
-                    resp = requests.get(link)
-                    open(local_fp, 'wb').write(resp.content)
+                    local_mod_time = datetime.fromtimestamp(
+                        os.path.getmtime(local_fp)).strftime(date_regex)
+
+                    # Only redownloads if local file is out of town - doesn't waste
+                    # time/bandwidth to redownload the same file just because there isn't
+                    # a Solr entry. Most useful during development.
+                    if not os.path.exists(local_fp) or mod_time_str > local_mod_time:
+                        print(f' - Downloading {filename} to {local_fp}')
+
+                        resp = requests.get(link)
+                        open(local_fp, 'wb').write(resp.content)
+                    else:
+                        print(f' - {filename} already downloaded, but not in Solr.')
 
                     # Create checksum for file
                     item['checksum_s'] = md5(local_fp)
@@ -214,7 +223,7 @@ def podaac_harvester(config, docs, target_dir):
                 entries_for_solr.append(item)
 
             else:
-                print(f' - {filename} already downloaded and up to date')
+                print(f' - {filename} already downloaded, and up to date in Solr.')
 
         # Check if more granules are available on next page
         next_page = xml.find("{%(atom)s}link[@rel='next']" % namespace)
@@ -295,7 +304,7 @@ def local_harvester(config, docs, target_dir):
                    (docs[filename]['download_time_dt'] <= mod_time_string)
 
         if updating:
-            print(f' - Adding {filename}.')
+            print(f' - Adding {filename} to Solr.')
 
             # Create checksum for file
             item['checksum_s'] = md5(local_fp)
@@ -307,7 +316,7 @@ def local_harvester(config, docs, target_dir):
             entries_for_solr.append(item)
 
         else:
-            print(f' - {filename} already up to date.')
+            print(f' - {filename} already up to date in Solr.')
 
     return entries_for_solr, source
 
