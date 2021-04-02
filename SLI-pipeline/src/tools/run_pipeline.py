@@ -99,9 +99,10 @@ def show_menu():
         print('2) Harvest all datasets')
         print('3) Process all datasets')
         print('4) Dataset input')
+        print('5) Calculate index values')
         selection = input('Enter option number: ')
 
-        if selection in ['1', '2', '3', '4']:
+        if selection in ['1', '2', '3', '4', '5']:
             return selection
         print(f'Unknown option entered, "{selection}", please enter a valid option\n')
 
@@ -119,33 +120,44 @@ def print_log(log_path: str):
     print(ROW)
 
     dataset_statuses = defaultdict(lambda: defaultdict(list))
-
+    index_statuses = []
     # Parse logger for messages
     with open(log_path) as log:
         logs = log.read().splitlines()
 
     for line in logs:
         log_line = yaml.load(line, yaml.Loader)
-        ds = log_line['name'].replace('pipeline.', '').replace(
-            '.harvester', '').replace('.processing', '')
-        preprocessing_step = log_line['name'].replace('pipeline.', '').replace(f'{ds}.', '')
+        if 'index' not in log_line['name']:
+            ds = log_line['name'].replace('pipeline.', '').replace(
+                '.harvester', '').replace('.processing', '')
+            preprocessing_step = log_line['name'].replace('pipeline.', '').replace(f'{ds}.', '')
 
-        if log_line['level'] == 'INFO':
-            dataset_statuses[ds][preprocessing_step].append(('INFO', log_line["message"]))
+            if log_line['level'] == 'INFO':
+                dataset_statuses[ds][preprocessing_step].append(('INFO', log_line["message"]))
 
-        if log_line['level'] == 'ERROR':
-            if ('ERROR', log_line["message"]) not in dataset_statuses[ds][preprocessing_step]:
-                dataset_statuses[ds][preprocessing_step].append(('ERROR', log_line["message"]))
+            if log_line['level'] == 'ERROR':
+                if ('ERROR', log_line["message"]) not in dataset_statuses[ds][preprocessing_step]:
+                    dataset_statuses[ds][preprocessing_step].append(('ERROR', log_line["message"]))
+        else:
+            index_statuses.append((log_line['level'], log_line['message']))
 
     # Print dataset status summaries
     for ds, steps in dataset_statuses.items():
         print(f'\033[93mPipeline status for {ds}\033[0m:')
         for _, messages in steps.items():
-            for (_, message) in messages:
-                if 'successful' in message:
+            for (level, message) in messages:
+                if level == 'INFO':
                     print(f'\t\033[92m{message}\033[0m')
-                else:
+                elif level == 'ERROR':
                     print(f'\t\033[91m{message}\033[0m')
+
+    if index_statuses:
+        print('\033[93mPipeline status for index calculations\033[0m:')
+        for (level, message) in index_statuses:
+            if level == 'INFO':
+                print(f'\t\033[92m{message}\033[0m')
+            elif level == 'ERROR':
+                print(f'\t\033[91m{message}\033[0m')
 
 
 def run_harvester(datasets, harv_path, output_dir):
@@ -186,7 +198,7 @@ def run_harvester(datasets, harv_path, output_dir):
             print('\033[92mHarvest successful\033[0m')
         except Exception as e:
             sys.path.remove(str(path_to_code))
-            harv_logger.info('Harvesting failed: %s', e)
+            harv_logger.error('Harvesting failed: %s', e)
 
             print('\033[91mHarvesting failed\033[0m')
         print(ROW)
@@ -233,7 +245,7 @@ def run_processing(datasets, proc_path, output_dir, reprocess):
         except Exception as e:
             print(e)
             sys.path.remove(str(path_to_code))
-            proc_logger.info('Processing failed: %s', e)
+            proc_logger.error('Processing failed: %s', e)
             print('\033[91mProcessing failed\033[0m')
         print(ROW)
 
@@ -246,7 +258,37 @@ def run_indexing(proc_path, output_dir):
             proc_path (str): The path to the processor directory.
             output_dir (str): The path to the output directory.
     """
-    print('Running indexing')
+    print('\n' + ROW)
+    print(' \033[36mRunning processing\033[0m '.center(66, '='))
+    print(ROW + '\n')
+
+    proc_logger = logging.getLogger('pipeline.index_calculations')
+    try:
+        print('\033[93mRunning index calculation\033[0m')
+        print(ROW)
+
+        path_to_code = Path(f'{proc_path}/indicators/')
+
+        config_path = Path(path_to_code/'indicators_config.yaml')
+
+        sys.path.insert(1, str(path_to_code))
+
+        ret_import = importlib.import_module('indicators')
+        ret_import = importlib.reload(ret_import)
+
+        ret_import.indicators(config_path=config_path,
+                              output_path=output_dir)
+
+        sys.path.remove(str(path_to_code))
+
+        proc_logger.info('Index calculation successful')
+        print('\033[92mIndex calculation successful\033[0m')
+    except Exception as e:
+        print(e)
+        sys.path.remove(str(path_to_code))
+        proc_logger.error('Index calculation failed: %s', e)
+        print('\033[91mIndex calculation failed\033[0m')
+    print(ROW)
 
 
 if __name__ == '__main__':
@@ -317,7 +359,7 @@ if __name__ == '__main__':
 
     DATASETS = [ds for ds in os.listdir(PATH_TO_DATASETS) if ds != '.DS_Store']
 
-    CHOSEN_OPTION = show_menu() if args.options_menu or not REPROCESS else '1'
+    CHOSEN_OPTION = show_menu() if args.options_menu and not REPROCESS else '1'
 
     # Run all
     if CHOSEN_OPTION == '1':
@@ -383,5 +425,8 @@ if __name__ == '__main__':
             run_harvester([CHOSEN_DS], PATH_TO_HARVESTERS, OUTPUT_DIR)
             run_processing([CHOSEN_DS], PATH_TO_PROCESSORS, OUTPUT_DIR, REPROCESS)
             run_indexing(PATH_TO_PROCESSORS, OUTPUT_DIR)
+
+    elif CHOSEN_OPTION == '5':
+        run_indexing(PATH_TO_PROCESSORS, OUTPUT_DIR)
 
     print_log(logger_path)
