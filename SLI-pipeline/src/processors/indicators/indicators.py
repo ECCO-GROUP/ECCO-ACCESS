@@ -1,15 +1,15 @@
 import os
-import yaml
+import sys
 import hashlib
 import logging
-import requests
 import warnings
-import pandas as pd
+import requests
+import yaml
 import numpy as np
 import xarray as xr
 import pyresample as pr
 import xesmf as xe
-from datetime import datetime, timedelta
+from datetime import datetime
 from collections import defaultdict
 from netCDF4 import default_fillvals
 from pathlib import Path
@@ -19,6 +19,26 @@ from pyresample.utils import check_and_wrap
 
 log = logging.getLogger(__name__)
 warnings.filterwarnings("ignore")
+
+
+class HiddenPrints:
+    """
+    Temporarily hides print statements, especially useful for library functions.
+
+    ex: 
+    with HiddenPrints():
+        foo(bar)
+
+    Print statements called by foo will be intercepted.
+    """
+
+    def __enter__(self):
+        self._original_stdout = sys.stdout
+        sys.stdout = open(os.devnull, 'w')
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        sys.stdout.close()
+        sys.stdout = self._original_stdout
 
 
 def md5(fname):
@@ -78,12 +98,12 @@ def solr_update(config, update_body):
     return requests.post(url, json=update_body)
 
 
-def calc_climate_index(agg_ds,
-                       pattern,
-                       pattern_ds,
-                       ann_cyc_in_pattern,
-                       weights_dir,
-                       method=2):
+def calc_climate_index(agg_ds, pattern, pattern_ds, ann_cyc_in_pattern, weights_dir):
+    """
+    here
+    """
+
+    method = 2
 
     # extract center time of this agg field
     if 'cycle_center' in agg_ds.attrs:
@@ -94,7 +114,6 @@ def calc_climate_index(agg_ds,
 
     # determine its month
     agg_ds_center_mon = int(str(ct)[5:7])
-    print(ct, agg_ds_center_mon)
 
     pattern_field = pattern_ds[pattern][f'{pattern}_pattern'].values
 
@@ -102,9 +121,13 @@ def calc_climate_index(agg_ds,
     ds_out = pattern_ds[pattern][f'{pattern}_pattern'].rename(
         {'Longitude': 'lon', 'Latitude': 'lat'})
 
-    regridder = xe.Regridder(ds_in, ds_out, 'bilinear',
-                             filename=f'{weights_dir}/1812_to_{pattern}.nc',
-                             reuse_weights=True)
+    weight_fp = f'{weights_dir}/1812_to_{pattern}.nc'
+    if not os.path.exists(weight_fp):
+        print(f'Creating {pattern} weight file.')
+
+    # HiddenPrints class keeps xesmf.Regridder from printing details about weights
+    with HiddenPrints():
+        regridder = xe.Regridder(ds_in, ds_out, 'bilinear', filename=weight_fp, reuse_weights=True)
 
     ssha_to_pattern_da = regridder(ds_in)
 
@@ -176,8 +199,7 @@ def calc_climate_index(agg_ds,
         index = B_hat[1]
 
         # now minimize ssha_to_fit
-        B_hat = np.matmul(np.matmul(np.linalg.inv(np.matmul(X.T, X)), X.T),
-                          ssha_to_fit.T)
+        B_hat = np.matmul(np.matmul(np.linalg.inv(np.matmul(X.T, X)), X.T), ssha_to_fit.T)
         offset_b = B_hat[0]
         index_b = B_hat[1]
 
@@ -197,8 +219,11 @@ def func1(params, x, y):
 
 
 def indicators(config_path='', output_path=''):
-    config_path = f'{os.getcwd()}/Sea-Level-Indicators/SLI-pipeline/src/processors/indicators/indicators.yaml'
-    output_path = 'sealevel_output'
+    """
+    Here
+    """
+    # config_path = f'{os.getcwd()}/Sea-Level-Indicators/SLI-pipeline/src/processors/indicators/indicators.yaml'
+    # output_path = 'sealevel_output'
     with open(config_path, "r") as stream:
         config = yaml.load(stream, yaml.Loader)
 
@@ -243,6 +268,8 @@ def indicators(config_path='', output_path=''):
     for cycle in updated_cycles:
         modified_cycle_start_dates[cycle['start_date_dt']].append(cycle)
 
+    print('Calculating new index values for modified cycles.\n')
+
     # PRELIMINARY STUFF, CAN BE DONE BEFORE CALLING THE ROUTINE TO DO THE INDEXING
     # ----------------------------------------------------------------------------
     # load patterns and select out the monthly climatology of sla variation
@@ -257,89 +284,78 @@ def indicators(config_path='', output_path=''):
     weights_dir = Path('/Users/kevinmarlis/Developer/JPL/sealevel_output/indicator/weights')
     agg_files = np.sort([cycle['filepath_s'] for cycle in updated_cycles])
 
-    # load each pattern
-    pattern_ds = dict()
-    for pattern in patterns:
-        pattern_fname = pattern + '_pattern_and_index.nc'
-        pattern_ds[pattern] = xr.open_dataset(bh_dir / pattern_fname)
+    # PREPARE THE PATTERNS
 
     # load the monthly global sla climatology
     ann_ds = xr.open_dataset(bh_dir / 'ann_pattern.nc')
 
-    # get the geographic bounds of each sla pattern
+    pattern_ds = dict()
     pattern_geo_bnds = dict()
+    ann_cyc_in_pattern = dict()
+    pattern_area_defs = dict()
+
     for pattern in patterns:
+        # load each pattern
+        pattern_fname = pattern + '_pattern_and_index.nc'
+        pattern_ds[pattern] = xr.open_dataset(bh_dir / pattern_fname)
+
+        # get the geographic bounds of each sla pattern
         pattern_geo_bnds[pattern] = [float(pattern_ds[pattern].Latitude[0].values),
                                      float(pattern_ds[pattern].Latitude[-1].values),
                                      float(pattern_ds[pattern].Longitude[0].values),
                                      float(pattern_ds[pattern].Longitude[-1].values)]
 
-    # extract the sla annual cycle in the region of each pattern
-    ann_cyc_in_pattern = dict()
-    for pattern in patterns:
+        # extract the sla annual cycle in the region of each pattern
         ann_cyc_in_pattern[pattern] = ann_ds.sel(Latitude=slice(pattern_geo_bnds[pattern][0],
                                                                 pattern_geo_bnds[pattern][1]),
                                                  Longitude=slice(pattern_geo_bnds[pattern][2],
                                                                  pattern_geo_bnds[pattern][3]))
 
-    # Make Pyresample area definitions for each pattern
-    #  note: only needed for mapping alongtrack data to the patterns' spatial domain
+        # Individual Patterns
+        lon_m, lat_m = np.meshgrid(pattern_ds[pattern].Longitude.values,
+                                   pattern_ds[pattern].Latitude.values)
+        tmp_lon, tmp_lat = check_and_wrap(lon_m, lat_m)
+        pattern_area_defs[pattern] = pr.geometry.SwathDefinition(lons=tmp_lon, lats=tmp_lat)
 
     # Annual Cycle
     lon_m, lat_m = np.meshgrid(ann_ds.Longitude.values, ann_ds.Latitude.values)
     tmp_lon, tmp_lat = check_and_wrap(lon_m, lat_m)
     ann_area_def = pr.geometry.SwathDefinition(lons=tmp_lon, lats=tmp_lat)
 
-    # Individual Patterns
-    pattern_area_defs = dict()
-    for pattern in patterns:
-        lon_m, lat_m = np.meshgrid(pattern_ds[pattern].Longitude.values,
-                                   pattern_ds[pattern].Latitude.values)
-        tmp_lon, tmp_lat = check_and_wrap(lon_m, lat_m)
-        pattern_area_defs[pattern] = pr.geometry.SwathDefinition(lons=tmp_lon, lats=tmp_lat)
-
     ############################
     # THE MAIN LOOP
     ############################
 
-    # regridder = None
-
-    # prepare dictionaries to hold results
+    # List to hold DataSet objects for each pattern
     all_indicators = []
 
-    # loop through patterns, one at a time.
-    for pattern in patterns:
+    # key (pattern) : value (list of DAs with index at a single time)
+    indicators_agg_das = defaultdict(list)
+    offset_agg_das = defaultdict(list)
 
-        indicators_agg_da = []
-        offsets_agg_da = []
+    for agg_file in agg_files:
+        date = agg_file[-18:-10]
+        print(f' - Calculating index values for {date}')
 
-        # loop through granules
-        for agg_file_i, agg_file in enumerate(agg_files):
+        agg_ds = xr.open_dataset(agg_file)
+        agg_ds.close()
 
-            print(f'\n\n {agg_file_i}  {agg_file}')
-            agg_ds = xr.open_dataset(agg_file)
-            agg_ds.close()
+        indicators_agg_da = None
+        offsets_agg_da = None
 
-            # calculate index associated with this pattern
+        for pattern in patterns:
             index_calc, ct = calc_climate_index(agg_ds,
                                                 pattern,
                                                 pattern_ds,
                                                 ann_cyc_in_pattern,
                                                 weights_dir)
 
-            # now we have the results, add them to our existing DataArrays
-            print(index_calc, ct)
-
             # create a DataArray Object with a single scalar value, the index
             # for this pattern at this one time.
             indicator_da = xr.DataArray(index_calc[1], coords={'time': ct})
             indicator_da.name = f'{pattern}_index'
 
-            # ADD new indicator DataArray to the END of the existing indicator DataArray
-            if isinstance(indicators_agg_da, xr.core.dataarray.DataArray):
-                indicators_agg_da = xr.concat([indicators_agg_da, indicator_da], 'time')
-            else:
-                indicators_agg_da = indicator_da
+            indicators_agg_das[pattern].append(indicator_da)
 
             # create a DataArray Object with a single scalar value, the
             # the offset of the climate indices (the constant term in the
@@ -347,15 +363,13 @@ def indicators(config_path='', output_path=''):
             offsets_da = xr.DataArray(index_calc[0], coords={'time': ct})
             offsets_da.name = f'{pattern}_offset'
 
-            # ADD new indicators DataArray to the END of the existing indicators
-            # DataArray
-            if isinstance(offsets_agg_da, xr.core.dataarray.DataArray):
-                offsets_agg_da = xr.concat([offsets_agg_da, offsets_da], 'time')
-            else:
-                offsets_agg_da = offsets_da
+            offset_agg_das[pattern].append(offsets_da)
 
-        # append the indicator data array for this pattern to the list
-        # it's OK because the data arrays are named with the pattern
+    # Concatenate the list of individual DAs along time
+    # Merge into a single DataSet and append that pattern to all_indicators list
+    for pattern in patterns:
+        indicators_agg_da = xr.concat(indicators_agg_das[pattern], 'time')
+        offsets_agg_da = xr.concat(offset_agg_das[pattern], 'time')
         all_indicators.append(xr.merge([offsets_agg_da, indicators_agg_da]))
 
     # FINISHED THROUGH ALL PATTERNS
@@ -364,13 +378,15 @@ def indicators(config_path='', output_path=''):
 
     # Open existing indicator ds to add new values if needed
     if update:
+        print('\nAdding calculated values to indicator netCDF.')
         indicator_ds = xr.open_dataset(indicator_metadata['filepath_s'])
 
         # Remove times of new indicator values from original indicator DS if they exist
         # (this effectively updates the values)
         indicator_ds = indicator_ds.where(~indicator_ds['time'].isin(
             np.unique(new_indicators['time'])), drop=True)
-        # And use xr.concat to add in the new values.
+        # And use xr.concat to add in the new values (concat will create multiple entries for the
+        # same time value).
         indicator_ds = xr.concat([indicator_ds, new_indicators], 'time')
         # Finally, sort to get things in the right order
         indicator_ds = indicator_ds.sortby('time')
@@ -424,10 +440,6 @@ def indicators(config_path='', output_path=''):
     resp = solr_update(config, [indicator_meta])
 
     if resp.status_code == 200:
-        print('Successfully created Solr dataset document')
+        print('\nSuccessfully created or updated Solr index document')
     else:
-        print('Failed to create Solr dataset document')
-
-
-if __name__ == '__main__':
-    indicators()
+        print('\nFailed to create or update Solr index document')
