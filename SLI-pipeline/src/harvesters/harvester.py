@@ -1,11 +1,13 @@
-import os
+"""
+This module handles data granule harvesting for datasets hosted locally and on PODAAC. 
+"""
+
 import hashlib
 import logging
 from datetime import datetime
 
 from xml.etree.ElementTree import fromstring
 import requests
-import yaml
 
 
 log = logging.getLogger(__name__)
@@ -16,7 +18,7 @@ def md5(fname):
     Creates md5 checksum from file
 
     Params:
-        fpath (str): path of the file
+        fpath (Path): path of the file
 
     Returns:
         hash_md5.hexdigest (str): double length string containing only hexadecimal digits
@@ -98,7 +100,7 @@ def podaac_harvester(config, docs, target_dir):
     Params:
         config (dict): the dataset specific config file
         docs (dict): the existing granule docs on Solr in dict format
-        target_dir (str): the path of the dataset's harvested granules directory
+        target_dir (Path): the path of the dataset's harvested granules directory
 
     Returns:
         entries_for_solr (List[dict]): all new or modified granule docs to be posted to Solr
@@ -168,30 +170,26 @@ def podaac_harvester(config, docs, target_dir):
             if filename in docs.keys():
                 item['id'] = docs[filename]['id']
 
-            year = date_start_str[:4]
-            local_fp = f'{target_dir}{year}/{filename}'
-
-            if not os.path.exists(f'{target_dir}{year}'):
-                os.makedirs(f'{target_dir}{year}')
+            local_dir = (target_dir / date_start_str[:4])
+            local_dir.mkdir(parents=True, exist_ok=True)
+            local_fp = local_dir / filename
 
             # If granule doesn't exist or previously failed or has been updated since last harvest
             # or exists in Solr but doesn't exist where it should
             updating = (filename not in docs.keys()) or \
                 (not docs[filename]['harvest_success_b']) or \
                 (docs[filename]['download_time_dt'] <= mod_time_str) or \
-                (not os.path.exists(local_fp))
+                (not local_fp.exists())
 
             # If updating, download file if necessary
             if updating:
                 try:
-                    expected_size = requests.head(link).headers.get('content-length', -1)
-                    local_mod_time = datetime.fromtimestamp(
-                        os.path.getmtime(local_fp)).strftime(date_regex)
+                    expected_size = int(requests.head(link).headers.get('content-length', -1))
 
                     # Only redownloads if local file is out of town - doesn't waste
                     # time/bandwidth to redownload the same file just because there isn't
                     # a Solr entry. Most useful during development.
-                    if not os.path.exists(local_fp) or mod_time_str > local_mod_time:
+                    if not local_fp.exists() or mod_time_str > datetime.fromtimestamp(local_fp.stat().st_mtime).strftime(date_regex):
                         print(f' - Downloading {filename} to {local_fp}')
 
                         resp = requests.get(link)
@@ -201,8 +199,8 @@ def podaac_harvester(config, docs, target_dir):
 
                     # Create checksum for file
                     item['checksum_s'] = md5(local_fp)
-                    item['granule_file_path_s'] = local_fp
-                    item['file_size_l'] = os.path.getsize(local_fp)
+                    item['granule_file_path_s'] = str(local_fp)
+                    item['file_size_l'] = local_fp.stat().st_size
 
                     # Make sure file properly downloaded by comparing sizes
                     if expected_size == item['file_size_l']:
@@ -210,9 +208,8 @@ def podaac_harvester(config, docs, target_dir):
                     else:
                         item['harvest_success_b'] = False
 
-                except Exception as e:
-                    print(f'    - {e}')
-                    print(f'    - {filename} failed to download')
+                except:
+                    log.exception(f'    - {filename} failed to download')
 
                     item['harvest_success_b'] = False
                     item['checksum_s'] = ''
@@ -244,7 +241,7 @@ def local_harvester(config, docs, target_dir):
     Params:
         config (dict): the dataset specific config file
         docs (dict): the existing granule docs on Solr in dict format
-        target_dir (str): the path of the dataset's harvested granules directory
+        target_dir (Path): the path of the dataset's harvested granules directory
 
     Returns:
         entries_for_solr (List[dict]): all new or modified granule metadata docs to be posted to Solr
@@ -262,27 +259,22 @@ def local_harvester(config, docs, target_dir):
     entries_for_solr = []
 
     # Get local files
-    data_files = []
     start = start_time[:8]
     end = end_time[:8]
 
-    for _, _, files in os.walk(target_dir):
-        for filename in files:
-            if '.DS_Store' in filename:
-                continue
+    data_files = [filepath for filepath in target_dir.rglob("*") if
+                  '.DS_Store' not in filepath.name and
+                  filepath.name[7:15] >= start and
+                  filepath.name[7:15] <= end]
+    data_files.sort()
 
-            f_date = filename[7:15]
-            if f_date < start or f_date > end:
-                continue
-
-            data_files.append(filename)
-
-    for filename in data_files:
+    for filepath in data_files:
+        local_fp = filepath
+        filename = filepath.name
         date = filename[7:-3]
         date_start_str = f'{date[:4]}-{date[4:6]}-{date[6:8]}T00:00:00Z'
-        year = date_start_str[:4]
-        local_fp = f'{target_dir}{year}/{filename}'
-        mod_time = datetime.fromtimestamp(os.path.getmtime(local_fp))
+
+        mod_time = datetime.fromtimestamp(local_fp.stat().st_mtime)
         mod_time_string = mod_time.strftime(date_regex)
 
         # Granule metadata used for Solr granule entries
@@ -308,9 +300,9 @@ def local_harvester(config, docs, target_dir):
 
             # Create checksum for file
             item['checksum_s'] = md5(local_fp)
-            item['granule_file_path_s'] = local_fp
+            item['granule_file_path_s'] = str(local_fp)
             item['harvest_success_b'] = True
-            item['file_size_l'] = os.path.getsize(local_fp)
+            item['file_size_l'] = local_fp.stat().st_size
             item['download_time_dt'] = now_str
 
             entries_for_solr.append(item)
@@ -321,31 +313,25 @@ def local_harvester(config, docs, target_dir):
     return entries_for_solr, source
 
 
-def harvester(config_path='', output_path=''):
+def harvester(config, output_path):
     """
     Harvests new or updated granules from a local drive for a dataset. Posts granule metadata docs
     to Solr and creates or updates dataset metadata doc.
     dataset doc.
 
     Params:
-        config_path (dict): the dataset specific config file
-        output_path (dict): the existing granule docs on Solr in dict format
+        config (dict): the dataset specific config file
+        output_path (Path): the existing granule docs on Solr in dict format
     """
 
     # =====================================================
-    # Read harvester_config.yaml and setup variables
+    # Setup variables from harvester_config.yaml
     # =====================================================
-    with open(config_path, "r") as stream:
-        config = yaml.load(stream, yaml.Loader)
-
     ds_name = config['ds_name']
     shortname = config['original_dataset_short_name']
 
-    target_dir = f'{output_path}{ds_name}/harvested_granules/'
-
-    # If target paths don't exist, make them
-    if not os.path.exists(target_dir):
-        os.makedirs(target_dir)
+    target_dir = output_path / ds_name / 'harvested_granules'
+    target_dir.mkdir(parents=True, exist_ok=True)
 
     print(f'Harvesting {ds_name} files to {target_dir}\n')
 
@@ -374,7 +360,7 @@ def harvester(config_path='', output_path=''):
     if entries_for_solr:
         # Update Solr with downloaded granule metadata entries
         resp = solr_update(config, entries_for_solr)
-        print_resp(resp, msg='harvested documents')
+        print_resp(resp, msg='granule documents')
 
     # =====================================================
     # Solr dataset entry
@@ -434,3 +420,5 @@ def harvester(config_path='', output_path=''):
     # Update Solr with modified dataset entry
     resp = solr_update(config, [ds_meta])
     print_resp(resp, msg='dataset document\n')
+
+    return harvest_status
