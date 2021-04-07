@@ -3,9 +3,9 @@
 # =====================================================
 harvester_type: "podaac"
 
-start: "20160101T00:00:00Z" # yyyymmddThh:mm:ssZ
-end: "20210112T23:59:59Z" # yyyymmddThh:mm:ssZ
-most_recent: True # Overrides end date to be current date at time of execution
+start: "20170101T00:00:00Z" # yyyymmddThh:mm:ssZ
+end: "20170312T23:59:59Z" # yyyymmddThh:mm:ssZ
+most_recent: False # Overrides end date to be current date at time of execution
 host: https://podaac.jpl.nasa.gov/ws/search/granule/?format=atom&pretty=false&itemsPerPage=10000 # does not change
 date_regex: "%Y-%m-%dT%H:%M:%SZ" # does not change
 

@@ -2,7 +2,7 @@
 # Dataset
 # =====================================================
 ds_name: "sla_SEA_SURFACE_HEIGHT_ALT_GRIDS_L4_2SATS_5DAY_6THDEG_V_JPL1812" # Name for dataset
-version: 2.0
+version: 1.0
 processor: measures_grids
 
 # =====================================================
