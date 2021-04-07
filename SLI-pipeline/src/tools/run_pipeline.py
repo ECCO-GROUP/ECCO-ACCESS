@@ -13,7 +13,7 @@ import yaml
 # Hardcoded output directory path for pipeline files
 # Leave blank to be prompted for an output directory
 OUTPUT_DIR = ''
-OUTPUT_DIR = '/Users/kevinmarlis/Developer/JPL/sealevel_output/'
+OUTPUT_DIR = Path('/Users/kevinmarlis/Developer/JPL/sealevel_output/')
 
 ROW = '=' * 57
 
@@ -167,8 +167,8 @@ def run_harvester(datasets, harv_path, output_dir):
 
         Parameters:
             datasets (List[str]): A list of dataset names.
-            harv_path (str): The path to the harvester directory.
-            output_dir (str): The path to the output directory.
+            harv_path (Path): The path to the harvester directory.
+            output_dir (Path): The path to the output directory.
     """
     print(f'\n{ROW}')
     print(' \033[36mRunning harvesters\033[0m '.center(66, '='))
@@ -182,19 +182,20 @@ def run_harvester(datasets, harv_path, output_dir):
 
             config_path = Path(
                 f'{Path(__file__).resolve().parents[2]}/dataset_configs/{ds}/harvester_config.yaml')
+            with open(config_path, "r") as stream:
+                config = yaml.load(stream, yaml.Loader)
 
             path_to_code = Path(f'{harv_path}/')
-
             sys.path.insert(1, str(path_to_code))
 
             ret_import = importlib.import_module('harvester')
             ret_import = importlib.reload(ret_import)
 
-            ret_import.harvester(config_path=config_path, output_path=output_dir)
+            status = ret_import.harvester(config=config, output_path=output_dir)
 
             sys.path.remove(str(path_to_code))
 
-            harv_logger.info('Harvesting successful')
+            harv_logger.info(f'Harvesting complete. {status}')
             print('\033[92mHarvest successful\033[0m')
         except Exception as e:
             sys.path.remove(str(path_to_code))
@@ -211,8 +212,8 @@ def run_processing(datasets, proc_path, output_dir, reprocess):
 
         Parameters:
             datasets (List[str]): A list of dataset names.
-            proc_path (str): The path to the processor directory.
-            output_dir (str): The path to the output directory.
+            proc_path (Path): The path to the processor directory.
+            output_dir (Pathh): The path to the output directory.
     """
     print('\n' + ROW)
     print(' \033[36mRunning processing\033[0m '.center(66, '='))
@@ -226,21 +227,22 @@ def run_processing(datasets, proc_path, output_dir, reprocess):
 
             config_path = Path(
                 f'{Path(__file__).resolve().parents[2]}/dataset_configs/{ds}/processing_config.yaml')
+            with open(config_path, "r") as stream:
+                config = yaml.load(stream, yaml.Loader)
 
             path_to_code = Path(f'{proc_path}')
-
             sys.path.insert(1, str(path_to_code))
 
             ret_import = importlib.import_module('processing')
             ret_import = importlib.reload(ret_import)
 
-            ret_import.processing(config_path=config_path,
-                                  output_path=output_dir,
-                                  reprocess=reprocess)
+            status = ret_import.processing(config=config,
+                                           output_path=output_dir,
+                                           reprocess=reprocess)
 
             sys.path.remove(str(path_to_code))
 
-            proc_logger.info('Processing successful')
+            proc_logger.info(f'Processing complete. {status}')
             print('\033[92mProcessing successful\033[0m')
         except Exception as e:
             print(e)
@@ -250,13 +252,13 @@ def run_processing(datasets, proc_path, output_dir, reprocess):
         print(ROW)
 
 
-def run_indexing(proc_path, output_dir):
+def run_indexing(proc_path, output_dir, reprocess):
     """
         Calls the indicator processing file.
 
         Parameters:
-            proc_path (str): The path to the processor directory.
-            output_dir (str): The path to the output directory.
+            proc_path (Path): The path to the processor directory.
+            output_dir (Path): The path to the output directory.
     """
     print('\n' + ROW)
     print(' \033[36mRunning processing\033[0m '.center(66, '='))
@@ -270,18 +272,21 @@ def run_indexing(proc_path, output_dir):
         path_to_code = Path(f'{proc_path}/indicators/')
 
         config_path = Path(path_to_code/'indicators_config.yaml')
+        with open(config_path, "r") as stream:
+            config = yaml.load(stream, yaml.Loader)
 
         sys.path.insert(1, str(path_to_code))
 
         ret_import = importlib.import_module('indicators')
         ret_import = importlib.reload(ret_import)
 
-        ret_import.indicators(config_path=config_path,
-                              output_path=output_dir)
+        ret_import.indicators(config=config,
+                              output_path=output_dir,
+                              reprocess=reprocess)
 
         sys.path.remove(str(path_to_code))
 
-        proc_logger.info('Index calculation successful')
+        proc_logger.info('Index calculation complete.')
         print('\033[92mIndex calculation successful\033[0m')
     except Exception as e:
         print(e)
@@ -321,13 +326,13 @@ if __name__ == '__main__':
         root = tk.Tk()
         root.attributes('-topmost', True)
         root.withdraw()
-        OUTPUT_DIR = f'{filedialog.askdirectory()}/'
+        OUTPUT_DIR = Path(f'{filedialog.askdirectory()}/')
 
         if OUTPUT_DIR == '/':
             print('No output directory given. Exiting.')
             sys.exit()
     else:
-        if not os.path.exists(OUTPUT_DIR):
+        if not OUTPUT_DIR.exists():
             print(f'{OUTPUT_DIR} is an invalid output directory. Exiting.')
             sys.exit()
     print(f'\nUsing output directory: {OUTPUT_DIR}')
@@ -338,7 +343,7 @@ if __name__ == '__main__':
     # --------------------- Run pipeline ---------------------
 
     # Initialize logger
-    logger_path = f'{OUTPUT_DIR}/pipeline.log'
+    logger_path = Path(f'{OUTPUT_DIR}/pipeline.log')
     logger = logging.getLogger('pipeline')
     logger.setLevel(logging.DEBUG)
 
@@ -357,7 +362,7 @@ if __name__ == '__main__':
     ch.setFormatter(ch_formatter)
     logger.addHandler(ch)
 
-    DATASETS = [ds for ds in os.listdir(PATH_TO_DATASETS) if ds != '.DS_Store']
+    DATASETS = [ds.name for ds in PATH_TO_DATASETS.iterdir() if ds.name != '.DS_Store']
 
     CHOSEN_OPTION = show_menu() if args.options_menu and not REPROCESS else '1'
 
@@ -367,7 +372,7 @@ if __name__ == '__main__':
             run_harvester([dataset], PATH_TO_HARVESTERS, OUTPUT_DIR)
             run_processing([dataset], PATH_TO_PROCESSORS, OUTPUT_DIR, REPROCESS)
 
-        run_indexing(PATH_TO_PROCESSORS, OUTPUT_DIR)
+        run_indexing(PATH_TO_PROCESSORS, OUTPUT_DIR, REPROCESS)
 
     # Run harvester
     elif CHOSEN_OPTION == '2':
@@ -379,7 +384,7 @@ if __name__ == '__main__':
         for dataset in DATASETS:
             run_processing([dataset], PATH_TO_PROCESSORS, OUTPUT_DIR, REPROCESS)
 
-        run_indexing(PATH_TO_PROCESSORS, OUTPUT_DIR)
+        run_indexing(PATH_TO_PROCESSORS, OUTPUT_DIR, REPROCESS)
 
     # Manually enter dataset and pipeline step(s)
     elif CHOSEN_OPTION == '4':
@@ -420,13 +425,13 @@ if __name__ == '__main__':
             run_harvester([CHOSEN_DS], PATH_TO_HARVESTERS, OUTPUT_DIR)
         if 'process' in wanted_steps:
             run_processing([CHOSEN_DS], PATH_TO_PROCESSORS, OUTPUT_DIR, REPROCESS)
-            run_indexing(PATH_TO_PROCESSORS, OUTPUT_DIR)
+            run_indexing(PATH_TO_PROCESSORS, OUTPUT_DIR, REPROCESS)
         if wanted_steps == 'all':
             run_harvester([CHOSEN_DS], PATH_TO_HARVESTERS, OUTPUT_DIR)
             run_processing([CHOSEN_DS], PATH_TO_PROCESSORS, OUTPUT_DIR, REPROCESS)
-            run_indexing(PATH_TO_PROCESSORS, OUTPUT_DIR)
+            run_indexing(PATH_TO_PROCESSORS, OUTPUT_DIR, REPROCESS)
 
     elif CHOSEN_OPTION == '5':
-        run_indexing(PATH_TO_PROCESSORS, OUTPUT_DIR)
+        run_indexing(PATH_TO_PROCESSORS, OUTPUT_DIR, REPROCESS)
 
     print_log(logger_path)
