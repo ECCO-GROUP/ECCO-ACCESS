@@ -1,21 +1,22 @@
+"""
+
+"""
 import os
 import sys
 import hashlib
 import logging
 import warnings
-import requests
-import yaml
-import numpy as np
-import xarray as xr
-import pyresample as pr
-import xesmf as xe
-from datetime import datetime
 from collections import defaultdict
-from netCDF4 import default_fillvals
+from datetime import datetime
 from pathlib import Path
-from scipy.optimize import leastsq
+import numpy as np
+import pyresample as pr
+import requests
+import xarray as xr
+import xesmf as xe
+# from netCDF4 import default_fillvals
 from pyresample.utils import check_and_wrap
-
+from scipy.optimize import leastsq
 
 log = logging.getLogger(__name__)
 warnings.filterwarnings("ignore")
@@ -25,7 +26,7 @@ class HiddenPrints:
     """
     Temporarily hides print statements, especially useful for library functions.
 
-    ex: 
+    ex:
     with HiddenPrints():
         foo(bar)
 
@@ -100,20 +101,31 @@ def solr_update(config, update_body):
 
 def calc_climate_index(agg_ds, pattern, pattern_ds, ann_cyc_in_pattern, weights_dir):
     """
-    here
+
+    Params:
+        agg_ds (Dataset): the aggregated cycle Dataset object
+        pattern (str): the name of the pattern
+        pattern_ds (Dataset): the actual pattern object
+        ann_cyc_in_pattern (Dict):
+        weights_dir (Path): the Path to the directory containing the stored pattern weights
+    Returns:
+        LS_result (List[float]):
+        center_time (Datetime): 
     """
 
     method = 2
 
+    # TODO: this could be problematic if the first case is not a np.datetime64 object
+    # not sure if second case is needed (could be from an early cycle draft)
     # extract center time of this agg field
     if 'cycle_center' in agg_ds.attrs:
-        ct = agg_ds.Time[0].values
+        center_time = agg_ds.Time[0].values
 
     elif 'time_center' in agg_ds.attrs:
-        ct = np.datetime64(agg_ds.time_center)
+        center_time = np.datetime64(agg_ds.time_center)
 
     # determine its month
-    agg_ds_center_mon = int(str(ct)[5:7])
+    agg_ds_center_mon = int(str(center_time)[5:7])
 
     pattern_field = pattern_ds[pattern][f'{pattern}_pattern'].values
 
@@ -131,7 +143,7 @@ def calc_climate_index(agg_ds, pattern, pattern_ds, ann_cyc_in_pattern, weights_
 
     ssha_to_pattern_da = regridder(ds_in)
 
-    ssha_to_pattern_da = ssha_to_pattern_da.assign_coords(coords={'time': ct})
+    ssha_to_pattern_da = ssha_to_pattern_da.assign_coords(coords={'time': center_time})
 
     # remove the monthly mean pattern from the gridded ssha
     # now ssha_anom is w.r.t. seasonal cycle and MDT
@@ -143,16 +155,16 @@ def calc_climate_index(agg_ds, pattern, pattern_ds, ann_cyc_in_pattern, weights_
 
     # extract out all non-nan values of ssha_anom, these are going to
     # be the points that we fit
-    nn = ~np.isnan(ssha_anom)
-    ssha_anom_to_fit = ssha_anom[nn]
+    nonnans = ~np.isnan(ssha_anom)
+    ssha_anom_to_fit = ssha_anom[nonnans]
 
     # do the same for the pattern
-    pattern_to_fit = pattern_field[nn]/1e3
+    pattern_to_fit = pattern_field[nonnans]/1e3
 
     # just for fun extract out same points from ssha, we'll see if
     # removing the monthly climatology makes much of a difference
     ssha_to_fit = ssha_to_pattern_da.copy(deep=True)
-    ssha_to_fit = ssha_to_pattern_da.values[nn]
+    ssha_to_fit = ssha_to_pattern_da.values[nonnans]
 
     if method == 1:
         # Method 1, use scipy's least squares:
@@ -203,9 +215,9 @@ def calc_climate_index(agg_ds, pattern, pattern_ds, ann_cyc_in_pattern, weights_
         offset_b = B_hat[0]
         index_b = B_hat[1]
 
-    LS_result = [offset, index, offset_b,  index_b]
+    LS_result = [offset, index, offset_b, index_b]
 
-    return LS_result, ct
+    return LS_result, center_time
 
 
 # one of the ways of doing the LS fit is with the scipy.optimize leastsq
@@ -218,34 +230,28 @@ def func1(params, x, y):
     return residual
 
 
-def indicators(config_path='', output_path=''):
+def indicators(config, output_path, reprocess=False):
     """
     Here
     """
-    # config_path = f'{os.getcwd()}/Sea-Level-Indicators/SLI-pipeline/src/processors/indicators/indicators.yaml'
-    # output_path = 'sealevel_output'
-    with open(config_path, "r") as stream:
-        config = yaml.load(stream, yaml.Loader)
 
     filename = 'indicator.nc'
-    output_path = f'{output_path}/indicator/'
-
-    # If target paths don't exist, make them
-    if not os.path.exists(output_path):
-        os.makedirs(output_path)
+    output_dir = output_path / 'indicator'
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / filename
 
     # Query for indicator doc on Solr
     fq = ['type_s:indicator']
     indicator_query = solr_query(config, fq)
     update = len(indicator_query) == 1
 
-    if update:
+    if not update or reprocess:
+        modified_time = '1992-01-01T00:00:00Z'
+    else:
         indicator_metadata = indicator_query[0]
         modified_time = indicator_metadata['modified_time_dt']
-    else:
-        modified_time = '1992-01-01T00:00:00Z'
+    # modified_time = '2016-01-01T00:00:00Z'
 
-    modified_time = '2021-03-22T19:07:24Z'
     # Query for update cycles after modified_time
     fq = ['type_s:cycle', 'processing_success_b:true', 'dataset_s:*1812',
           f'processing_time_dt:[{modified_time} TO NOW]']
@@ -277,11 +283,12 @@ def indicators(config_path='', output_path=''):
     patterns = ['enso', 'pdo', 'iod']
 
     # ben's patterns (in NetCDF form from his original matlab format)
-    bh_dir = Path(
-        '/Users/kevinmarlis/Downloads/Re_FW_ Daily track files20210331123807/v1_2021-03-29_netcdf')
+    bh_dir = Path().resolve() / 'Sea-Level-Indicators' / 'SLI-pipeline' / 'ref_grds'
 
     # weights dir is used to store remapping weights for xemsf regrid operation
-    weights_dir = Path('/Users/kevinmarlis/Developer/JPL/sealevel_output/indicator/weights')
+    weights_dir = output_dir / 'indicator' / 'weights'
+    weights_dir.mkdir(parents=True, exist_ok=True)
+
     agg_files = np.sort([cycle['filepath_s'] for cycle in updated_cycles])
 
     # PREPARE THE PATTERNS
@@ -335,6 +342,7 @@ def indicators(config_path='', output_path=''):
 
     for agg_file in agg_files:
         date = agg_file[-18:-10]
+        date = f'{date[:4]}-{date[4:6]}-{date[6:8]}'
         print(f' - Calculating index values for {date}')
 
         agg_ds = xr.open_dataset(agg_file)
@@ -344,17 +352,13 @@ def indicators(config_path='', output_path=''):
         offsets_agg_da = None
 
         for pattern in patterns:
-            index_calc, ct = calc_climate_index(agg_ds,
-                                                pattern,
-                                                pattern_ds,
-                                                ann_cyc_in_pattern,
+            index_calc, ct = calc_climate_index(agg_ds, pattern, pattern_ds, ann_cyc_in_pattern,
                                                 weights_dir)
 
             # create a DataArray Object with a single scalar value, the index
             # for this pattern at this one time.
             indicator_da = xr.DataArray(index_calc[1], coords={'time': ct})
             indicator_da.name = f'{pattern}_index'
-
             indicators_agg_das[pattern].append(indicator_da)
 
             # create a DataArray Object with a single scalar value, the
@@ -362,7 +366,6 @@ def indicators(config_path='', output_path=''):
             # least squares fit, not really interesting but maybe good to have)
             offsets_da = xr.DataArray(index_calc[0], coords={'time': ct})
             offsets_da.name = f'{pattern}_offset'
-
             offset_agg_das[pattern].append(offsets_da)
 
     # Concatenate the list of individual DAs along time
@@ -393,30 +396,30 @@ def indicators(config_path='', output_path=''):
     else:
         indicator_ds = new_indicators
 
-    # NetCDF encoding
-    encoding_each = {'zlib': True,
-                     'complevel': 5,
-                     'dtype': 'float32',
-                     'shuffle': True,
-                     '_FillValue': default_fillvals['f8']}
+    # # NetCDF encoding
+    # encoding_each = {'zlib': True,
+    #                  'complevel': 5,
+    #                  'dtype': 'float32',
+    #                  'shuffle': True,
+    #                  '_FillValue': default_fillvals['f8']}
 
-    coord_encoding = {}
-    for coord in indicator_ds.coords:
-        coord_encoding[coord] = {'_FillValue': None,
-                                 'dtype': 'float32',
-                                 'complevel': 6}
+    # coord_encoding = {}
+    # for coord in indicator_ds.coords:
+    #     coord_encoding[coord] = {'_FillValue': None,
+    #                              'dtype': 'float32',
+    #                              'complevel': 6}
 
-        if 'Time' in coord:
-            coord_encoding[coord] = {'_FillValue': None,
-                                     'zlib': True,
-                                     'contiguous': False,
-                                     'shuffle': False}
+    #     if 'Time' in coord:
+    #         coord_encoding[coord] = {'_FillValue': None,
+    #                                  'zlib': True,
+    #                                  'contiguous': False,
+    #                                  'shuffle': False}
 
-    var_encoding = {var: encoding_each for var in indicator_ds.data_vars}
+    # var_encoding = {var: encoding_each for var in indicator_ds.data_vars}
 
-    encoding = {**coord_encoding, **var_encoding}
+    # encoding = {**coord_encoding, **var_encoding}
 
-    indicator_ds.to_netcdf(output_path + filename)
+    indicator_ds.to_netcdf(output_path)
 
     # ==============================================
     # Create or update indicator on Solr
@@ -427,10 +430,10 @@ def indicators(config_path='', output_path=''):
         'start_date_dt': np.datetime_as_string(indicator_ds.time.values[0], unit='s'),
         'end_date_dt': np.datetime_as_string(indicator_ds.time.values[-1], unit='s'),
         'filename_s': filename,
-        'filepath_s': output_path + filename,
+        'filepath_s': str(output_path),
         'modified_time_dt': chk_time,
-        'checksum_s': md5(output_path+filename),
-        'file_size_l': os.path.getsize(output_path)
+        'checksum_s': md5(output_path),
+        'file_size_l': output_path.stat().st_size
     }
 
     if update:

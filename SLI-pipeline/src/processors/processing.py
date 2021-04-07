@@ -1,11 +1,18 @@
-import os
+"""
+This module handles dataset processing into 10 day cycles.
+"""
+
+import logging
 import hashlib
 from datetime import datetime, timedelta
-import yaml
 import requests
 import numpy as np
 import xarray as xr
 from netCDF4 import default_fillvals  # pylint: disable=no-name-in-module
+
+log = logging.getLogger(__name__)
+
+CYCLE_LENGTH = 10
 
 
 def md5(fpath):
@@ -174,6 +181,10 @@ def process_measures_grids(cycle_granules, ds_meta, dates):
 
     ds = xr.open_dataset(granule['granule_file_path_s'])
 
+    if np.isnan(ds[var].values).all():
+        granule = cycle_granules[1]
+        ds = xr.open_dataset(granule['granule_file_path_s'])
+
     cycle_ds = ds.rename({var: 'SSHA'})
 
     # Var Attributes
@@ -239,9 +250,8 @@ def process_gps(cycle_granules, ds_meta, dates):
 
         try:
             offset, amplitude = delta_orbit_altitude_offset_amplitude(ds.time, ds.ssha, ds[var])
-
-        except Exception as e:
-            print(e)
+        except:
+            log.exception('Offset and amplitude calculation error.')
             offset = 100
             amplitude = 100
 
@@ -568,6 +578,9 @@ def post_process_solr_update(config, ds_metadata):
     Params:
         config (dict): the dataset's config file
         ds_metadata (dict): the dataset metadata document from Solr
+
+    Return:
+        processing_status (str): overall processing status
     """
     ds_name = config['ds_name']
 
@@ -595,20 +608,19 @@ def post_process_solr_update(config, ds_metadata):
     else:
         print('Failed to update Solr dataset document\n')
 
+    return processing_status
 
-def processing(config_path, output_path, reprocess):
+
+def processing(config, output_path, reprocess):
     """
     Generates encoding dictionary used for saving the cycle netCDF file.
     The measures gridded dataset (1812) has additional units encoding requirements.
 
     Params:
-        config_path (str): path to the dataset's config file
-        output_path (str): path to the pipeline's output directory
+        config (dict): the dataset's config file
+        output_path (Path): path to the pipeline's output directory
         reprocess (bool): denotes if all cycles should be reprocessed
     """
-
-    with open(config_path, "r") as stream:
-        config = yaml.load(stream, yaml.Loader)
 
     ds_name = config['ds_name']
     version = config['version']
@@ -616,7 +628,11 @@ def processing(config_path, output_path, reprocess):
     date_regex = '%Y-%m-%dT%H:%M:%S'
 
     # Query for dataset metadata
-    ds_metadata = solr_query(config, ['type_s:dataset', f'dataset_s:{ds_name}'])[0]
+    try:
+        ds_metadata = solr_query(config, ['type_s:dataset', f'dataset_s:{ds_name}'])[0]
+    except:
+        log.exception('Error while querying for dataset entry.')
+        raise Exception('Cannot run processing if harvesting has not been run. Check Solr.')
 
     # Query for all existing cycles in Solr
     solr_cycles = solr_query(config, ['type_s:cycle', f'dataset_s:{ds_name}'])
@@ -624,7 +640,7 @@ def processing(config_path, output_path, reprocess):
     cycles = {cycle['start_date_dt']: cycle for cycle in solr_cycles}
 
     # Generate list of cycle date tuples (start, end)
-    delta = timedelta(days=10)
+    delta = timedelta(days=CYCLE_LENGTH)
     start_date = datetime.strptime('1992-01-01T00:00:00', date_regex)
     end_date = start_date + delta
 
@@ -657,6 +673,8 @@ def processing(config_path, output_path, reprocess):
         # Skip cycle if no granules harvested
         if not cycle_granules:
             print(f'No granules for cycle {start_date_str} to {end_date_str}')
+            start_date = end_date
+            end_date = start_date + delta
             continue
 
         # ======================================================
@@ -686,22 +704,20 @@ def processing(config_path, output_path, reprocess):
                 filename_time = datetime.strftime(center_date, '%Y%m%dT%H%M%S')
                 filename = f'ssha_{filename_time}.nc'
 
-                save_dir = f'{output_path}{ds_name}/cycle_products/'
-                save_path = f'{save_dir}{filename}'
-
-                # If paths don't exist, make them
-                if not os.path.exists(save_dir):
-                    os.makedirs(save_dir)
+                save_dir = output_path / ds_name / 'cycle_products'
+                save_dir.mkdir(parents=True, exist_ok=True)
+                save_path = save_dir / filename
 
                 cycle_ds.to_netcdf(save_path, encoding=encoding)
 
                 # Determine checksum and file size
                 checksum = md5(save_path)
-                file_size = os.path.getsize(save_path)
+                file_size = save_path.stat().st_size
                 processing_success = True
 
-            except Exception as e:
-                print(e)
+            except:
+                log.exception(
+                    f'\nError while processing cycle {date_strs[0][:10]} - {date_strs[2][:10]}')
                 filename = ''
                 save_path = ''
                 checksum = ''
@@ -717,7 +733,7 @@ def processing(config_path, output_path, reprocess):
                 'end_date_dt': end_date_str,
                 'granules_in_cycle_i': granule_count,
                 'filename_s': filename,
-                'filepath_s': save_path,
+                'filepath_s': str(save_path),
                 'checksum_s': checksum,
                 'file_size_l': file_size,
                 'processing_success_b': processing_success,
@@ -756,4 +772,4 @@ def processing(config_path, output_path, reprocess):
     # ======================================================
     # Update dataset document with overall processing status
     # ======================================================
-    post_process_solr_update(config, ds_metadata)
+    return post_process_solr_update(config, ds_metadata)
