@@ -286,7 +286,7 @@ def indicators(config, output_path, reprocess=False):
     bh_dir = Path().resolve() / 'Sea-Level-Indicators' / 'SLI-pipeline' / 'ref_grds'
 
     # weights dir is used to store remapping weights for xemsf regrid operation
-    weights_dir = output_dir / 'indicator' / 'weights'
+    weights_dir = output_dir / 'weights'
     weights_dir.mkdir(parents=True, exist_ok=True)
 
     agg_files = np.sort([cycle['filepath_s'] for cycle in updated_cycles])
