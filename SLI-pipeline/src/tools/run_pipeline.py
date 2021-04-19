@@ -1,3 +1,5 @@
+"""
+"""
 import os
 import sys
 import logging
@@ -343,7 +345,7 @@ if __name__ == '__main__':
     # --------------------- Run pipeline ---------------------
 
     # Initialize logger
-    logger_path = Path(f'{OUTPUT_DIR}/pipeline.log')
+    logger_path = OUTPUT_DIR / 'pipeline.log'
     logger = logging.getLogger('pipeline')
     logger.setLevel(logging.DEBUG)
 
