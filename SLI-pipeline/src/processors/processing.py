@@ -625,6 +625,7 @@ def processing(config, output_path, reprocess):
     ds_name = config['ds_name']
     version = config['version']
     processor = config['processor']
+    index_type = config['index_type']
     date_regex = '%Y-%m-%dT%H:%M:%S'
 
     # Query for dataset metadata
@@ -738,7 +739,8 @@ def processing(config, output_path, reprocess):
                 'file_size_l': file_size,
                 'processing_success_b': processing_success,
                 'processing_time_dt': datetime.utcnow().strftime(date_regex),
-                'processing_version_f': version
+                'processing_version_f': version,
+                'index_type_s': index_type
             }
 
             if start_date_str + 'Z' in cycles.keys():

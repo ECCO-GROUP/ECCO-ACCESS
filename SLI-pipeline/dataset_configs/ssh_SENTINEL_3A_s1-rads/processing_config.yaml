@@ -4,6 +4,7 @@
 ds_name: "ssh_SENTINEL_3A_s1-rads" # Name for dataset
 version: 1.0
 processor: along_track
+index_type: along_track
 
 # =====================================================
 # Solr

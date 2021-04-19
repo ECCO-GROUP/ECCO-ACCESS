@@ -4,6 +4,7 @@
 ds_name: "ssh_JASON_3_GSFC" # Name for dataset
 version: 2.0
 processor: along_track
+index_type: along_track
 
 # =====================================================
 # Solr
