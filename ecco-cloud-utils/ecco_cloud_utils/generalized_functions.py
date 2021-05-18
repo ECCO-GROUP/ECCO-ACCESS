@@ -24,6 +24,8 @@ def generalized_grid_product(product_name,
                              dims,
                              proj_info):
 
+    # data_res: in degrees
+    
     # minimum Length of data product grid cells (km)
     source_grid_min_L = np.cos(np.deg2rad(data_max_lat))*data_res*112e3
 
@@ -31,6 +33,8 @@ def generalized_grid_product(product_name,
     # data product at equator has grid spacing of data_res*112e3 m
     source_grid_max_L = data_res*112e3
 
+
+    #area_extent: (lower_left_x, lower_left_y, upper_right_x, upper_right_y)
     areaExtent = (area_extent[0], area_extent[1],
                   area_extent[2], area_extent[3])
 

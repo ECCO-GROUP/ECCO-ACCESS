@@ -43,27 +43,27 @@ def transform_to_target_grid(source_indices_within_target_radius_i,
             if operation == 'mean':
                 tmp_r[i] = \
                     np.mean(source_field_r[source_indices_within_target_radius_i[i]])
-            
+
             # average of non-nan values (can be slow)
             elif operation == 'nanmean':
                 tmp_r[i] = \
                     np.nanmean(source_field_r[source_indices_within_target_radius_i[i]])
-                                
-            # median of these values 
+
+            # median of these values
             elif operation == 'median':
                 tmp_r[i] = \
                     np.median(source_field_r[source_indices_within_target_radius_i[i]])
-            
+
             # median of non-nan values (can be slow)
             elif operation == 'nanmedian':
                 tmp_r[i] = \
                     np.nanmedian(source_field_r[source_indices_within_target_radius_i[i]])
-                    
+
             # nearest neighbor is the first element in source_indices
             elif operation == 'nearest':
                 tmp = source_indices_within_target_radius_i[i]
                 tmp_r[i] = source_field_r[tmp[0]]
-        
+
         # number source indices within target radius is 0, then we can potentially
         # search for a nearest neighbor.
         elif allow_nearest_neighbor:
@@ -78,7 +78,8 @@ def transform_to_target_grid(source_indices_within_target_radius_i,
 def find_mappings_from_source_to_target(source_grid, target_grid,
                                         target_grid_radius,
                                         source_grid_min_L, source_grid_max_L,
-                                        neighbours=100):
+                                        neighbours=100,
+                                        less_output = True):
 
     # source grid, target_grid : area or grid defintion objects from pyresample
 
@@ -120,7 +121,7 @@ def find_mappings_from_source_to_target(source_grid, target_grid,
     # neighbours_upper_bound is float, and user input can be float
     neighbours = int(neighbours)
 
-    # FIRST FIND THE SET OF SOURCE GRID CELLS THAT FALL WITHIN THE SERACH
+    # FIRST FIND THE SET OF SOURCE GRID CELLS THAT FALL WITHIN THE SEARCH
     # RADIUS OF EACH TARGET GRID CELL
 
     # "target_grid_radius" is the half of the distance between
@@ -129,7 +130,7 @@ def find_mappings_from_source_to_target(source_grid, target_grid,
 
     # the get_neighbour_info returned from pyresample is quite useful.
     # Ax[2] is the matrix of
-    # closest data grid points for each model grid point
+    # closest SOURCE grid points for each TARGET grid point
     # Ax[3] is the actual distance in meters
     # also cool is that Ax[3] is sorted, first column is closest, last column
     # is furthest.
@@ -174,15 +175,22 @@ def find_mappings_from_source_to_target(source_grid, target_grid,
     # >> a list of i's to print debug statements for
     debug_is = np.linspace(0, len_target_grid, 20).astype(int)
 
-    # loop through every model grid cell, pull out the SOURCE grid cells
-    # that fall within the target grid radius and stick into the
+    # loop through every TARGET grid cell, pull out the SOURCE grid cells
+    # that fall within the TARGET grid radius and stick into the
     # 'source_indices_within_target_radius_i' dictionary
     # and then do the same for the nearest neighbour business.
 
     current_valid_target_i = 0
 
+    if not less_output:
+        print('length of target grid: ', len_target_grid)
+        
     for i in range(len_target_grid):
 
+        
+        if not less_output:
+            print('looping through all points of target grid: ', i)
+        
         if Ax_nearest_within_source_grid_max_L[1][i] == True:
 
             # Ax[2][i,:] are the closest source grid indices
@@ -198,7 +206,10 @@ def find_mappings_from_source_to_target(source_grid, target_grid,
 
             dist_within_target_r = dist_from_src_to_target <= target_grid_radius[i]
 
-            src_indicies_here = Ax_max_target_grid_r[2][current_valid_target_i, :]
+            if neighbours > 1:
+                src_indicies_here = Ax_max_target_grid_r[2][current_valid_target_i, :]
+            else:
+                src_indicies_here = Ax_max_target_grid_r[2][current_valid_target_i]
 
             source_indices_within_target_radius_i[i] = \
                 src_indicies_here[dist_within_target_r == True]
