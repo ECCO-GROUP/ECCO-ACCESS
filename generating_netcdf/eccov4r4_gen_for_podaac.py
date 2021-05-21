@@ -459,9 +459,10 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
         target_grid_lats_1D = target_grid_lats[:,0]
 
         # calculate the areas of the lat-lon grid
-        lat_lon_grid_area = ea.area_of_latlon_grid(-180, 180, -90, 90, \
+        ea_area = ea.area_of_latlon_grid(-180, 180, -90, 90, \
                                                    data_res, data_res,\
                                                    less_output=True);
+        lat_lon_grid_area=ea_area['area']
         target_grid_shape = lat_lon_grid_area.shape
 
 
