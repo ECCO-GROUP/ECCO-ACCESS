@@ -1,21 +1,45 @@
+import argparse
+import importlib
+import logging
 import os
 import sys
-import yaml
-import logging
-import argparse
-import requests
-import importlib
-import numpy as np
 import tkinter as tk
-from pathlib import Path
-from shutil import copyfile
-from tkinter import filedialog
 from collections import defaultdict
+from datetime import datetime
 from multiprocessing import cpu_count
+from pathlib import Path
+from tkinter import filedialog
+
+import numpy as np
+import requests
+import yaml
 
 # Hardcoded output directory path for pipeline files
 # Leave blank to be prompted for an output directory
-output_dir = ''
+output_dir = '/net/b230-cdot2-svm3/ecco_nfs_1/marlis/pipeline_output'
+output_dir = Path('/Users/marlis/Developer/ECCO ACCESS/ecco_output')
+
+
+# Verify output_dir
+if not output_dir:
+    print('Missing output directory. Please fill in.')
+    exit()
+
+# Verify solr is running
+try:
+    requests.get('http://localhost:8983/solr/ecco_datasets/admin/ping')
+except requests.ConnectionError:
+    print('\nSolr not currently running! Please double check and run pipeline again.\n')
+    sys.exit()
+
+CONFIG_PATH = Path(f'{Path(__file__).resolve().parents[2]}/dataset_configs/')
+LOG_TIME = datetime.now().strftime("%Y%m%d-%H%M%S")
+
+logs_path = Path(output_dir / f'logs/{LOG_TIME}/')
+logs_path.mkdir(parents=True, exist_ok=True)
+
+log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
 
 
 def create_parser():
@@ -55,8 +79,10 @@ def create_parser():
 
     return parser
 
+
 def check_solr_grids(solr_host, solr_collection_name):
-    response = requests.get(f'{solr_host}{solr_collection_name}/select?fq=type_s%3Agrid&q=*%3A*')
+    response = requests.get(
+        f'{solr_host}{solr_collection_name}/select?fq=type_s%3Agrid&q=*%3A*')
     if not response.json()['response']['docs']:
         return True
     else:
@@ -161,9 +187,7 @@ def run_harvester(datasets, path_to_harvesters, output_dir, solr_info, grids_to_
             print(f'\033[93mRunning harvester for {ds}\033[0m')
             print('=========================================================')
 
-            config_path = Path(
-                f'{Path(__file__).resolve().parents[2]}/datasets/{ds}/harvester_config.yaml'
-            )
+            config_path = Path(CONFIG_PATH / f'{ds}/harvester_config.yaml')
 
             with open(config_path, 'r') as stream:
                 config = yaml.load(stream, yaml.Loader)
@@ -175,32 +199,23 @@ def run_harvester(datasets, path_to_harvesters, output_dir, solr_info, grids_to_
                     print(f'{harvester_type} is not a supported harvester type.')
                     break
 
-                path_to_code = Path(
-                    f'{path_to_harvesters}/{harvester_type}_harvester/')
-
                 if 'RDEFT4' in ds:
                     path_to_code = Path(
                         f'{path_to_harvesters}/{harvester_type}_harvester/RDEFT4_ftp_harvester/'
                     )
-                    harvester = 'seaice_harvester_local'
-                elif harvester_type == 'podaac':
-                    harvester = 'podaac_harvester_local'
-                elif harvester_type == 'osisaf_ftp':
-                    harvester = 'osisaf_ftp_harvester_local'
-                elif harvester_type == 'nsidc_ftp':
-                    harvester = 'nsidc_ftp_harvester_local'
+                else:
+                    path_to_code = Path(
+                        f'{path_to_harvesters}/{harvester_type}_harvester/')
 
-                sys.path.insert(1, str(path_to_code))
+                sys.path.insert(0, str(path_to_code))
 
-                try:
-                    ret_import = importlib.reload(ret_import)
-                except:
-                    ret_import = importlib.import_module(harvester)
+                import harvester_local
 
-                ret_import.main(config_path=config_path,
-                                output_path=output_dir,
-                                solr_info=solr_info,
-                                grids_to_use=grids_to_use)
+                harvester_local.main(config,
+                                     output_dir,
+                                     solr_info,
+                                     grids_to_use)
+
                 sys.path.remove(str(path_to_code))
 
             harv_logger.info(f'Harvest successful')
@@ -224,8 +239,7 @@ def run_transformation(datasets, path_to_preprocessing, output_dir, multiprocess
             print('=========================================================')
 
             config_path = Path(
-                f'{Path(__file__).resolve().parents[2]}/datasets/{ds}/transformation_config.yaml'
-            )
+                CONFIG_PATH / f'{ds}/transformation_config.yaml')
 
             path_to_code = Path(
                 f'{path_to_preprocessing}/grid_transformation/')
@@ -263,9 +277,8 @@ def run_aggregation(datasets, path_to_preprocessing, output_dir, solr_info, grid
         try:
             print(f'\033[93mRunning aggregation for {ds}\033[0m')
             print('=========================================================')
-            config_path = Path(
-                f'{Path(__file__).resolve().parents[2]}/datasets/{ds}/aggregation_config.yaml'
-            )
+
+            config_path = Path(CONFIG_PATH / f'{ds}/aggregation_config.yaml')
 
             path_to_code = Path(
                 f'{path_to_preprocessing}/aggregation_by_year/')
@@ -305,7 +318,6 @@ if __name__ == '__main__':
     path_to_harvesters = Path(f'{pipeline_path.parents[1]}/harvesters')
     path_to_preprocessing = Path(f'{pipeline_path.parents[1]}/preprocessing')
     path_to_grids = Path(f'{pipeline_path.parents[2]}/grids_to_solr')
-    path_to_datasets = Path(f'{pipeline_path.parents[2]}/datasets')
 
     # ------------------- Harvested Entry Validation -------------------
     if isinstance(args.harvested_entry_validation, list) and len(args.harvested_entry_validation) in [0, 2]:
@@ -316,7 +328,7 @@ if __name__ == '__main__':
         solr_info = {
             'solr_url': args.developer_solr[0], 'solr_collection_name': args.developer_solr[1]}
     else:
-        solr_info = ''
+        solr_info = {}
 
     # ------------------- Grids to Use -------------------
     if isinstance(args.grids_to_use, list):
@@ -416,10 +428,9 @@ if __name__ == '__main__':
         print('2) Harvesters only')
         print('3) Up to aggregation')
         print('4) Dataset input')
-        print('5) Y/N for datasets')
         chosen_option = input('Enter option number: ')
 
-        if chosen_option in ['1', '2', '3', '4', '5']:
+        if chosen_option in ['1', '2', '3', '4']:
             break
         else:
             print(
@@ -447,8 +458,8 @@ if __name__ == '__main__':
     ch.setFormatter(ch_formatter)
     logger.addHandler(ch)
 
-    datasets = os.listdir(path_to_datasets)
-    datasets = [ds for ds in datasets if ds != '.DS_Store']
+    datasets = [ds for ds in os.listdir(CONFIG_PATH) if ds != '.DS_Store']
+    datasets.sort()
 
     wipe = args.wipe_transformations
 
@@ -526,27 +537,5 @@ if __name__ == '__main__':
                                output_dir, multiprocessing, user_cpus, wipe, solr_info, grids_to_use)
             run_aggregation([wanted_ds], path_to_preprocessing,
                             output_dir, solr_info, grids_to_use)
-
-    # Yes/no for each dataset
-    elif chosen_option == '5':
-        for ds in datasets:
-            while True:
-                yes_no = input(f'\nRun pipeline for {ds}? (Y/N): ').upper()
-                if yes_no not in ['Y', 'N', 'E']:
-                    print(
-                        f'Unknown option entered, "{yes_no}", please enter a valid option')
-                else:
-                    break
-            if yes_no == 'Y':
-                run_harvester([ds], path_to_harvesters,
-                              output_dir, solr_info, grids_to_use)
-                run_transformation([ds], path_to_preprocessing,
-                                   output_dir, multiprocessing, user_cpus, wipe, solr_info, grids_to_use)
-                run_aggregation([ds], path_to_preprocessing,
-                                output_dir, solr_info, grids_to_use)
-            elif yes_no == 'E':
-                break
-            else:  # yes_no == 'N'
-                continue
 
     print_log(logger_path)

@@ -8,19 +8,19 @@ from shutil import copyfile
 def main():
     # all config file paths
     transformation_config_path = Path(
-        f"{Path(__file__).resolve().parents[1]}/preprocessing/grid_transformation/transformation_config.yaml"
+        f"{Path(__file__).resolve().parents[1]}/preprocessing/grid_transformation/transformation_config.yaml.tpl"
     )
     aggregation_config_path = Path(
-        f"{Path(__file__).resolve().parents[1]}/preprocessing/aggregation_by_year/aggregation_config.yaml"
+        f"{Path(__file__).resolve().parents[1]}/preprocessing/aggregation_by_year/aggregation_config.yaml.tpl"
     )
     podaac_config_path = Path(
-        f"{Path(__file__).resolve().parents[1]}/harvesters/podaac_harvester/podaac_harvester_config.yaml"
+        f"{Path(__file__).resolve().parents[1]}/harvesters/podaac_harvester/podaac_harvester_config.yaml.tpl"
     )
     osisaf_config_path = Path(
-        f"{Path(__file__).resolve().parents[1]}/harvesters/osisaf_ftp_harvester/osisaf_ftp_harvester_config.yaml"
+        f"{Path(__file__).resolve().parents[1]}/harvesters/osisaf_ftp_harvester/osisaf_ftp_harvester_config.yaml.tpl"
     )
     nsidc_config_path = Path(
-        f"{Path(__file__).resolve().parents[1]}/harvesters/nsidc_ftp_harvester/nsidc_ftp_harvester_config.yaml"
+        f"{Path(__file__).resolve().parents[1]}/harvesters/nsidc_ftp_harvester/nsidc_ftp_harvester_config.yaml.tpl"
     )
 
     # path to datasets folder

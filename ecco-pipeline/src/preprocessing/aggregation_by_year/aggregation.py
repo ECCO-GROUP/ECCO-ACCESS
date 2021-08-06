@@ -305,7 +305,7 @@ def run_aggregation(output_dir, s3=None, config_path='', solr_info='', grids_to_
                         opened_datasets.append((data_DS, data_var))
 
                         # Update JSON transformations list
-                        fq = [f'dataset_s:{dataset_name}', 'type_s:harvested',
+                        fq = [f'dataset_s:{dataset_name}', 'type_s:granule',
                               f'pre_transformation_file_path_s:"{doc["pre_transformation_file_path_s"]}"']
                         harvested_metadata = solr_query(
                             config, solr_host, fq, solr_collection_name)

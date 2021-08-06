@@ -67,7 +67,7 @@ def get_remaining_transformations(config, granule_file_path, grid_transformation
             if (grid, field_name) in existing_transformations:
 
                 # Query for harvested granule checksum
-                fq = [f'dataset_s:{dataset_name}', 'type_s:harvested',
+                fq = [f'dataset_s:{dataset_name}', 'type_s:granule',
                       f'pre_transformation_file_path_s:"{granule_file_path}"']
                 harvested_checksum = grid_transformation.solr_query(config, solr_host, fq, solr_collection_name)[
                     0]['checksum_s']
@@ -213,7 +213,7 @@ def main(config_path='', output_path='', multiprocessing=False, user_cpus=1, wip
         delete_mismatch_transformations(config, grid_transformation, solr_info)
 
     # Get all harvested granules for this dataset
-    fq = [f'dataset_s:{dataset_name}', 'type_s:harvested']
+    fq = [f'dataset_s:{dataset_name}', 'type_s:granule']
     harvested_granules = grid_transformation.solr_query(
         config, solr_host, fq, solr_collection_name)
 

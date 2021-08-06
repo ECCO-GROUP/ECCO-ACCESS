@@ -132,7 +132,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
         config, solr_host, fq, solr_collection_name)[0]
 
     # Query Solr for harvested entry to get origin_checksum and date
-    query_fq = [f'dataset_s:{dataset_name}', 'type_s:harvested',
+    query_fq = [f'dataset_s:{dataset_name}', 'type_s:granule',
                 f'pre_transformation_file_path_s:"{source_file_path}"']
     harvested_metadata = solr_query(
         config, solr_host, query_fq, solr_collection_name)[0]
@@ -513,7 +513,7 @@ def run_using_aws(s3, filename):
         config, solr_host, fq, solr_collection_name)[0]
 
     # Query Solr for harvested entry to get origin_checksum and date
-    query_fq = [f'dataset_s:{dataset_name}', 'type_s:harvested',
+    query_fq = [f'dataset_s:{dataset_name}', 'type_s:granule',
                 f'filename_s:"{filename}"']
     harvested_metadata = solr_query(
         config, solr_host, query_fq, solr_collection_name)[0]
@@ -706,8 +706,8 @@ def run_using_aws(s3, filename):
         if len(docs) > 0:
             # Reset status fields
             transform['id'] = docs[0]['id']
-            transform['transformation_in_progress_b']: {"set": True}
-            transform['success_b']: {"set": False}
+            transform['transformation_in_progress_b'] = {"set": True}
+            transform['success_b'] = {"set": False}
             r = solr_update(config, solr_host, transform,
                             solr_collection_name, r=True)
         else:
