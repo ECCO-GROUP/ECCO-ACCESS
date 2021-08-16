@@ -1,20 +1,24 @@
-import os
-import sys
-import json
-import yaml
-import pickle
 import hashlib
+import json
 import logging
-import requests
-import numpy as np
-import xarray as xr
-import pyresample as pr
-from pathlib import Path
-from datetime import datetime
+import os
+import pickle
+import sys
 from collections import namedtuple
+from datetime import datetime
+from pathlib import Path
+
+import numpy as np
+import pyresample as pr
+import requests
+import xarray as xr
+import yaml
 from netCDF4 import default_fillvals  # pylint: disable=no-name-in-module
 
 np.warnings.filterwarnings('ignore')
+
+log = logging.getLogger(__name__)
+log.setLevel(logging.ERROR)
 
 
 def md5(fname):
@@ -57,39 +61,40 @@ def solr_update(config, solr_host, update_body, solr_collection_name, r=False):
         requests.post(url, json=update_body)
 
 
-def run_locally_wrapper(source_file_path, remaining_transformations, output_dir, config_path='', verbose=True, solr_info=''):
+def run_locally_wrapper(source_file_path, remaining_transformations, output_dir, config, LOG_TIME, verbose=True, solr_info=''):
     """
     Calls run_locally and catches any errors
     """
     # try:
     return run_locally(source_file_path,
-                       remaining_transformations, output_dir, config_path=config_path, verbose=verbose, solr_info=solr_info)
+                       remaining_transformations, output_dir, config, LOG_TIME, verbose=verbose, solr_info=solr_info)
     # except Exception as e:
     #     print(e)
     #     print('Unable to run local transformation')
 
 
-def run_locally(source_file_path, remaining_transformations, output_dir, config_path='', verbose=True, solr_info=''):
+def run_locally(source_file_path, remaining_transformations, output_dir, config, LOG_TIME, verbose=True, solr_info=''):
     """
     Performs and saves locally all remaining transformations for a given source granule
     Updates Solr with transformation entries and updates descendants, and dataset entries
     """
 
+    # Set file handler for log using output_path
+    formatter = logging.Formatter('%(asctime)s: %(message)s')
+
+    logs_path = Path(output_dir / f'logs/{LOG_TIME}/')
+    logs_path.mkdir(parents=True, exist_ok=True)
+
+    file_handler = logging.FileHandler(logs_path / 'transformation.log')
+    file_handler.setLevel(logging.ERROR)
+    file_handler.setFormatter(formatter)
+
+    log.addHandler(file_handler)
+
     # Conditional function definition:
     # verboseprint will use the print function if verbose is true
     # otherwise will use a lambda function that returns None (effectively not printing)
     verboseprint = print if verbose else lambda *a, **k: None
-
-    # =====================================================
-    # Read configurations from YAML file
-    # =====================================================
-    if not config_path:
-        verboseprint(
-            'No path for configuration file. Can not run transformation.')
-        return
-
-    with open(config_path, "r") as stream:
-        config = yaml.load(stream, yaml.Loader)
 
     # Define precision of output files, float32 is standard
     array_precision = getattr(np, config['array_precision'])
@@ -156,6 +161,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
     # Load file to transform
     # =====================================================
     verboseprint(f'\n====== Loading {file_name} data =======\n')
+
     ds = xr.open_dataset(source_file_path, decode_times=True)
     ds.attrs['original_file_name'] = file_name
 
@@ -261,7 +267,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
                        nearest_source_index_to_target_index_i)
 
             verboseprint(f' - Saving {grid_name} factors')
-            factors_path = f'{output_dir}{dataset_name}/transformed_products/{grid_name}/'
+            factors_path = f'{output_dir}/{dataset_name}/transformed_products/{grid_name}/'
 
             # Create directory if needed and save factors
             if not os.path.exists(factors_path):
@@ -384,7 +390,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config_
                 file_name = file_name[:-3] + 'nc'
 
             output_filename = f'{grid_name}_{field_name}_{file_name}'
-            output_path = f'{output_dir}{dataset_name}/transformed_products/{grid_name}/transformed/{field_name}/'
+            output_path = f'{output_dir}/{dataset_name}/transformed_products/{grid_name}/transformed/{field_name}/'
             transformed_location = f'{output_path}{output_filename}'
 
             Path(output_path).mkdir(parents=True, exist_ok=True)
@@ -885,7 +891,7 @@ def run_in_any_env(model_grid, grid_name, grid_type, fields, factors, ds, record
             try:
                 ds = callable_func(ds)
             except Exception as e:
-                logger.error(f'Pre-transformation {func_to_run} failed: {e}')
+                log.exception(f'Pre-transformation {func_to_run} failed: {e}')
                 return []
 
     # =====================================================
@@ -917,7 +923,7 @@ def run_in_any_env(model_grid, grid_name, grid_type, fields, factors, ds, record
                     try:
                         field_DA = callable_func(field_DA, field_name)
                     except Exception as e:
-                        logger.error(
+                        log.exception(
                             f'Post-transformation {func_to_run} failed: {e}')
                         field_DA = ea.make_empty_record(standard_name, long_name, units,
                                                         record_date, model_grid,
@@ -929,7 +935,7 @@ def run_in_any_env(model_grid, grid_name, grid_type, fields, factors, ds, record
             field_DA.attrs['valid_max'] = np.nanmax(field_DA.values)
 
         except Exception as e:
-            logger.error(f'Transformation failed: {e}')
+            log.exception(f'Transformation failed: {e}')
             field_DA = ea.make_empty_record(standard_name, long_name, units,
                                             record_date, model_grid,
                                             grid_type, array_precision)

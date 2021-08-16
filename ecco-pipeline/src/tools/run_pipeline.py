@@ -19,7 +19,6 @@ import yaml
 output_dir = '/net/b230-cdot2-svm3/ecco_nfs_1/marlis/pipeline_output'
 output_dir = Path('/Users/marlis/Developer/ECCO ACCESS/ecco_output')
 
-
 # Verify output_dir
 if not output_dir:
     print('Missing output directory. Please fill in.')
@@ -127,53 +126,92 @@ def harvested_entry_validation(args=[]):
         sys.exit()
 
 
-def print_log(log_path):
+def print_log(output_dir):
     print('\n=========================================================')
     print(
         '===================== \033[36mPrinting log\033[0m ======================')
     print('=========================================================')
 
-    log_dict = []
-    with open(log_path) as f:
-        logs = f.read().splitlines()
-    for l in logs:
-        log_dict.append(eval(l))
-
+    log_path = output_dir / f'logs/{LOG_TIME}/pipeline.log'
     dataset_statuses = defaultdict(lambda: defaultdict(list))
 
-    # Must add info level items first
-    for d in log_dict:
-        ds = d['name'].replace('pipeline.', '').replace('.harvester', '').replace(
-            '.transformation', '').replace('.aggregation', '')
-        preprocessing_step = d['name'].replace(
-            'pipeline.', '').replace(f'{ds}.', '')
-        if len(ds) > 0:
-            if d['level'] == 'INFO':
-                dataset_statuses[ds][preprocessing_step].append(('INFO',
-                                                                 d["message"]))
-    # Then add errors
-    for d in log_dict:
-        ds = d['name'].replace('pipeline.', '').replace('.harvester', '').replace(
-            '.transformation', '').replace('.aggregation', '')
-        preprocessing_step = d['name'].replace(
-            'pipeline.', '').replace(f'{ds}.', '')
-        if len(ds) > 0:
-            if d['level'] == 'ERROR':
-                if ('ERROR', d["message"]) not in dataset_statuses[ds][preprocessing_step]:
-                    dataset_statuses[ds][preprocessing_step].append(
-                        ('ERROR', d["message"]))
+    # Parse logger for messages
+    with open(log_path) as log:
+        logs = log.read().splitlines()
 
-    for ds, steps in dataset_statuses.items():
-        print(f'\033[93mPipeline status for {ds}\033[0m:')
-        for step, messages in steps.items():
-            for (level, message) in messages:
-                if level == 'INFO':
-                    if 'successful' in message:
+    if logs:
+        for line in logs:
+            log_line = yaml.load(line, yaml.Loader)
+
+            if 'harvesting' in log_line['message']:
+                ds = log_line['message'].split()[0]
+                step = 'harvesting'
+                msg = log_line['message'].replace(f'{ds} ', '', 1)
+                msg = msg[0].upper() + msg[1:]
+
+            elif 'transformation' in log_line['message']:
+                ds = log_line['message'].split()[0]
+                step = 'cycle creation'
+                msg = log_line['message'].replace(f'{ds} ', '', 1)
+                msg = msg[0].upper() + msg[1:]
+
+            elif 'aggregation' in log_line['message']:
+                ds = 'non dataset specific steps'
+                step = 'regridding'
+                msg = log_line['message']
+
+            if log_line['level'] == 'INFO':
+                dataset_statuses[ds][step] = [('INFO', msg)]
+
+            if log_line['level'] == 'ERROR':
+                dataset_statuses[ds][step] = [('ERROR', msg)]
+
+        # Print dataset status summaries
+        for ds, steps in dataset_statuses.items():
+            print(f'\033[93mPipeline status for {ds}\033[0m:')
+            for _, messages in steps.items():
+                for (level, message) in messages:
+                    if level == 'INFO':
                         print(f'\t\033[92m{message}\033[0m')
-                    else:
+                    elif level == 'ERROR':
                         print(f'\t\033[91m{message}\033[0m')
-                elif level == 'ERROR':
-                    print(f'\t\t\033[91m{message}\033[0m')
+
+    else:
+        print('Manually exited pipeline.')
+
+    # # Must add info level items first
+    # for d in log_dict:
+    #     ds = d['name'].replace('pipeline.', '').replace('.harvester', '').replace(
+    #         '.transformation', '').replace('.aggregation', '')
+    #     preprocessing_step = d['name'].replace(
+    #         'pipeline.', '').replace(f'{ds}.', '')
+    #     if len(ds) > 0:
+    #         if d['level'] == 'INFO':
+    #             dataset_statuses[ds][preprocessing_step].append(('INFO',
+    #                                                              d["message"]))
+    # # Then add errors
+    # for d in log_dict:
+    #     ds = d['name'].replace('pipeline.', '').replace('.harvester', '').replace(
+    #         '.transformation', '').replace('.aggregation', '')
+    #     preprocessing_step = d['name'].replace(
+    #         'pipeline.', '').replace(f'{ds}.', '')
+    #     if len(ds) > 0:
+    #         if d['level'] == 'ERROR':
+    #             if ('ERROR', d["message"]) not in dataset_statuses[ds][preprocessing_step]:
+    #                 dataset_statuses[ds][preprocessing_step].append(
+    #                     ('ERROR', d["message"]))
+
+    # for ds, steps in dataset_statuses.items():
+    #     print(f'\033[93mPipeline status for {ds}\033[0m:')
+    #     for step, messages in steps.items():
+    #         for (level, message) in messages:
+    #             if level == 'INFO':
+    #                 if 'successful' in message:
+    #                     print(f'\t\033[92m{message}\033[0m')
+    #                 else:
+    #                     print(f'\t\033[91m{message}\033[0m')
+    #             elif level == 'ERROR':
+    #                 print(f'\t\t\033[91m{message}\033[0m')
 
 
 def run_harvester(datasets, path_to_harvesters, output_dir, solr_info, grids_to_use):
@@ -182,7 +220,7 @@ def run_harvester(datasets, path_to_harvesters, output_dir, solr_info, grids_to_
         '================== \033[36mRunning harvesters\033[0m ===================')
     print('=========================================================\n')
     for ds in datasets:
-        harv_logger = logging.getLogger(f'pipeline.{ds}.harvester')
+        # harv_logger = logging.getLogger(f'pipeline.{ds}.harvester')
         try:
             print(f'\033[93mRunning harvester for {ds}\033[0m')
             print('=========================================================')
@@ -211,18 +249,20 @@ def run_harvester(datasets, path_to_harvesters, output_dir, solr_info, grids_to_
 
                 import harvester_local
 
-                harvester_local.main(config,
-                                     output_dir,
-                                     solr_info,
-                                     grids_to_use)
+                status = harvester_local.main(config,
+                                              output_dir,
+                                              LOG_TIME,
+                                              solr_info,
+                                              grids_to_use)
 
                 sys.path.remove(str(path_to_code))
 
-            harv_logger.info(f'Harvest successful')
+            log.info(f'{ds} harvesting complete. {status}')
             print('\033[92mHarvest successful\033[0m')
         except Exception as e:
             sys.path.remove(str(path_to_code))
-            harv_logger.info(f'Harvest failed: {e}')
+            print(e)
+            log.error(f'{ds} harvesting failed. {e}')
             print('\033[91mHarvesting failed\033[0m')
         print('=========================================================')
 
@@ -233,7 +273,7 @@ def run_transformation(datasets, path_to_preprocessing, output_dir, multiprocess
         '=============== \033[36mRunning transformations\033[0m =================')
     print('=========================================================\n')
     for ds in datasets:
-        trans_logger = logging.getLogger(f'pipeline.{ds}.transformation')
+        # trans_logger = logging.getLogger(f'pipeline.{ds}.transformation')
         try:
             print(f'\033[93mRunning transformation for {ds}\033[0m')
             print('=========================================================')
@@ -241,28 +281,32 @@ def run_transformation(datasets, path_to_preprocessing, output_dir, multiprocess
             config_path = Path(
                 CONFIG_PATH / f'{ds}/transformation_config.yaml')
 
+            with open(config_path, 'r') as stream:
+                config = yaml.load(stream, yaml.Loader)
+
             path_to_code = Path(
                 f'{path_to_preprocessing}/grid_transformation/')
 
-            transformer = 'grid_transformation_local'
+            sys.path.insert(0, str(path_to_code))
 
-            sys.path.insert(1, str(path_to_code))
+            import grid_transformation_local
 
-            try:
-                ret_import = importlib.reload(ret_import)
-            except:
-                ret_import = importlib.import_module(transformer)
+            status = grid_transformation_local.main(config,
+                                                    output_dir,
+                                                    LOG_TIME,
+                                                    multiprocessing,
+                                                    user_cpus,
+                                                    wipe,
+                                                    solr_info,
+                                                    grids_to_use)
 
-            ret_import.main(config_path=config_path, output_path=output_dir,
-                            multiprocessing=multiprocessing, user_cpus=user_cpus, wipe=wipe,
-                            solr_info=solr_info, grids_to_use=grids_to_use)
             sys.path.remove(str(path_to_code))
 
-            trans_logger.info(f'Transformation successful')
+            log.info(f'{ds} transformation complete. {status}')
             print('\033[92mTransformation successful\033[0m')
         except Exception as e:
             sys.path.remove(str(path_to_code))
-            trans_logger.error(f'Transform failed: {e}')
+            log.error(f'{ds} transformation failed. {e}')
             print('\033[91mTransformation failed\033[0m')
         print('=========================================================')
 
@@ -273,33 +317,36 @@ def run_aggregation(datasets, path_to_preprocessing, output_dir, solr_info, grid
         '================ \033[36mRunning aggregations\033[0m ===================')
     print('=========================================================\n')
     for ds in datasets:
-        agg_logger = logging.getLogger(f'pipeline.{ds}.aggregation')
+        # agg_logger = logging.getLogger(f'pipeline.{ds}.aggregation')
         try:
             print(f'\033[93mRunning aggregation for {ds}\033[0m')
             print('=========================================================')
 
             config_path = Path(CONFIG_PATH / f'{ds}/aggregation_config.yaml')
 
+            with open(config_path, 'r') as stream:
+                config = yaml.load(stream, yaml.Loader)
+
             path_to_code = Path(
                 f'{path_to_preprocessing}/aggregation_by_year/')
 
-            aggregation = 'aggregation_local'
+            sys.path.insert(0, str(path_to_code))
 
-            sys.path.insert(1, str(path_to_code))
+            import aggregation_local
 
-            try:
-                ret_import = importlib.reload(ret_import)
-            except:
-                ret_import = importlib.import_module(aggregation)
+            status = aggregation_local.main(output_dir,
+                                            config,
+                                            LOG_TIME,
+                                            solr_info,
+                                            grids_to_use)
 
-            ret_import.main(config_path=config_path, output_path=output_dir,
-                            solr_info=solr_info, grids_to_use=grids_to_use)
             sys.path.remove(str(path_to_code))
-            agg_logger.info(f'Aggregation successful')
+
+            log.info(f'{ds} aggregation complete. {status}')
             print('\033[92mAggregation successful\033[0m')
         except Exception as e:
             sys.path.remove(str(path_to_code))
-            agg_logger.info(f'Aggregation failed: {e}')
+            log.info(f'{ds} aggregation failed: {e}')
             print('\033[91mAggregation failed\033[0m')
         print('=========================================================')
 
@@ -437,26 +484,13 @@ if __name__ == '__main__':
                 f'Unknown option entered, "{chosen_option}", please enter a valid option\n'
             )
 
-    # Initialize logger
-    logger_path = f'{output_dir}/pipeline.log'
-    logger = logging.getLogger('pipeline')
-    logger.setLevel(logging.DEBUG)
-
     # Setup file handler to output log file
-    fh = logging.FileHandler(logger_path, 'w+')
-    fh.setLevel(logging.DEBUG)
     fh_formatter = logging.Formatter(
-        "{'name': '%(name)s', 'level': '%(levelname)s', 'message': '%(message)s'}")
+        "{'time': '%(asctime)s', 'level': '%(levelname)s', 'message': '%(message)s'}")
+    fh = logging.FileHandler(logs_path / 'pipeline.log')
+    fh.setLevel(logging.DEBUG)
     fh.setFormatter(fh_formatter)
-    logger.addHandler(fh)
-
-    # Setup console handler to print to console
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.ERROR)
-    ch_formatter = logging.Formatter(
-        "'%(filename)s':'%(lineno)d,  %(message)s'")
-    ch.setFormatter(ch_formatter)
-    logger.addHandler(ch)
+    log.addHandler(fh)
 
     datasets = [ds for ds in os.listdir(CONFIG_PATH) if ds != '.DS_Store']
     datasets.sort()
@@ -538,4 +572,4 @@ if __name__ == '__main__':
             run_aggregation([wanted_ds], path_to_preprocessing,
                             output_dir, solr_info, grids_to_use)
 
-    print_log(logger_path)
+    print_log(output_dir)

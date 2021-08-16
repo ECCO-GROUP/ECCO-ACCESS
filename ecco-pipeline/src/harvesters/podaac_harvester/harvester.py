@@ -125,13 +125,25 @@ def solr_update(solr_host, update_body, solr_collection_name, r=False):
         requests.post(url, json=update_body)
 
 
-def podaac_harvester(config, output_path='', s3=None, on_aws=False, solr_info='', grids_to_use=[]):
+def podaac_harvester(config, output_path, LOG_TIME, s3=None, on_aws=False, solr_info='', grids_to_use=[]):
     """
     Pulls data files for PODAAC id and date range given in harvester_config.yaml.
     If not on_aws, saves locally, else saves to s3 bucket.
     Creates (or updates) Solr entries for dataset, harvested granule, fields,
     and descendants.
     """
+
+    # Set file handler for log using output_path
+    formatter = logging.Formatter('%(asctime)s: %(message)s')
+
+    logs_path = Path(output_path / f'logs/{LOG_TIME}/')
+    logs_path.mkdir(parents=True, exist_ok=True)
+
+    file_handler = logging.FileHandler(logs_path / 'harvester.log')
+    file_handler.setLevel(logging.ERROR)
+    file_handler.setFormatter(formatter)
+
+    log.addHandler(file_handler)
 
     # =====================================================
     # Read harvester_config.yaml and setup variables
@@ -283,7 +295,7 @@ def podaac_harvester(config, output_path='', s3=None, on_aws=False, solr_info=''
 
                 # Granule metadata used for Solr harvested entries
                 item = {}
-                item['type_s'] = 'harvested'
+                item['type_s'] = 'granule'
                 item['date_s'] = date_start_str
                 item['dataset_s'] = dataset_name
                 item['filename_s'] = newfile
@@ -322,12 +334,18 @@ def podaac_harvester(config, output_path='', s3=None, on_aws=False, solr_info=''
                         urlcleanup()
                         urlretrieve(link, local_fp)
 
+                        # Opening file will ensure file fully downloaded
+                        ds = xr.open_dataset(local_fp)
+
                     # If file exists locally, but is out of date, download it
                     elif datetime.fromtimestamp(os.path.getmtime(local_fp)) <= mod_date_time:
                         print(
                             f' - Updating {newfile} and downloading to {local_fp}')
                         urlcleanup()
                         urlretrieve(link, local_fp)
+
+                        # Opening file will ensure file fully downloaded
+                        ds = xr.open_dataset(local_fp)
 
                     else:
                         print(
@@ -398,7 +416,7 @@ def podaac_harvester(config, output_path='', s3=None, on_aws=False, solr_info=''
 
                             # Granule metadata used for Solr harvested entries
                             item = {}
-                            item['type_s'] = 'harvested'
+                            item['type_s'] = 'granule'
                             item['date_s'] = time_s
                             item['dataset_s'] = dataset_name
                             item['filename_s'] = file_name
@@ -473,6 +491,8 @@ def podaac_harvester(config, output_path='', s3=None, on_aws=False, solr_info=''
 
             except Exception as e:
                 print(f'    - {e}')
+                log.exception(
+                    f'{dataset_name} harvesting error! {newfile} failed to download.')
                 if updating:
 
                     print(f'    - {newfile} failed to download')
@@ -663,3 +683,5 @@ def podaac_harvester(config, output_path='', s3=None, on_aws=False, solr_info=''
             print('Successfully updated Solr dataset document\n')
         else:
             print('Failed to update Solr dataset document\n')
+
+    return harvest_status

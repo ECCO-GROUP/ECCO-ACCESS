@@ -1,20 +1,24 @@
-import os
-import sys
-import yaml
-import pickle
-import requests
 import importlib
 import itertools
-import numpy as np
-import xarray as xr
-from pathlib import Path
-from multiprocessing import Pool
+import logging
+import os
+import sys
 from collections import defaultdict
+from multiprocessing import Pool
+from pathlib import Path
+
+import numpy as np
+import requests
+import xarray as xr
+import yaml
+
+log = logging.getLogger(__name__)
+log.setLevel(logging.ERROR)
 
 
 def get_remaining_transformations(config, granule_file_path, grid_transformation, solr_info, grids):
     """
-    Given a single granule, the function uses Solr to find all combinations of 
+    Given a single granule, the function uses Solr to find all combinations of
     grids and fields that have yet to be transformed. It returns a dictionary
     where the keys are grids and the values are lists of fields.
     """
@@ -113,7 +117,7 @@ def delete_mismatch_transformations(config, grid_transformation, solr_info):
     """
     Function called when using the wipe_transformations pipeline argument. Queries
     Solr for all transformation entries for the current dataset and compares the
-    transformation version in Solr and in the config YAML. If they differ, the 
+    transformation version in Solr and in the config YAML. If they differ, the
     function deletes the transformed file from disk and the entry from Solr.
     """
     dataset_name = config['ds_name']
@@ -141,15 +145,12 @@ def delete_mismatch_transformations(config, grid_transformation, solr_info):
             requests.post(url, json={'delete': [transformation['id']]})
 
 
-def multiprocess_transformation(granule, config_path, output_path, solr_info, grids):
+def multiprocess_transformation(granule, config, output_path, LOG_TIME, solr_info, grids):
     """
     Callable function that performs the actual transformation on a granule.
     """
     import grid_transformation
     grid_transformation = importlib.reload(grid_transformation)
-
-    with open(config_path, "r") as stream:
-        config = yaml.load(stream, yaml.Loader)
 
     # f is file path to granule from solr
     f = granule.get('pre_transformation_file_path_s', '')
@@ -166,7 +167,7 @@ def multiprocess_transformation(granule, config_path, output_path, solr_info, gr
     # Perform remaining transformations
     if remaining_transformations:
         grids_updated, year = grid_transformation.run_locally_wrapper(
-            f, remaining_transformations, output_path, config_path=config_path, verbose=False, solr_info=solr_info)
+            f, remaining_transformations, output_path, config, LOG_TIME, verbose=False, solr_info=solr_info)
 
         return (grids_updated, year)
     else:
@@ -175,23 +176,27 @@ def multiprocess_transformation(granule, config_path, output_path, solr_info, gr
         return ('', '')
 
 
-def main(config_path='', output_path='', multiprocessing=False, user_cpus=1, wipe=False, solr_info='', grids_to_use=[]):
+def main(config, output_path, LOG_TIME, multiprocessing=False, user_cpus=1, wipe=False, solr_info={}, grids_to_use=[]):
     """
     This function performs all remaining grid/field transformations for all harvested
     granules for a dataset. It also makes use of multiprocessing to perform multiple
     transformations at the same time. After all transformations have been attempted,
     the Solr dataset entry is updated with additional metadata.
     """
+    # Set file handler for log using output_path
+    formatter = logging.Formatter('%(asctime)s: %(message)s')
+
+    logs_path = Path(output_path / f'logs/{LOG_TIME}/')
+    logs_path.mkdir(parents=True, exist_ok=True)
+    file_handler = logging.FileHandler(logs_path / 'transformation_local.log')
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(formatter)
+
+    log.addHandler(file_handler)
+
     import grid_transformation
-    grid_transformation = importlib.reload(grid_transformation)
 
-    # Pull config information
-    if not config_path:
-        print('No path for configuration file. Can not run transformation.')
-        return
-
-    with open(config_path, "r") as stream:
-        config = yaml.load(stream, yaml.Loader)
+    # grid_transformation = importlib.reload(grid_transformation)
 
     dataset_name = config['ds_name']
 
@@ -282,7 +287,7 @@ def main(config_path='', output_path='', multiprocessing=False, user_cpus=1, wip
                 config, file_path, grid_transformation, solr_info, grids)
 
             grids_updated, year = grid_transformation.run_locally_wrapper(
-                file_path, remaining_transformations, output_path, config_path=config_path, verbose=True, solr_info=solr_info)
+                file_path, remaining_transformations, output_path, config, LOG_TIME, verbose=True, solr_info=solr_info)
 
             for grid in grids_updated:
                 if year not in years_updated[grid]:
@@ -291,7 +296,7 @@ def main(config_path='', output_path='', multiprocessing=False, user_cpus=1, wip
 
         # BEGIN MULTIPROCESSING
         # Create list of tuples of function arguments (necessary for using pool.starmap)
-        multiprocess_tuples = [(granule, config_path, output_path, solr_info, grids)
+        multiprocess_tuples = [(granule, config, output_path, LOG_TIME, solr_info, grids)
                                for granule in harvested_granules]
 
         grid_years_list = []
@@ -330,7 +335,7 @@ def main(config_path='', output_path='', multiprocessing=False, user_cpus=1, wip
             # Perform remaining transformations
             if remaining_transformations:
                 grids_updated, year = grid_transformation.run_locally_wrapper(
-                    f, remaining_transformations, output_path, config_path=config_path, verbose=True)
+                    f, remaining_transformations, output_path, config, LOG_TIME, verbose=True)
 
                 for grid in grids_updated:
                     if grid in years_updated.keys():
@@ -398,6 +403,8 @@ def main(config_path='', output_path='', multiprocessing=False, user_cpus=1, wip
     else:
         print(
             f'\nFailed to update Solr with transformation information for {dataset_name}\n')
+
+    return transformation_status
 
 
 ##################################################

@@ -1,19 +1,20 @@
-import os
-import sys
-import json
-import uuid
-import yaml
 import hashlib
+import json
 import logging
-import requests
-import numpy as np
-import xarray as xr
-from pathlib import Path
-from netCDF4 import default_fillvals  # pylint: disable=no-name-in-module
+import sys
+import uuid
 from datetime import datetime, timedelta
+from pathlib import Path
 
+import numpy as np
+import requests
+import xarray as xr
+from netCDF4 import default_fillvals  # pylint: disable=no-name-in-module
 
 np.warnings.filterwarnings('ignore')
+
+log = logging.getLogger(__name__)
+log.setLevel(logging.ERROR)
 
 
 def find_bucket_key(s3_path):
@@ -82,20 +83,22 @@ def solr_update(config, solr_host, update_body, solr_collection_name, r=False):
         requests.post(url, json=update_body)
 
 
-def run_aggregation(output_dir, s3=None, config_path='', solr_info='', grids_to_use=[]):
+def run_aggregation(output_dir, config, LOG_TIME, s3=None, solr_info={}, grids_to_use=[]):
     """
     Aggregates data into annual files, saves them, and updates Solr
     """
 
-    # =====================================================
-    # Read configurations from YAML file
-    # =====================================================
-    if not config_path:
-        print('No path for configuration file. Can not run aggregation.')
-        return
+    # Set file handler for log using output_path
+    formatter = logging.Formatter('%(asctime)s: %(message)s')
 
-    with open(config_path, "r") as stream:
-        config = yaml.load(stream, yaml.Loader)
+    logs_path = Path(output_dir / f'logs/{LOG_TIME}/')
+    logs_path.mkdir(parents=True, exist_ok=True)
+
+    file_handler = logging.FileHandler(logs_path / 'aggregation.log')
+    file_handler.setLevel(logging.ERROR)
+    file_handler.setFormatter(formatter)
+
+    log.addHandler(file_handler)
 
     # =====================================================
     # Code to import ecco utils locally...
@@ -109,9 +112,6 @@ def run_aggregation(output_dir, s3=None, config_path='', solr_info='', grids_to_
     # Set configuration options and Solr metadata
     # =====================================================
     dataset_name = config['ds_name']
-
-    # Define logger using dataset name
-    logger = logging.getLogger(f'pipeline.{dataset_name}.aggregation')
 
     if s3:
         if solr_info:
@@ -408,7 +408,7 @@ def run_aggregation(output_dir, s3=None, config_path='', solr_info='', grids_to_
                 output_filenames = {'shortest': shortest_filename,
                                     'monthly': monthly_filename}
 
-                output_path = f'{output_dir}{dataset_name}/transformed_products/{grid_name}/aggregated/{field_name}/'
+                output_path = f'{output_dir}/{dataset_name}/transformed_products/{grid_name}/aggregated/{field_name}/'
 
                 bin_output_dir = output_path + 'bin/'
                 Path(bin_output_dir).mkdir(parents=True, exist_ok=True)
@@ -473,7 +473,7 @@ def run_aggregation(output_dir, s3=None, config_path='', solr_info='', grids_to_
                     success = True
 
                 except Exception as e:
-                    logger.error(e)
+                    log.exception(f'{dataset_name} aggregation error! {e}')
                     empty_year = True
                     success = False
                     solr_output_filepaths = {'daily_bin': '',
@@ -643,7 +643,7 @@ def run_aggregation(output_dir, s3=None, config_path='', solr_info='', grids_to_
                     f' - Exporting {year} descendants for grid {grid_name} and field {field_name}')
                 json_output['aggregation'] = docs
                 json_output['transformations'] = transformations
-                json_output_path = f'{output_dir}{dataset_name}/transformed_products/{grid_name}/aggregated/{field_name}/{dataset_name}_{field_name}_{year}_descendants'
+                json_output_path = f'{output_dir}/{dataset_name}/transformed_products/{grid_name}/aggregated/{field_name}/{dataset_name}_{field_name}_{year}_descendants'
                 with open(json_output_path, 'w') as f:
                     resp_out = json.dumps(json_output, indent=4)
                     f.write(resp_out)
@@ -692,3 +692,5 @@ def run_aggregation(output_dir, s3=None, config_path='', solr_info='', grids_to_
     else:
         print(
             f'\nFailed to update Solr dataset entry with aggregation information for {dataset_name}\n')
+
+    return aggregation_status
