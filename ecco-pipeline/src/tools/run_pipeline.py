@@ -16,8 +16,8 @@ import yaml
 
 # Hardcoded output directory path for pipeline files
 # Leave blank to be prompted for an output directory
-output_dir = '/net/b230-cdot2-svm3/ecco_nfs_1/marlis/pipeline_output'
-output_dir = Path('/Users/marlis/Developer/ECCO ACCESS/ecco_output')
+output_dir = Path('/net/b230-cdot2-svm3/ecco_nfs_1/marlis/pipeline_output')
+# output_dir = Path('/Users/marlis/Developer/ECCO ACCESS/ecco_output')
 
 # Verify output_dir
 if not output_dir:

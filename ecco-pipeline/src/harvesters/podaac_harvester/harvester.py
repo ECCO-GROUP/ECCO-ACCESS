@@ -261,10 +261,15 @@ def podaac_harvester(config, output_path, LOG_TIME, s3=None, on_aws=False, solr_
                 link = elem.find(
                     "{%(atom)s}link[@title='OPeNDAP URL']" % namespace).attrib['href']
                 link = '.'.join(link.split('.')[:-1])
+
                 newfile = link.split("/")[-1]
 
                 # Skip granules of unrecognized file format
                 if not any(extension in newfile for extension in ['.nc', '.bz2', '.gz']):
+                    continue
+
+                # Skip Near Real Time granules
+                if '.NRT.' in link:
                     continue
 
                 # Extract start and end dates from XML entry
