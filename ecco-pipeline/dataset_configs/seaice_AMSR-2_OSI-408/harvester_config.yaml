@@ -1,8 +1,8 @@
 # =====================================================
 # Seaice FTP
 # =====================================================
-start: "20180130T00:00:00Z" # yyyymmddThh:mm:ssZ
-end: "NOW" # yyyymmddThh:mm:ssZ for specific date or "NOW" for...now 
+start: "19800101T00:00:01Z" # yyyymmddThh:mm:ssZ
+end: "NOW" # yyyymmddThh:mm:ssZ for specific date or "NOW" for...now
 user: anonymous # does not change
 host: osisaf.met.no # does not change
 regex: '\d{8}'

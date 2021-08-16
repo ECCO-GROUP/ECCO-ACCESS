@@ -2,7 +2,7 @@
 # PODAAC
 # =====================================================
 # PODAAC explicitly expects this date format
-start: "19920101T00:00:00Z" # yyyymmddThh:mm:ssZ
+start: "19800101T00:00:00Z" # yyyymmddThh:mm:ssZ
 end: "NOW" # yyyymmddThh:mm:ssZ for specific date or "NOW" for...now 
 user: anonymous # does not change
 host: https://podaac.jpl.nasa.gov/ws/search/granule/?format=atom&pretty=false&itemsPerPage=300000 # does not change

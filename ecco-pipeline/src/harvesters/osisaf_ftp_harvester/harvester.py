@@ -10,6 +10,7 @@ import requests
 from dateutil import parser
 
 log = logging.getLogger(__name__)
+log.setLevel(logging.ERROR)
 
 
 def clean_solr(config, solr_host, grids_to_use, solr_collection_name):
@@ -135,13 +136,24 @@ def solr_update(config, solr_host, update_body, solr_collection_name, r=False):
         requests.post(url, json=update_body)
 
 
-def osisaf_ftp_harvester(config, output_path='', s3=None, on_aws=False, solr_info='', grids_to_use=[]):
+def osisaf_ftp_harvester(config, output_path, LOG_TIME, s3=None, on_aws=False, solr_info='', grids_to_use=[]):
     """
     Pulls data files for OSISAF FTP id and date range given in harvester_config.yaml.
     If not on_aws, saves locally, else saves to s3 bucket.
     Creates (or updates) Solr entries for dataset, harvested granule, fields, 
     and descendants.
     """
+    # Set file handler for log using output_path
+    formatter = logging.Formatter('%(asctime)s: %(message)s')
+
+    logs_path = Path(output_path / f'logs/{LOG_TIME}/')
+    logs_path.mkdir(parents=True, exist_ok=True)
+
+    file_handler = logging.FileHandler(logs_path / 'harvester.log')
+    file_handler.setLevel(logging.ERROR)
+    file_handler.setFormatter(formatter)
+
+    log.addHandler(file_handler)
 
     # =====================================================
     # Read harvester_config.yaml and setup variables
@@ -153,9 +165,9 @@ def osisaf_ftp_harvester(config, output_path='', s3=None, on_aws=False, solr_inf
     ddir = config['ddir']
 
     if end_time == 'NOW':
-        end_time = datetime.utcnow().stfrtime("%Y%m%dT%H:%M:%SZ")
+        end_time = datetime.utcnow().strftime("%Y%m%dT%H:%M:%SZ")
 
-    target_dir = f'{output_path}{dataset_name}/harvested_granules/'
+    target_dir = f'{output_path}/{dataset_name}/harvested_granules/'
     folder = f'/tmp/{dataset_name}/'
 
     if not os.path.exists(target_dir):
@@ -259,6 +271,8 @@ def osisaf_ftp_harvester(config, output_path='', s3=None, on_aws=False, solr_inf
             files = [e.split()[-1] for e in files]
 
         except:
+            log.exception(
+                f'Error finding files at {ftp_dir}. Check harvester config.')
             print(f'Error finding files at {ftp_dir}. Check harvester config.')
 
         # Iterate through hemispheres given in config
@@ -301,7 +315,7 @@ def osisaf_ftp_harvester(config, output_path='', s3=None, on_aws=False, solr_inf
 
                     # Granule metadata used for Solr harvested entries
                     item = {}
-                    item['type_s'] = 'harvested'
+                    item['type_s'] = 'granule'
                     item['date_s'] = new_date_format
                     item['dataset_s'] = dataset_name
                     item['filename_s'] = newfile
@@ -387,7 +401,7 @@ def osisaf_ftp_harvester(config, output_path='', s3=None, on_aws=False, solr_inf
                             f' - {newfile} already downloaded and up to date')
 
                 except Exception as e:
-                    print(e)
+                    log.exception(e)
                     if updating:
                         if aws_upload:
                             print("======aws upload unsuccessful=======")
@@ -579,3 +593,4 @@ def osisaf_ftp_harvester(config, output_path='', s3=None, on_aws=False, solr_inf
             print('Successfully updated Solr dataset document\n')
         else:
             print('Failed to update Solr dataset document\n')
+    return harvest_status
