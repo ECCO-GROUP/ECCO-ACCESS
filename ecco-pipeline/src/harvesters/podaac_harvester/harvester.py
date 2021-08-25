@@ -24,6 +24,9 @@ def clean_solr(config, solr_host, grids_to_use, solr_collection_name):
     config_start = config['start']
     config_end = config['end']
 
+    if config_end == 'NOW':
+        config_end = datetime.utcnow().strftime("%Y%m%dT%H:%M:%SZ")
+
     # Query for grids
     if not grids_to_use:
         fq = ['type_s:grid']
@@ -94,6 +97,15 @@ def md5(fname):
     return hash_md5.hexdigest()
 
 
+def md5_check(local_fp, link):
+    md5_url = f'{link}.md5'
+    r = requests.get(md5_url)
+    expected_md5 = r.content.decode("utf-8").split(' ')[0]
+    local_md5 = md5(local_fp)
+
+    return local_md5, expected_md5
+
+
 def solr_query(solr_host, fq, solr_collection_name):
     """
     Queries Solr database using the filter query passed in.
@@ -123,6 +135,31 @@ def solr_update(solr_host, update_body, solr_collection_name, r=False):
         return requests.post(url, json=update_body)
     else:
         requests.post(url, json=update_body)
+
+
+def granule_update_check(docs, newfile, mod_date_time, time_format):
+    key = newfile.replace('.NRT', '')
+
+    # Granule hasn't been harvested yet
+    if key not in docs.keys():
+        return True
+
+    entry = docs[key]
+
+    # Granule failed harvesting previously
+    if not entry['harvest_success_b']:
+        return True
+
+    # Granule has been updated since last harvest
+    if datetime.strptime(entry['download_time_dt'], time_format) <= mod_date_time:
+        return True
+
+    # Granule is replacing NRT version
+    if '.NRT' in entry['filename_s'] and '.NRT' not in newfile:
+        return True
+
+    # Granule is up to date
+    return False
 
 
 def podaac_harvester(config, output_path, LOG_TIME, s3=None, on_aws=False, solr_info='', grids_to_use=[]):
@@ -211,10 +248,10 @@ def podaac_harvester(config, output_path, LOG_TIME, s3=None, on_aws=False, solr_
     harvested_docs = solr_query(solr_host, fq, solr_collection_name)
 
     # Dictionary of existing harvested docs
-    # harvested doc filename : solr entry for that doc
+    # harvested doc filename (without NRT if applicable) : solr entry for that doc
     if len(harvested_docs) > 0:
         for doc in harvested_docs:
-            docs[doc['filename_s']] = doc
+            docs[doc['filename_s'].replace('.NRT', '')] = doc
 
     # Query for existing descendants docs
     fq = ['type_s:descendants', f'dataset_s:{dataset_name}']
@@ -241,301 +278,308 @@ def podaac_harvester(config, output_path, LOG_TIME, s3=None, on_aws=False, solr_
                  "dc": "http://purl.org/dc/terms/",
                  "time": "http://a9.com/-/opensearch/extensions/time/1.0/"}
 
-    next = None
-    more = True
+    xml = parse(urlopen(url))
+    items = xml.findall('{%(atom)s}entry' % namespace)
 
-    # =====================================================
-    # PODAAC loop
-    # =====================================================
-    while more:
-        xml = parse(urlopen(url))
-        items = xml.findall('{%(atom)s}entry' % namespace)
+    # Parse through XML results, building dictionary of entry metadata
+    # Necessary for handling NRT files
+    items_dict = {}
 
-        # Loop through all granules in XML returned from URL
-        for elem in items:
-            updating = False
+    for elem in items:
+        title = elem.find('atom:title', namespace).text
+        try:
+            updated = elem.find('atom:updated', namespace).text
+        except:
+            updated = chk_time
+        start = elem.find('time:start', namespace).text
+        end = elem.find('time:end', namespace).text
+        url = elem.find('atom:link[@title="OPeNDAP URL"]',
+                        namespace).attrib['href'][:-5]
 
-            # Extract granule information from XML entry and attempt to download data file
-            try:
-                # Extract download link from XML entry
-                link = elem.find(
-                    "{%(atom)s}link[@title='OPeNDAP URL']" % namespace).attrib['href']
-                link = '.'.join(link.split('.')[:-1])
+        entry = {'title': title,
+                 'updated': updated,
+                 'start': start,
+                 'end': end,
+                 'url': url}
 
-                newfile = link.split("/")[-1]
+        items_dict[title] = entry
 
-                # Skip granules of unrecognized file format
-                if not any(extension in newfile for extension in ['.nc', '.bz2', '.gz']):
-                    continue
+    granules_to_process = []
 
-                # Skip Near Real Time granules
-                if '.NRT.' in link:
-                    continue
+    for title, entry in items_dict.items():
+        if '.NRT' in title:
+            # Skip NRT if non-NRT is available
+            if title.replace('.NRT', '') in items_dict.keys():
+                continue
+            else:
+                granules_to_process.append(entry)
+        else:
+            granules_to_process.append(entry)
 
-                # Extract start and end dates from XML entry
-                date_start_str = elem.find("{%(time)s}start" % namespace).text
-                date_end_str = elem.find("{%(time)s}end" % namespace).text
+    for granule in granules_to_process:
+        updating = False
 
-                # Ignore granules with start time less than wanted start time
-                # PODAAC can grab granule previous to start time if that granule's
-                # end time is the same as the config file's start time
-                if date_start_str.replace('-', '') < start_time and not aggregated:
-                    continue
+        # Extract granule information from XML entry and attempt to download data file
+        try:
+            link = granule['url']
 
-                # Remove nanoseconds from dates
-                if len(date_start_str) > 19:
-                    date_start_str = date_start_str[:19] + 'Z'
-                if len(date_end_str) > 19:
-                    date_end_str = date_end_str[:19] + 'Z'
+            newfile = link.split("/")[-1]
 
-                # Attempt to get last modified time of file on podaac
-                # Not all PODAAC datasets contain last modified time
-                try:
-                    mod_time = elem.find("{%(atom)s}updated" % namespace).text
-                    mod_date_time = datetime.strptime(mod_time, date_regex)
+            # Skip granules of unrecognized file format
+            if not any(extension in newfile for extension in ['.nc', '.bz2', '.gz']):
+                continue
 
-                except:
-                    mod_time = str(now)
-                    mod_date_time = now
+            # Extract start and end dates from XML entry
+            date_start_str = granule['start']
+            date_end_str = granule['end']
 
-                # Granule metadata used for Solr harvested entries
-                item = {}
-                item['type_s'] = 'granule'
-                item['date_s'] = date_start_str
-                item['dataset_s'] = dataset_name
-                item['filename_s'] = newfile
-                item['source_s'] = link
-                item['modified_time_dt'] = mod_date_time.strftime(time_format)
+            # Ignore granules with start time less than wanted start time
+            # PODAAC can grab granule previous to start time if that granule's
+            # end time is the same as the config file's start time
+            if date_start_str.replace('-', '') < start_time and not aggregated:
+                continue
 
-                # Granule metadata used for initializing Solr descendants entries
-                descendants_item = {}
-                descendants_item['type_s'] = 'descendants'
-                descendants_item['date_s'] = date_start_str
-                descendants_item['dataset_s'] = dataset_name
-                descendants_item['filename_s'] = newfile
-                descendants_item['source_s'] = link
+            # Remove nanoseconds from dates
+            if len(date_start_str) > 19:
+                date_start_str = date_start_str[:19] + 'Z'
+            if len(date_end_str) > 19:
+                date_end_str = date_end_str[:19] + 'Z'
 
-                # If granule doesn't exist or previously failed or has been updated since last harvest
-                updating = (newfile not in docs.keys()) or \
-                           (not docs[newfile]['harvest_success_b']) or \
-                           (datetime.strptime(
-                               docs[newfile]['download_time_dt'], time_format) <= mod_date_time)
+            mod_time = granule['updated']
+            mod_date_time = datetime.strptime(mod_time, date_regex)
 
-                # If updating, download file if necessary
-                if updating:
-                    year = date_start_str[:4]
-                    local_fp = f'{target_dir}{year}/{newfile}'
+            # Granule metadata used for Solr harvested entries
+            item = {}
+            item['type_s'] = 'granule'
+            item['dataset_s'] = dataset_name
+            item['date_s'] = date_start_str
+            item['filename_s'] = newfile
+            item['source_s'] = link
+            item['modified_time_dt'] = mod_date_time.strftime(time_format)
 
-                    if not os.path.exists(f'{target_dir}{year}'):
-                        os.makedirs(f'{target_dir}{year}')
+            if newfile.replace('.NRT', '') in docs.keys():
+                item['id'] = docs[newfile.replace('.NRT', '')]['id']
 
-                    # If file doesn't exist locally, download it
-                    if not os.path.exists(local_fp):
-                        print(f' - Downloading {newfile} to {local_fp}')
-                        if aggregated:
-                            print(
-                                f'    - {newfile} is aggregated. Downloading may be slow.')
+            # Granule metadata used for initializing Solr descendants entries
+            descendants_item = {}
+            descendants_item['type_s'] = 'descendants'
+            descendants_item['dataset_s'] = dataset_name
+            descendants_item['date_s'] = date_start_str
+            descendants_item['filename_s'] = newfile
+            descendants_item['source_s'] = link
 
-                        urlcleanup()
-                        urlretrieve(link, local_fp)
+            updating = granule_update_check(
+                docs, newfile, mod_date_time, time_format)
 
-                        # Opening file will ensure file fully downloaded
-                        ds = xr.open_dataset(local_fp)
+            # If updating, download file if necessary
+            if updating:
+                year = date_start_str[:4]
+                local_fp = f'{target_dir}{year}/{newfile}'
 
-                    # If file exists locally, but is out of date, download it
-                    elif datetime.fromtimestamp(os.path.getmtime(local_fp)) <= mod_date_time:
-                        print(
-                            f' - Updating {newfile} and downloading to {local_fp}')
-                        urlcleanup()
-                        urlretrieve(link, local_fp)
+                if not os.path.exists(f'{target_dir}{year}'):
+                    os.makedirs(f'{target_dir}{year}')
 
-                        # Opening file will ensure file fully downloaded
-                        ds = xr.open_dataset(local_fp)
-
-                    else:
-                        print(
-                            f' - {newfile} already downloaded and up to date')
-
-                    if newfile in docs.keys():
-                        item['id'] = docs[newfile]['id']
-
-                    # Create checksum for file
-                    item['checksum_s'] = md5(local_fp)
-                    item['pre_transformation_file_path_s'] = local_fp
-
-                    # =====================================================
-                    # Push data to s3 bucket
-                    # =====================================================
-
-                    if on_aws:
-                        output_filename = f'{dataset_name}/{newfile}' if on_aws else newfile
-                        print("=========uploading file to s3=========")
-                        try:
-                            target_bucket.upload_file(
-                                local_fp, output_filename)
-                            item['pre_transformation_file_path_s'] = f's3://{config["target_bucket_name"]}/{output_filename}'
-                        except:
-                            print("======aws upload unsuccessful=======")
-                            item['message_s'] = 'aws upload unsuccessful'
-                        print("======uploading file to s3 DONE=======")
-
-                    item['harvest_success_b'] = True
-                    item['file_size_l'] = os.path.getsize(local_fp)
-
-                    # =====================================================
-                    # Handling data in aggregated form
-                    # =====================================================
+                # If file doesn't exist locally, download it
+                if not os.path.exists(local_fp):
+                    print(f' - Downloading {newfile} to {local_fp}')
                     if aggregated:
-                        # Aggregated file has already been downloaded
-                        # Must extract individual granule slices
                         print(
-                            f' - Extracting individual data granules from aggregated data file')
+                            f'    - {newfile} is aggregated. Downloading may be slow.')
 
-                        # Remove old outdated aggregated file from disk
-                        for f in os.listdir(f'{target_dir}{year}/'):
-                            if str(f) != str(newfile):
-                                os.remove(f'{target_dir}{year}/{f}')
+                    urlcleanup()
+                    urlretrieve(link, local_fp)
 
-                        ds = xr.open_dataset(local_fp)
+                    local_md5, expected_md5 = md5_check(local_fp, link)
+                    if local_md5 != expected_md5:
+                        raise ValueError(
+                            f'Downloaded file MD5 value ({local_md5}) does not match expected value from server ({expected_md5}).')
 
-                        # List comprehension extracting times within desired date range
-                        ds_times = [
-                            time for time
-                            in np.datetime_as_string(ds.time.values)
-                            if start_time[:9] <= time.replace('-', '')[:9] <= end_time[:9]
-                        ]
+                # If file exists locally, but is out of date, download it
+                elif datetime.fromtimestamp(os.path.getmtime(local_fp)) <= mod_date_time:
+                    print(
+                        f' - Updating {newfile} and downloading to {local_fp}')
+                    if aggregated:
+                        print(
+                            f'    - {newfile} is aggregated. Downloading may be slow.')
 
-                        for time in ds_times:
-                            new_ds = ds.sel(time=time)
+                    urlcleanup()
+                    urlretrieve(link, local_fp)
 
-                            if data_time_scale.upper() == 'MONTHLY':
-                                if not time[7:9] == '01':
-                                    new_start = f'{time[0:8]}01T00:00:00.000000000'
-                                    print('NS: ', new_start, 'T: ', time)
-                                    time = new_start
-                            year = time[:4]
-
-                            file_name = f'{dataset_name}_{time.replace("-","")[:8]}.nc'
-                            local_fp = f'{target_dir}{year}/{file_name}'
-                            time_s = f'{time[:-10]}Z'
-
-                            # Granule metadata used for Solr harvested entries
-                            item = {}
-                            item['type_s'] = 'granule'
-                            item['date_s'] = time_s
-                            item['dataset_s'] = dataset_name
-                            item['filename_s'] = file_name
-                            item['source_s'] = link
-                            item['modified_time_dt'] = mod_date_time.strftime(
-                                time_format)
-                            item['download_time_dt'] = chk_time
-
-                            # Granule metadata used for initializing Solr descendants entries
-                            descendants_item = {}
-                            descendants_item['type_s'] = 'descendants'
-                            descendants_item['dataset_s'] = item['dataset_s']
-                            descendants_item['date_s'] = item["date_s"]
-                            descendants_item['source_s'] = item['source_s']
-
-                            if not os.path.exists(f'{target_dir}{year}'):
-                                os.makedirs(f'{target_dir}{year}')
-
-                            try:
-                                # Save slice as NetCDF
-                                new_ds.to_netcdf(path=local_fp)
-
-                                # Create checksum for file
-                                item['checksum_s'] = md5(local_fp)
-                                item['pre_transformation_file_path_s'] = local_fp
-                                item['harvest_success_b'] = True
-                                item['file_size_l'] = os.path.getsize(local_fp)
-                            except:
-                                print(f'    - {file_name} failed to save')
-                                item['harvest_success_b'] = False
-                                item['pre_transformation_file_path_s'] = ''
-                                item['file_size_l'] = 0
-                                item['checksum_s'] = ''
-
-                            if on_aws:
-                                output_filename = f'{dataset_name}/{newfile}' if on_aws else newfile
-                                print("=========uploading file to s3=========")
-                                try:
-                                    target_bucket.upload_file(
-                                        local_fp, output_filename)
-                                    item['pre_transformation_file_path_s'] = f's3://{config["target_bucket_name"]}/{output_filename}'
-                                except:
-                                    print("======aws upload unsuccessful=======")
-                                    item['message_s'] = 'aws upload unsuccessful'
-                                print("======uploading file to s3 DONE=======")
-
-                            # Query for existing granule in Solr in order to update it
-                            fq = ['type_s:granule', f'dataset_s:{dataset_name}',
-                                  f'date_s:{time_s[:10]}*']
-                            granule = solr_query(
-                                solr_host, fq, solr_collection_name)
-
-                            if granule:
-                                item['id'] = granule[0]['id']
-
-                            if time_s in descendants_docs.keys():
-                                descendants_item['id'] = descendants_docs[time_s]['id']
-
-                            entries_for_solr.append(item)
-                            entries_for_solr.append(descendants_item)
-
-                            start_times.append(datetime.strptime(
-                                time[:-3], '%Y-%m-%dT%H:%M:%S.%f'))
-                            end_times.append(datetime.strptime(
-                                time[:-3], '%Y-%m-%dT%H:%M:%S.%f'))
-
-                            if item['harvest_success_b']:
-                                last_success_item = item
+                    local_md5, expected_md5 = md5_check(local_fp, link)
+                    if local_md5 != expected_md5:
+                        raise ValueError(
+                            f'Downloaded file MD5 value ({local_md5}) does not match expected value from server ({expected_md5}).')
 
                 else:
                     print(f' - {newfile} already downloaded and up to date')
 
-            except Exception as e:
-                print(f'    - {e}')
-                log.exception(
-                    f'{dataset_name} harvesting error! {newfile} failed to download.')
-                if updating:
+                # Create checksum for file
+                item['checksum_s'] = md5(local_fp)
+                item['pre_transformation_file_path_s'] = local_fp
 
-                    print(f'    - {newfile} failed to download')
+                # =====================================================
+                # Push data to s3 bucket
+                # =====================================================
 
-                    item['harvest_success_b'] = False
-                    item['pre_transformation_file_path_s'] = ''
-                    item['file_size_l'] = 0
+                if on_aws:
+                    output_filename = f'{dataset_name}/{newfile}' if on_aws else newfile
+                    print("=========uploading file to s3=========")
+                    try:
+                        target_bucket.upload_file(
+                            local_fp, output_filename)
+                        item['pre_transformation_file_path_s'] = f's3://{config["target_bucket_name"]}/{output_filename}'
+                    except:
+                        print("======aws upload unsuccessful=======")
+                        item['message_s'] = 'aws upload unsuccessful'
+                    print("======uploading file to s3 DONE=======")
 
+                item['harvest_success_b'] = True
+                item['file_size_l'] = os.path.getsize(local_fp)
+
+                # =====================================================
+                # Handling data in aggregated form
+                # =====================================================
+                if aggregated:
+                    # Aggregated file has already been downloaded
+                    # Must extract individual granule slices
+                    print(
+                        f' - Extracting individual data granules from aggregated data file')
+
+                    # Remove old outdated aggregated file from disk
+                    for f in os.listdir(f'{target_dir}{year}/'):
+                        if str(f) != str(newfile):
+                            os.remove(f'{target_dir}{year}/{f}')
+
+                    ds = xr.open_dataset(local_fp)
+
+                    # List comprehension extracting times within desired date range
+                    ds_times = [
+                        time for time
+                        in np.datetime_as_string(ds.time.values)
+                        if start_time[:9] <= time.replace('-', '')[:9] <= end_time[:9]
+                    ]
+
+                    for time in ds_times:
+                        new_ds = ds.sel(time=time)
+
+                        if data_time_scale.upper() == 'MONTHLY':
+                            if not time[7:9] == '01':
+                                new_start = f'{time[0:8]}01T00:00:00.000000000'
+                                print('NS: ', new_start, 'T: ', time)
+                                time = new_start
+                        year = time[:4]
+
+                        file_name = f'{dataset_name}_{time.replace("-","")[:8]}.nc'
+                        local_fp = f'{target_dir}{year}/{file_name}'
+                        time_s = f'{time[:-10]}Z'
+
+                        # Granule metadata used for Solr harvested entries
+                        item = {}
+                        item['type_s'] = 'granule'
+                        item['date_s'] = time_s
+                        item['dataset_s'] = dataset_name
+                        item['filename_s'] = file_name
+                        item['source_s'] = link
+                        item['modified_time_dt'] = mod_date_time.strftime(
+                            time_format)
+                        item['download_time_dt'] = chk_time
+
+                        # Granule metadata used for initializing Solr descendants entries
+                        descendants_item = {}
+                        descendants_item['type_s'] = 'descendants'
+                        descendants_item['dataset_s'] = item['dataset_s']
+                        descendants_item['date_s'] = item["date_s"]
+                        descendants_item['source_s'] = item['source_s']
+
+                        if not os.path.exists(f'{target_dir}{year}'):
+                            os.makedirs(f'{target_dir}{year}')
+
+                        try:
+                            # Save slice as NetCDF
+                            new_ds.to_netcdf(path=local_fp)
+
+                            # Create checksum for file
+                            item['checksum_s'] = md5(local_fp)
+                            item['pre_transformation_file_path_s'] = local_fp
+                            item['harvest_success_b'] = True
+                            item['file_size_l'] = os.path.getsize(local_fp)
+                        except:
+                            print(f'    - {file_name} failed to save')
+                            item['harvest_success_b'] = False
+                            item['pre_transformation_file_path_s'] = ''
+                            item['file_size_l'] = 0
+                            item['checksum_s'] = ''
+
+                        if on_aws:
+                            output_filename = f'{dataset_name}/{newfile}' if on_aws else newfile
+                            print("=========uploading file to s3=========")
+                            try:
+                                target_bucket.upload_file(
+                                    local_fp, output_filename)
+                                item['pre_transformation_file_path_s'] = f's3://{config["target_bucket_name"]}/{output_filename}'
+                            except:
+                                print("======aws upload unsuccessful=======")
+                                item['message_s'] = 'aws upload unsuccessful'
+                            print("======uploading file to s3 DONE=======")
+
+                        # Query for existing granule in Solr in order to update it
+                        fq = ['type_s:granule', f'dataset_s:{dataset_name}',
+                              f'date_s:{time_s[:10]}*']
+                        granule = solr_query(
+                            solr_host, fq, solr_collection_name)
+
+                        if granule:
+                            item['id'] = granule[0]['id']
+
+                        if time_s in descendants_docs.keys():
+                            descendants_item['id'] = descendants_docs[time_s]['id']
+
+                        entries_for_solr.append(item)
+                        entries_for_solr.append(descendants_item)
+
+                        start_times.append(datetime.strptime(
+                            time[:-3], '%Y-%m-%dT%H:%M:%S.%f'))
+                        end_times.append(datetime.strptime(
+                            time[:-3], '%Y-%m-%dT%H:%M:%S.%f'))
+
+                        if item['harvest_success_b']:
+                            last_success_item = item
+
+            else:
+                print(f' - {newfile} already downloaded and up to date')
+
+        except Exception as e:
+            print(f'    - {e}')
+            log.exception(
+                f'{dataset_name} harvesting error! {newfile} failed to download.')
             if updating:
-                item['download_time_dt'] = chk_time
 
-                if date_start_str in descendants_docs.keys():
-                    descendants_item['id'] = descendants_docs[date_start_str]['id']
+                print(f'    - {newfile} failed to download')
 
-                descendants_item['harvest_success_b'] = item['harvest_success_b']
-                descendants_item['pre_transformation_file_path_s'] = item['pre_transformation_file_path_s']
+                item['harvest_success_b'] = False
+                item['pre_transformation_file_path_s'] = ''
+                item['file_size_l'] = 0
 
-                if not aggregated:
-                    entries_for_solr.append(item)
-                    entries_for_solr.append(descendants_item)
+        if updating:
+            item['download_time_dt'] = chk_time
 
-                    start_times.append(datetime.strptime(
-                        date_start_str, date_regex))
-                    end_times.append(datetime.strptime(
-                        date_end_str, date_regex))
+            if date_start_str in descendants_docs.keys():
+                descendants_item['id'] = descendants_docs[date_start_str]['id']
 
-                    if item['harvest_success_b']:
-                        last_success_item = item
+            descendants_item['harvest_success_b'] = item['harvest_success_b']
+            descendants_item['pre_transformation_file_path_s'] = item['pre_transformation_file_path_s']
 
-        # Check if more granules are available on next page
-        # Should only need next if more than 30000 granules exist
-        # Hemispherical seaice data should have roughly 30*365*2=21900
-        next = xml.find("{%(atom)s}link[@rel='next']" % namespace)
-        if next is None:
-            more = False
-            print(f'\nDownloading {dataset_name} complete\n')
-        else:
-            url = next.attrib['href']
+            if not aggregated:
+                entries_for_solr.append(item)
+                entries_for_solr.append(descendants_item)
+
+                start_times.append(datetime.strptime(
+                    date_start_str, date_regex))
+                end_times.append(datetime.strptime(
+                    date_end_str, date_regex))
+
+                if item['harvest_success_b']:
+                    last_success_item = item
 
     # Only update Solr harvested entries if there are fresh downloads
     if entries_for_solr:
