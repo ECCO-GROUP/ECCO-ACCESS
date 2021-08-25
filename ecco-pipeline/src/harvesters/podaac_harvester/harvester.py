@@ -400,6 +400,18 @@ def podaac_harvester(config, output_path, LOG_TIME, s3=None, on_aws=False, solr_
                         if local_md5 != expected_md5:
                             raise ValueError(
                                 f'Downloaded file MD5 value ({local_md5}) does not match expected value from server ({expected_md5}).')
+                    else:
+                        response = requests.head(link)
+                        if 'Content-Length' in response.headers.keys():
+                            expected_size = int(
+                                response.headers['Content-Length'])
+                            actual_size = os.path.getsize(local_fp)
+                            if actual_size != expected_size:
+                                raise ValueError(
+                                    f'Downloaded file size ({actual_size}) does not match expected size from server ({expected_size}).')
+                        else:
+                            print(
+                                'Content-Length header unavailable. Unable to verify successful file download.')
 
                 # If file exists locally, but is out of date, download it
                 elif datetime.fromtimestamp(os.path.getmtime(local_fp)) <= mod_date_time:
@@ -418,6 +430,18 @@ def podaac_harvester(config, output_path, LOG_TIME, s3=None, on_aws=False, solr_
                         if local_md5 != expected_md5:
                             raise ValueError(
                                 f'Downloaded file MD5 value ({local_md5}) does not match expected value from server ({expected_md5}).')
+                    else:
+                        response = requests.head(link)
+                        if 'Content-Length' in response.headers.keys():
+                            expected_size = int(
+                                response.headers['Content-Length'])
+                            actual_size = os.path.getsize(local_fp)
+                            if actual_size != expected_size:
+                                raise ValueError(
+                                    f'Downloaded file size ({actual_size}) does not match expected size from server ({expected_size}).')
+                        else:
+                            print(
+                                'Content-Length header unavailable. Unable to verify successful file download.')
 
                 else:
                     print(f' - {newfile} already downloaded and up to date')
