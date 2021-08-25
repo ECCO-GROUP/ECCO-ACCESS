@@ -643,7 +643,7 @@ def run_aggregation(output_dir, config, LOG_TIME, s3=None, solr_info={}, grids_t
                     f' - Exporting {year} descendants for grid {grid_name} and field {field_name}')
                 json_output['aggregation'] = docs
                 json_output['transformations'] = transformations
-                json_output_path = f'{output_dir}/{dataset_name}/transformed_products/{grid_name}/aggregated/{field_name}/{dataset_name}_{field_name}_{year}_descendants'
+                json_output_path = f'{output_dir}/{dataset_name}/transformed_products/{grid_name}/aggregated/{field_name}/{dataset_name}_{field_name}_{grid_name}_{year}_descendants'
                 with open(json_output_path, 'w') as f:
                     resp_out = json.dumps(json_output, indent=4)
                     f.write(resp_out)
