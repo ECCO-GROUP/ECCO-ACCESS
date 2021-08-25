@@ -218,7 +218,8 @@ def main(config, output_path, LOG_TIME, multiprocessing=False, user_cpus=1, wipe
         delete_mismatch_transformations(config, grid_transformation, solr_info)
 
     # Get all harvested granules for this dataset
-    fq = [f'dataset_s:{dataset_name}', 'type_s:granule']
+    fq = [f'dataset_s:{dataset_name}',
+          'type_s:granule', 'harvest_success_b:true']
     harvested_granules = grid_transformation.solr_query(
         config, solr_host, fq, solr_collection_name)
 
