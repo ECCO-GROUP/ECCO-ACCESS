@@ -91,6 +91,7 @@ def md5(fname):
     Creates md5 checksum from file
     """
     hash_md5 = hashlib.md5()
+
     with open(fname, 'rb') as f:
         for chunk in iter(lambda: f.read(4096), b""):
             hash_md5.update(chunk)
@@ -344,8 +345,12 @@ def podaac_harvester(config, output_path, LOG_TIME, s3=None, on_aws=False, solr_
                 date_start_str = date_start_str[:19] + 'Z'
             if len(date_end_str) > 19:
                 date_end_str = date_end_str[:19] + 'Z'
+            if len(granule['updated']) > 19:
+                update_time = granule['updated'][:19] + 'Z'
+            else:
+                update_time = granule['updated']
 
-            mod_time = granule['updated']
+            mod_time = update_time
             mod_date_time = datetime.strptime(mod_time, date_regex)
 
             # Granule metadata used for Solr harvested entries
@@ -389,10 +394,12 @@ def podaac_harvester(config, output_path, LOG_TIME, s3=None, on_aws=False, solr_
                     urlcleanup()
                     urlretrieve(link, local_fp)
 
-                    local_md5, expected_md5 = md5_check(local_fp, link)
-                    if local_md5 != expected_md5:
-                        raise ValueError(
-                            f'Downloaded file MD5 value ({local_md5}) does not match expected value from server ({expected_md5}).')
+                    # BZ2 compression results in differet MD5 values
+                    if 'bz2' not in local_fp:
+                        local_md5, expected_md5 = md5_check(local_fp, link)
+                        if local_md5 != expected_md5:
+                            raise ValueError(
+                                f'Downloaded file MD5 value ({local_md5}) does not match expected value from server ({expected_md5}).')
 
                 # If file exists locally, but is out of date, download it
                 elif datetime.fromtimestamp(os.path.getmtime(local_fp)) <= mod_date_time:
@@ -405,10 +412,12 @@ def podaac_harvester(config, output_path, LOG_TIME, s3=None, on_aws=False, solr_
                     urlcleanup()
                     urlretrieve(link, local_fp)
 
-                    local_md5, expected_md5 = md5_check(local_fp, link)
-                    if local_md5 != expected_md5:
-                        raise ValueError(
-                            f'Downloaded file MD5 value ({local_md5}) does not match expected value from server ({expected_md5}).')
+                    # BZ2 compression results in differet MD5 values
+                    if 'bz2' not in local_fp:
+                        local_md5, expected_md5 = md5_check(local_fp, link)
+                        if local_md5 != expected_md5:
+                            raise ValueError(
+                                f'Downloaded file MD5 value ({local_md5}) does not match expected value from server ({expected_md5}).')
 
                 else:
                     print(f' - {newfile} already downloaded and up to date')
