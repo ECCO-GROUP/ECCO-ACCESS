@@ -370,11 +370,25 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config,
             data_time_scale = dataset_metadata['data_time_scale_s']
             if data_time_scale == 'daily':
                 output_freq_code = 'AVG_DAY'
+                rec_end = field_DS.time_bnds.values[0][1]
             elif data_time_scale == 'monthly':
                 output_freq_code = 'AVG_MON'
+                end_time = str(field_DS.time_bnds.values[0][1])
+                cur_year = int(end_time[:4])
+                cur_month = int(end_time[5:7])
 
-            tb, ct = ea.make_time_bounds_from_ds64(
-                field_DS.time_bnds.values[0][1], output_freq_code)
+                if cur_month < 12:
+                    cur_mon_year = np.datetime64(str(cur_year) + '-' +
+                                                 str(cur_month+1).zfill(2) +
+                                                 '-' + str(1).zfill(2), 'ns')
+                    # for december we go up one year, and set month to january
+                else:
+                    cur_mon_year = np.datetime64(str(cur_year+1) + '-' +
+                                                 str('01') +
+                                                 '-' + str(1).zfill(2), 'ns')
+                rec_end = cur_mon_year
+
+            tb, ct = ea.make_time_bounds_from_ds64(rec_end, output_freq_code)
 
             field_DS.time.values[0] = ct
             field_DS.time_bnds.values[0][0] = tb[0]
