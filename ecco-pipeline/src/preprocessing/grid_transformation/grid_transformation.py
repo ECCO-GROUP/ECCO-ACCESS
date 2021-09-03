@@ -1,10 +1,8 @@
 import hashlib
-import json
 import logging
 import os
 import pickle
 import sys
-from collections import namedtuple
 from datetime import datetime
 from pathlib import Path
 
@@ -246,6 +244,8 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config,
                 target_grid_radius = model_grid.effective_grid_radius.values.ravel()
             elif 'effective_radius' in model_grid:
                 target_grid_radius = model_grid.effective_radius.values.ravel()
+            elif 'RAD' in model_grid:
+                target_grid_radius = model_grid.RAD.values.ravel()
             elif 'rA' in model_grid:
                 target_grid_radius = 0.5*np.sqrt(model_grid.rA.values.ravel())
             else:
@@ -370,12 +370,12 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config,
             data_time_scale = dataset_metadata['data_time_scale_s']
             if data_time_scale == 'daily':
                 output_freq_code = 'AVG_DAY'
-                rec_end = field_DS.time_bnds.values[0][1]
+                rec_end = np.datetime64(
+                    field_DS.time_bnds.values[1][:10], 'ns')
             elif data_time_scale == 'monthly':
                 output_freq_code = 'AVG_MON'
-                end_time = str(field_DS.time_bnds.values[0][1])
-                cur_year = int(end_time[:4])
-                cur_month = int(end_time[5:7])
+                cur_year = int(date[:4])
+                cur_month = int(date[5:7])
 
                 if cur_month < 12:
                     cur_mon_year = np.datetime64(str(cur_year) + '-' +
@@ -634,6 +634,8 @@ def run_using_aws(s3, filename):
             target_grid_radius = model_grid.effective_grid_radius.values.ravel()
         elif 'effective_radius' in model_grid:
             target_grid_radius = model_grid.effective_radius.values.ravel()
+        elif 'RAD' in model_grid:
+            target_grid_radius = model_grid.RAD.values.ravel()
         elif 'rA' in model_grid:
             target_grid_radius = 0.5*np.sqrt(model_grid.rA.values.ravel())
         else:
@@ -868,15 +870,9 @@ def run_in_any_env(model_grid, grid_name, grid_type, fields, factors, ds, record
     # =====================================================
     # Code to import ecco utils locally...
     # =====================================================
-    generalized_functions_path = Path(
-        f'{Path(__file__).resolve().parents[4]}/ecco-cloud-utils/')
+    generalized_functions_path = f'{Path(__file__).resolve().parents[4]}/ecco-cloud-utils/'
     sys.path.append(str(generalized_functions_path))
     import ecco_cloud_utils as ea  # pylint: disable=import-error
-
-    # Define logger using dataset name
-    # Logger could be a problem when running on AWS
-    logger = logging.getLogger(
-        f'pipeline.{dataset_metadata["dataset_s"]}.transformation')
 
     # Check if ends in z and drop it if it does
     if record_date[-1] == 'Z':

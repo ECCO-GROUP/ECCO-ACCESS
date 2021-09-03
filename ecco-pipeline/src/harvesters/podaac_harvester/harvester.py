@@ -331,14 +331,8 @@ def podaac_harvester(config, output_path, LOG_TIME, s3=None, on_aws=False, solr_
                 continue
 
             # Extract start and end dates from XML entry
-            date_start_str = granule['start']
-            date_end_str = granule['end']
-
-            # Ignore granules with start time less than wanted start time
-            # PODAAC can grab granule previous to start time if that granule's
-            # end time is the same as the config file's start time
-            if date_start_str.replace('-', '') < start_time and not aggregated:
-                continue
+            date_start_str = f'{granule["start"][:10]}T00:00:00Z'
+            date_end_str = f'{granule["end"][:10]}T00:00:00Z'
 
             # Remove nanoseconds from dates
             if len(date_start_str) > 19:
@@ -349,6 +343,12 @@ def podaac_harvester(config, output_path, LOG_TIME, s3=None, on_aws=False, solr_
                 update_time = granule['updated'][:19] + 'Z'
             else:
                 update_time = granule['updated']
+
+            # Ignore granules with start time less than wanted start time
+            # PODAAC can grab granule previous to start time if that granule's
+            # end time is the same as the config file's start time
+            if date_start_str.replace('-', '') < start_time and not aggregated:
+                continue
 
             mod_time = update_time
             mod_date_time = datetime.strptime(mod_time, date_regex)

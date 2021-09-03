@@ -1,6 +1,5 @@
 import os
 import sys
-import json
 import yaml
 import hashlib
 import requests

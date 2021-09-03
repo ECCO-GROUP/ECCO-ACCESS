@@ -137,7 +137,7 @@ def run_aggregation(output_dir, config, LOG_TIME, s3=None, solr_info={}, grids_t
 
     # Update grids to only use those in grids_to_use
     if grids_to_use:
-        grids = [grid for grid in grids if grids['grid_name_s'] in grids_to_use]
+        grids = [grid for grid in grids if grid['grid_name_s'] in grids_to_use]
 
     # Query Solr for fields
     fq = ['type_s:field', f'dataset_s:{dataset_name}']
