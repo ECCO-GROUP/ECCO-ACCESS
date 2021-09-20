@@ -1,96 +1,18 @@
-import hashlib
 import logging
+import logging.config
 import os
 import re
 from datetime import datetime
 from ftplib import FTP
-from pathlib import Path
 
 import requests
 from dateutil import parser
+from utils import file_utils, solr_utils
 
+logs_path = 'ecco_pipeline/logs/'
+logging.config.fileConfig(f'{logs_path}/log.ini',
+                          disable_existing_loggers=False)
 log = logging.getLogger(__name__)
-log.setLevel(logging.ERROR)
-
-
-def clean_solr(config, solr_host, grids_to_use, solr_collection_name):
-    """
-    Remove harvested, transformed, and descendant entries in Solr for dates
-    outside of config date range. Also remove related aggregations, and force
-    aggregation rerun for those years.
-    """
-    dataset_name = config['ds_name']
-    config_start = config['start']
-    config_end = config['end']
-
-    # Query for grids
-    if not grids_to_use:
-        fq = ['type_s:grid']
-        docs = solr_query(config, solr_host, fq, solr_collection_name)
-        grids = [doc['grid_name_s'] for doc in docs]
-    else:
-        grids = grids_to_use
-
-    # Convert config dates to Solr format
-    config_start = f'{config_start[:4]}-{config_start[4:6]}-{config_start[6:]}'
-    config_end = f'{config_end[:4]}-{config_end[4:6]}-{config_end[6:]}'
-
-    fq = [f'type_s:dataset', f'dataset_s:{dataset_name}']
-    dataset_metadata = solr_query(config, solr_host, fq, solr_collection_name)
-
-    if not dataset_metadata:
-        return
-    else:
-        dataset_metadata = dataset_metadata[0]
-
-    print(
-        f'Removing Solr documents related to dates outside of configuration start and end dates: \n\t{config_start} to {config_end}.\n')
-
-    # Remove entries earlier than config start date
-    fq = f'dataset_s:{dataset_name} AND date_s:[* TO {config_start}}}'
-    url = f'{solr_host}{solr_collection_name}/update?commit=true'
-    requests.post(url, json={'delete': {'query': fq}})
-
-    # Remove entries later than config end date
-    fq = f'dataset_s:{dataset_name} AND date_s:{{{config_end} TO *]'
-    url = f'{solr_host}{solr_collection_name}/update?commit=true'
-    requests.post(url, json={'delete': {'query': fq}})
-
-    # Add start and end years to 'years_updated' field in dataset entry
-    # Forces the bounding years to be re-aggregated to account for potential
-    # removed dates
-    start_year = config_start[:4]
-    end_year = config_end[:4]
-    update_body = [{
-        "id": dataset_metadata['id']
-    }]
-
-    for grid in grids:
-        solr_grid_years = f'{grid}_years_updated_ss'
-        if solr_grid_years in dataset_metadata.keys():
-            years = dataset_metadata[solr_grid_years]
-        else:
-            years = []
-        if start_year not in years:
-            years.append(start_year)
-        if end_year not in years:
-            years.append(end_year)
-
-        update_body[0][solr_grid_years] = {"set": years}
-
-    if grids:
-        solr_update(config, solr_host, update_body, solr_collection_name)
-
-
-def md5(fname):
-    """
-    Creates md5 checksum from file
-    """
-    hash_md5 = hashlib.md5()
-    with open(fname, 'rb') as f:
-        for chunk in iter(lambda: f.read(4096), b""):
-            hash_md5.update(chunk)
-    return hash_md5.hexdigest()
 
 
 def getdate(regex, fname):
@@ -103,57 +25,13 @@ def getdate(regex, fname):
     return date
 
 
-def solr_query(config, solr_host, fq, solr_collection_name):
-    """
-    Queries Solr database using the filter query passed in.
-    Returns list of Solr entries that satisfies the query.
-    """
-    # solr_collection_name = config['solr_collection_name']
-
-    getVars = {'q': '*:*',
-               'fq': fq,
-               'rows': 300000}
-
-    url = f'{solr_host}{solr_collection_name}/select?'
-    response = requests.get(url, params=getVars)
-    return response.json()['response']['docs']
-
-
-def solr_update(config, solr_host, update_body, solr_collection_name, r=False):
-    """
-    Posts an update to Solr database with the update body passed in.
-    For each item in update_body, a new entry is created in Solr, unless
-    that entry contains an id, in which case that entry is updated with new values.
-    Optional return of the request status code (ex: 200 for success)
-    """
-    # solr_collection_name = config['solr_collection_name']
-
-    url = f'{solr_host}{solr_collection_name}/update?commit=true'
-
-    if r:
-        return requests.post(url, json=update_body)
-    else:
-        requests.post(url, json=update_body)
-
-
-def osisaf_ftp_harvester(config, output_path, LOG_TIME, s3=None, on_aws=False, solr_info='', grids_to_use=[]):
+def osisaf_ftp_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=False):
     """
     Pulls data files for OSISAF FTP id and date range given in harvester_config.yaml.
     If not on_aws, saves locally, else saves to s3 bucket.
     Creates (or updates) Solr entries for dataset, harvested granule, fields, 
     and descendants.
     """
-    # Set file handler for log using output_path
-    formatter = logging.Formatter('%(asctime)s: %(message)s')
-
-    logs_path = Path(output_path / f'logs/{LOG_TIME}/')
-    logs_path.mkdir(parents=True, exist_ok=True)
-
-    file_handler = logging.FileHandler(logs_path / 'harvester.log')
-    file_handler.setLevel(logging.ERROR)
-    file_handler.setFormatter(formatter)
-
-    log.addHandler(file_handler)
 
     # =====================================================
     # Read harvester_config.yaml and setup variables
@@ -188,23 +66,15 @@ def osisaf_ftp_harvester(config, output_path, LOG_TIME, s3=None, on_aws=False, s
     if on_aws:
         target_bucket_name = config['target_bucket_name']
         target_bucket = s3.Bucket(target_bucket_name)
-        if solr_info:
-            solr_host = solr_info['solr_url']
-            solr_collection_name = solr_info['solr_collection_name']
-        else:
-            solr_host = config['solr_host_aws']
-            solr_collection_name = config['solr_collection_name']
-        clean_solr(config, solr_host, grids_to_use, solr_collection_name)
+        solr_host = config['solr_host_aws']
+        solr_collection_name = config['solr_collection_name']
+        solr_utils.clean_solr(config, grids_to_use)
         print(
             f'Downloading {dataset_name} files and uploading to {target_bucket_name}/{dataset_name}\n')
     else:
-        if solr_info:
-            solr_host = solr_info['solr_url']
-            solr_collection_name = solr_info['solr_collection_name']
-        else:
-            solr_host = config['solr_host_local']
-            solr_collection_name = config['solr_collection_name']
-        clean_solr(config, solr_host, grids_to_use, solr_collection_name)
+        solr_host = config['solr_host_local']
+        solr_collection_name = config['solr_collection_name']
+        solr_utils.clean_solr(config, grids_to_use)
         print(f'Downloading {dataset_name} files to {target_dir}\n')
 
     # if target path doesn't exist, make them
@@ -219,7 +89,7 @@ def osisaf_ftp_harvester(config, output_path, LOG_TIME, s3=None, on_aws=False, s
 
     # Query for existing harvested docs
     fq = ['type_s:granule', f'dataset_s:{dataset_name}']
-    query_docs = solr_query(config, solr_host, fq, solr_collection_name)
+    query_docs = solr_utils.solr_query(fq)
 
     if len(query_docs) > 0:
         for doc in query_docs:
@@ -227,8 +97,7 @@ def osisaf_ftp_harvester(config, output_path, LOG_TIME, s3=None, on_aws=False, s
 
     # Query for existing descendants docs
     fq = ['type_s:descendants', f'dataset_s:{dataset_name}']
-    existing_descendants_docs = solr_query(
-        config, solr_host, fq, solr_collection_name)
+    existing_descendants_docs = solr_utils.solr_query(fq)
 
     if len(existing_descendants_docs) > 0:
         for doc in existing_descendants_docs:
@@ -375,7 +244,7 @@ def osisaf_ftp_harvester(config, output_path, LOG_TIME, s3=None, on_aws=False, s
                                 f' - {newfile} already downloaded and up to date')
 
                         # Create checksum for file
-                        item['checksum_s'] = md5(local_fp)
+                        item['checksum_s'] = file_utils.md5(local_fp)
 
                         output_filename = f'{dataset_name}/{newfile}' if on_aws else newfile
 
@@ -442,8 +311,7 @@ def osisaf_ftp_harvester(config, output_path, LOG_TIME, s3=None, on_aws=False, s
     # Only update Solr harvested entries if there are fresh downloads
     if entries_for_solr:
         # Update Solr with downloaded granule metadata entries
-        r = solr_update(config, solr_host, entries_for_solr,
-                        solr_collection_name, r=True)
+        r = solr_utils.solr_update(entries_for_solr, r=True)
 
         if r.status_code == 200:
             print('Successfully created or updated Solr harvested documents')
@@ -453,13 +321,12 @@ def osisaf_ftp_harvester(config, output_path, LOG_TIME, s3=None, on_aws=False, s
     # Query for Solr failed harvest documents
     fq = ['type_s:granule', f'dataset_s:{dataset_name}',
           f'harvest_success_b:false']
-    failed_harvesting = solr_query(config, solr_host, fq, solr_collection_name)
+    failed_harvesting = solr_utils.solr_query(fq)
 
     # Query for Solr successful harvest documents
     fq = ['type_s:granule', f'dataset_s:{dataset_name}',
           f'harvest_success_b:true']
-    successful_harvesting = solr_query(
-        config, solr_host, fq, solr_collection_name)
+    successful_harvesting = solr_utils.solr_query(fq)
 
     harvest_status = f'All granules successfully harvested'
 
@@ -473,7 +340,7 @@ def osisaf_ftp_harvester(config, output_path, LOG_TIME, s3=None, on_aws=False, s
 
     # Query for Solr Dataset-level Document
     fq = ['type_s:dataset', f'dataset_s:{dataset_name}']
-    dataset_query = solr_query(config, solr_host, fq, solr_collection_name)
+    dataset_query = solr_utils.solr_query(fq)
 
     # If dataset entry exists on Solr
     update = (len(dataset_query) == 1)
@@ -511,8 +378,7 @@ def osisaf_ftp_harvester(config, output_path, LOG_TIME, s3=None, on_aws=False, s
         ds_meta['harvest_status_s'] = harvest_status
 
         # Update Solr with dataset metadata
-        r = solr_update(config, solr_host, [
-                        ds_meta], solr_collection_name, r=True)
+        r = solr_utils.solr_update([ds_meta], r=True)
 
         if r.status_code == 200:
             print('Successfully created Solr dataset document')
@@ -527,7 +393,7 @@ def osisaf_ftp_harvester(config, output_path, LOG_TIME, s3=None, on_aws=False, s
 
         # Query for Solr field documents
         fq = ['type_s:field', f'dataset_s:{dataset_name}']
-        field_query = solr_query(config, solr_host, fq, solr_collection_name)
+        field_query = solr_utils.solr_query(fq)
 
         body = []
         for field in config['fields']:
@@ -546,7 +412,7 @@ def osisaf_ftp_harvester(config, output_path, LOG_TIME, s3=None, on_aws=False, s
             body.append(field_obj)
 
         # Update Solr with dataset fields metadata
-        r = solr_update(config, solr_host, body, solr_collection_name, r=True)
+        r = solr_utils.solr_update(body, r=True)
 
         if r.status_code == 200:
             print('Successfully created Solr field documents')
@@ -586,8 +452,7 @@ def osisaf_ftp_harvester(config, output_path, LOG_TIME, s3=None, on_aws=False, s
                     "set": last_success_item['download_time_dt']}
 
         # Update Solr with modified dataset entry
-        r = solr_update(config, solr_host, [
-                        update_doc], solr_collection_name, r=True)
+        r = solr_utils.solr_update([update_doc], r=True)
 
         if r.status_code == 200:
             print('Successfully updated Solr dataset document\n')

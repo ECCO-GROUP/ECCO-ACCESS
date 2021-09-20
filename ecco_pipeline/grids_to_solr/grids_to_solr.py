@@ -1,13 +1,16 @@
+import hashlib
 import os
 import sys
-import yaml
-import hashlib
+from datetime import datetime
+from pathlib import Path
+
 import requests
 import xarray as xr
-from datetime import datetime
-
+import yaml
 
 # Creates checksum from filename
+
+
 def md5(fname):
     hash_md5 = hashlib.md5()
     with open(fname, 'rb') as f:
@@ -43,16 +46,13 @@ def solr_update(config, solr_host, update_body, r=False):
         requests.post(url, json=update_body)
 
 
-def main(path='', grids_to_use=[], verify=False):
+def main(grids_to_use=[], verify=False):
     # =====================================================
     # Read configurations from YAML file
     # =====================================================
-    if path:
-        path_to_yaml = f'{path}/grids_config.yaml'
-        path_to_file_dir = f'{path}/grids/'
-    else:
-        path_to_yaml = f'{os.path.dirname(sys.argv[0])}/grids_config.yaml'
-        path_to_file_dir = f'{os.path.dirname(sys.argv[0])}/grids/'
+    Path(__file__).parent.resolve() / 'grids_config.yaml'
+    path_to_yaml = Path(__file__).parent.resolve() / 'grids_config.yaml'
+    path_to_file_dir = Path(__file__).parent.resolve() / 'grids/'
     with open(path_to_yaml, "r") as stream:
         config = yaml.load(stream, yaml.Loader)
 
@@ -61,8 +61,8 @@ def main(path='', grids_to_use=[], verify=False):
     # =====================================================
     # Scan directory for grid types
     # =====================================================
-    grid_files = [f for f in os.listdir(path_to_file_dir) if os.path.isfile(
-        os.path.join(path_to_file_dir, f))]
+    grid_files = [f for f in os.listdir(path_to_file_dir) if Path.is_file(
+        path_to_file_dir / f)]
 
     # =====================================================
     # Extract grid names from netCDF
@@ -73,13 +73,13 @@ def main(path='', grids_to_use=[], verify=False):
     for grid_file in grid_files:
         if config['grids_to_use']:
             if grid_file in config['grids_to_use']:
-                ds = xr.open_dataset(path_to_file_dir + grid_file)
+                ds = xr.open_dataset(path_to_file_dir / grid_file)
 
                 grid_name = ds.attrs['name']
                 grid_type = ds.attrs['type']
                 grids.append((grid_name, grid_type, grid_file))
         else:
-            ds = xr.open_dataset(path_to_file_dir + grid_file)
+            ds = xr.open_dataset(path_to_file_dir / grid_file)
 
             grid_name = ds.attrs['name']
             grid_type = ds.attrs['type']
@@ -102,7 +102,7 @@ def main(path='', grids_to_use=[], verify=False):
     # =====================================================
     for grid_name, grid_type, grid_file in grids:
 
-        grid_path = path_to_file_dir + grid_file
+        grid_path = path_to_file_dir / grid_file
         update_body = []
 
         if grid_name not in grids_in_solr:

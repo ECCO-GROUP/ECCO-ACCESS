@@ -2,8 +2,8 @@
 # PODAAC
 # =====================================================
 # PODAAC explicitly expects this date format
-start: "19800701T00:00:00Z" # yyyymmddThh:mm:ssZ
-end: "NOW" # yyyymmddThh:mm:ssZ for specific date or "NOW" for...now 
+start: "20210901T00:00:00Z" # yyyymmddThh:mm:ssZ
+end: "NOW" # yyyymmddThh:mm:ssZ for specific date or "NOW" for...now
 user: anonymous # does not change
 host: https://podaac.jpl.nasa.gov/ws/search/granule/?format=atom&pretty=false&itemsPerPage=300000 # does not change
 date_regex: "%Y-%m-%dT%H:%M:%SZ" # does not change

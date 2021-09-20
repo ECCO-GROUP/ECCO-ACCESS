@@ -1,39 +1,32 @@
-import importlib
 import itertools
 import logging
+import logging.config
 import os
-import sys
 from collections import defaultdict
 from multiprocessing import Pool
-from pathlib import Path
 
-import numpy as np
 import requests
-import xarray as xr
-import yaml
 
+from utils import solr_utils
+from grid_transformation.grid_transformation import run_locally_wrapper
+
+logs_path = 'ecco_pipeline/logs/'
+logging.config.fileConfig(f'{logs_path}/log.ini',
+                          disable_existing_loggers=False)
 log = logging.getLogger(__name__)
-log.setLevel(logging.ERROR)
 
 
-def get_remaining_transformations(config, granule_file_path, grid_transformation, solr_info, grids):
+def get_remaining_transformations(config, granule_file_path, grids):
     """
     Given a single granule, the function uses Solr to find all combinations of
     grids and fields that have yet to be transformed. It returns a dictionary
     where the keys are grids and the values are lists of fields.
     """
     dataset_name = config['ds_name']
-    if solr_info:
-        solr_host = solr_info['solr_url']
-        solr_collection_name = solr_info['solr_collection_name']
-    else:
-        solr_host = config['solr_host_local']
-        solr_collection_name = config['solr_collection_name']
 
     # Query for fields
     fq = ['type_s:field', f'dataset_s:{dataset_name}']
-    docs = grid_transformation.solr_query(
-        config, solr_host, fq, solr_collection_name)
+    docs = solr_utils.solr_query(fq)
     fields = [field_entry for field_entry in docs]
 
     # Cartesian product of grid/field combinations
@@ -42,8 +35,7 @@ def get_remaining_transformations(config, granule_file_path, grid_transformation
     # Query for existing transformations
     fq = [f'dataset_s:{dataset_name}', 'type_s:transformation',
           f'pre_transformation_file_path_s:"{granule_file_path}"']
-    docs = grid_transformation.solr_query(
-        config, solr_host, fq, solr_collection_name)
+    docs = solr_utils.solr_query(fq)
 
     # if a transformation entry exists for this granule, check to see if the
     # checksum of the harvested granule matches the checksum recorded in the
@@ -73,16 +65,14 @@ def get_remaining_transformations(config, granule_file_path, grid_transformation
                 # Query for harvested granule checksum
                 fq = [f'dataset_s:{dataset_name}', 'type_s:granule',
                       f'pre_transformation_file_path_s:"{granule_file_path}"']
-                harvested_checksum = grid_transformation.solr_query(config, solr_host, fq, solr_collection_name)[
-                    0]['checksum_s']
+                harvested_checksum = solr_utils.solr_query(fq)[0]['checksum_s']
 
                 origin_checksum = existing_transformations[(grid, field_name)]
 
                 # Query for existing transformation
                 fq = [f'dataset_s:{dataset_name}', 'type_s:transformation',
                       f'pre_transformation_file_path_s:"{granule_file_path}"']
-                transformation = grid_transformation.solr_query(
-                    config, solr_host, fq, solr_collection_name)[0]
+                transformation = solr_utils.solr_query(fq)[0]
 
                 # Triple if:
                 # 1. do we have a version entry,
@@ -113,7 +103,7 @@ def get_remaining_transformations(config, granule_file_path, grid_transformation
     return dict(grid_field_dict)
 
 
-def delete_mismatch_transformations(config, grid_transformation, solr_info):
+def delete_mismatch_transformations(config):
     """
     Function called when using the wipe_transformations pipeline argument. Queries
     Solr for all transformation entries for the current dataset and compares the
@@ -121,18 +111,14 @@ def delete_mismatch_transformations(config, grid_transformation, solr_info):
     function deletes the transformed file from disk and the entry from Solr.
     """
     dataset_name = config['ds_name']
-    if solr_info:
-        solr_host = solr_info['solr_url']
-        solr_collection_name = solr_info['solr_collection_name']
-    else:
-        solr_host = config['solr_host_local']
-        solr_collection_name = config['solr_collection_name']
+
+    solr_host = config['solr_host_local']
+    solr_collection_name = config['solr_collection_name']
     config_version = config['version']
 
     # Query for existing transformations
     fq = [f'dataset_s:{dataset_name}', 'type_s:transformation']
-    transformations = grid_transformation.solr_query(
-        config, solr_host, fq, solr_collection_name)
+    transformations = solr_utils.solr_query(fq)
 
     for transformation in transformations:
         if transformation['transformation_version_f'] != config_version:
@@ -145,12 +131,10 @@ def delete_mismatch_transformations(config, grid_transformation, solr_info):
             requests.post(url, json={'delete': [transformation['id']]})
 
 
-def multiprocess_transformation(granule, config, output_path, LOG_TIME, solr_info, grids):
+def multiprocess_transformation(granule, config, output_path, grids):
     """
     Callable function that performs the actual transformation on a granule.
     """
-    import grid_transformation
-    grid_transformation = importlib.reload(grid_transformation)
 
     # f is file path to granule from solr
     f = granule.get('pre_transformation_file_path_s', '')
@@ -161,13 +145,12 @@ def multiprocess_transformation(granule, config, output_path, LOG_TIME, solr_inf
         return ('', '')
 
     # Get transformations to be completed for this file
-    remaining_transformations = get_remaining_transformations(
-        config, f, grid_transformation, solr_info, grids)
+    remaining_transformations = get_remaining_transformations(config, f, grids)
 
     # Perform remaining transformations
     if remaining_transformations:
-        grids_updated, year = grid_transformation.run_locally_wrapper(
-            f, remaining_transformations, output_path, config, LOG_TIME, verbose=False, solr_info=solr_info)
+        grids_updated, year = run_locally_wrapper(
+            f, remaining_transformations, output_path, config, verbose=False)
 
         return (grids_updated, year)
     else:
@@ -176,36 +159,20 @@ def multiprocess_transformation(granule, config, output_path, LOG_TIME, solr_inf
         return ('', '')
 
 
-def main(config, output_path, LOG_TIME, multiprocessing=False, user_cpus=1, wipe=False, solr_info={}, grids_to_use=[]):
+def main(config, output_path, multiprocessing=False, user_cpus=1, wipe=False, grids_to_use=[]):
     """
     This function performs all remaining grid/field transformations for all harvested
     granules for a dataset. It also makes use of multiprocessing to perform multiple
     transformations at the same time. After all transformations have been attempted,
     the Solr dataset entry is updated with additional metadata.
     """
-    # Set file handler for log using output_path
-    formatter = logging.Formatter('%(asctime)s: %(message)s')
 
-    logs_path = Path(output_path / f'logs/{LOG_TIME}/')
-    logs_path.mkdir(parents=True, exist_ok=True)
-    file_handler = logging.FileHandler(logs_path / 'transformation_local.log')
-    file_handler.setLevel(logging.DEBUG)
-    file_handler.setFormatter(formatter)
-
-    log.addHandler(file_handler)
-
-    import grid_transformation
-
-    # grid_transformation = importlib.reload(grid_transformation)
+    # import grid_transformation
 
     dataset_name = config['ds_name']
 
-    if solr_info:
-        solr_host = solr_info['solr_url']
-        solr_collection_name = solr_info['solr_collection_name']
-    else:
-        solr_host = config['solr_host_local']
-        solr_collection_name = config['solr_collection_name']
+    solr_host = config['solr_host_local']
+    solr_collection_name = config['solr_collection_name']
 
     transformation_version = config['version']
 
@@ -215,21 +182,19 @@ def main(config, output_path, LOG_TIME, multiprocessing=False, user_cpus=1, wipe
     if wipe:
         print(
             'Removing transformations with out of sync version numbers from Solr and disk')
-        delete_mismatch_transformations(config, grid_transformation, solr_info)
+        delete_mismatch_transformations(config)
 
     # Get all harvested granules for this dataset
     fq = [f'dataset_s:{dataset_name}',
           'type_s:granule', 'harvest_success_b:true']
-    harvested_granules = grid_transformation.solr_query(
-        config, solr_host, fq, solr_collection_name)
+    harvested_granules = solr_utils.solr_query(fq)
 
     years_updated = defaultdict(list)
 
     # Query for grids
     if not grids_to_use:
         fq = ['type_s:grid']
-        docs = grid_transformation.solr_query(
-            config, solr_host, fq, solr_collection_name)
+        docs = solr_utils.solr_query(fq)
         grids = [doc['grid_name_s'] for doc in docs]
     else:
         grids = grids_to_use
@@ -238,8 +203,7 @@ def main(config, output_path, LOG_TIME, multiprocessing=False, user_cpus=1, wipe
         # PRE GENERATE FACTORS TO ACCOMODATE MULTIPROCESSING
         # Query for dataset metadata
         fq = [f'dataset_s:{dataset_name}', 'type_s:dataset']
-        dataset_metadata = grid_transformation.solr_query(
-            config, solr_host, fq, solr_collection_name)[0]
+        dataset_metadata = solr_utils.solr_query(fq)[0]
 
         # Precompute grid factors using one dataset data file
         # (or one from each hemisphere, if data is hemispherical) before running main loop
@@ -285,10 +249,10 @@ def main(config, output_path, LOG_TIME, multiprocessing=False, user_cpus=1, wipe
 
             # Get transformations to be completed for this file
             remaining_transformations = get_remaining_transformations(
-                config, file_path, grid_transformation, solr_info, grids)
+                config, file_path, grids)
 
-            grids_updated, year = grid_transformation.run_locally_wrapper(
-                file_path, remaining_transformations, output_path, config, LOG_TIME, verbose=True, solr_info=solr_info)
+            grids_updated, year = run_locally_wrapper(
+                file_path, remaining_transformations, output_path, config, verbose=True)
 
             for grid in grids_updated:
                 if year not in years_updated[grid]:
@@ -297,7 +261,7 @@ def main(config, output_path, LOG_TIME, multiprocessing=False, user_cpus=1, wipe
 
         # BEGIN MULTIPROCESSING
         # Create list of tuples of function arguments (necessary for using pool.starmap)
-        multiprocess_tuples = [(granule, config, output_path, LOG_TIME, solr_info, grids)
+        multiprocess_tuples = [(granule, config, output_path, grids)
                                for granule in harvested_granules]
 
         grid_years_list = []
@@ -331,12 +295,12 @@ def main(config, output_path, LOG_TIME, multiprocessing=False, user_cpus=1, wipe
 
             # Get transformations to be completed for this file
             remaining_transformations = get_remaining_transformations(
-                config, f, grid_transformation, solr_info, grids)
+                config, f, grids)
 
             # Perform remaining transformations
             if remaining_transformations:
-                grids_updated, year = grid_transformation.run_locally_wrapper(
-                    f, remaining_transformations, output_path, config, LOG_TIME, verbose=True)
+                grids_updated, year = run_locally_wrapper(
+                    f, remaining_transformations, output_path, config, verbose=True)
 
                 for grid in grids_updated:
                     if grid in years_updated.keys():
@@ -350,20 +314,17 @@ def main(config, output_path, LOG_TIME, multiprocessing=False, user_cpus=1, wipe
 
     # Query Solr for dataset metadata
     fq = [f'dataset_s:{dataset_name}', 'type_s:dataset']
-    dataset_metadata = grid_transformation.solr_query(
-        config, solr_host, fq, solr_collection_name)[0]
+    dataset_metadata = solr_utils.solr_query(fq)[0]
 
     # Query Solr for successful transformation documents
     fq = [f'dataset_s:{dataset_name}',
           'type_s:transformation', 'success_b:true']
-    successful_transformations = grid_transformation.solr_query(
-        config, solr_host, fq, solr_collection_name)
+    successful_transformations = solr_utils.solr_query(fq)
 
     # Query Solr for failed transformation documents
     fq = [f'dataset_s:{dataset_name}',
           'type_s:transformation', 'success_b:false']
-    failed_transformations = grid_transformation.solr_query(
-        config, solr_host, fq, solr_collection_name)
+    failed_transformations = solr_utils.solr_query(fq)
 
     transformation_status = f'All transformations successful'
 
@@ -395,8 +356,7 @@ def main(config, output_path, LOG_TIME, multiprocessing=False, user_cpus=1, wipe
 
         update_body[0][solr_grid_years] = {"set": existing_years}
 
-    r = grid_transformation.solr_update(
-        config, solr_host, update_body, solr_collection_name, r=True)
+    r = solr_utils.solr_update(update_body, r=True)
 
     if r.status_code == 200:
         print(
