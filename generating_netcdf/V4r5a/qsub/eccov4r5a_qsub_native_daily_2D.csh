@@ -1,7 +1,8 @@
 #PBS -S /bin/tcsh
 #PBS -W group_list=g26113
 ##PBS -l select=40:ncpus=4:model=bro
-#PBS -l select=1:ncpus=4:model=bro
+##PBS -l select=1:ncpus=4:model=bro
+#PBS -l select=24:ncpus=4:model=bro
 #PBS -l walltime=02:00:00
 #PBS -q devel
 
@@ -25,7 +26,8 @@ echo "set cpus"
 # for 2D fields totcpus = 312 (26x12)
 #set totcpus = 312
 #set totcpus = 12
-set totcpus = 4 
+#set totcpus = 4 
+set totcpus = 96
 
 echo "Total CPUS ${totcpus}"
 
@@ -37,7 +39,10 @@ echo "Total CPUS ${totcpus}"
 #set cpuspernode = 12
 
 # for 3D fields cpuspernode = 4
-set cpuspernode = 4
+#set cpuspernode = 4
+
+# for 2D fields cpuspernode = 12
+set cpuspernode = 12
 
 echo "CPUS per node ${cpuspernode}"
 
@@ -69,11 +74,13 @@ echo "CPUS per node ${cpuspernode}"
 rm pbs_nodefile
 cat "$PBS_NODEFILE" > pbs_nodefile
 
-set first_grouping  = 17
+set first_grouping  = 1
+#set first_grouping  = 17
 echo "first_grouping ${first_grouping}"
 
 # end grouping (if one grouping, 1+cur_grouping)
-set last_grouping = 17
+set last_grouping = 1
+#set last_grouping = 17
 echo "last_grouping ${last_grouping}"
 
 set cpu_start = 0
@@ -86,7 +93,7 @@ echo "cpu_end ${cpu_end}"
 #set output_dir = '/nobackupp2/ifenty/podaac/matt_wei_20210603'
 set ecco_invocation_dir = '/swbuild/owang/github/ECCO-GROUP/ECCO-ACCESS/generating_netcdf/V4r5a/qsub'
 set output_dir = '/nobackupp11/owang/podaac/matt_wei_20210727'
-set output_freq_code = 'AVG_MON'
+set output_freq_code = 'AVG_DAY'
 set product_type = 'native'
 
 echo "output_dir ${output_dir}"

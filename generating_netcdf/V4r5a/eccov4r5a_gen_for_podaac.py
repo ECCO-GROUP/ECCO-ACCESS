@@ -4,9 +4,14 @@ Created on Fri May 10 17:27:09 2019
 @author: ifenty"""
 
 import sys
-sys.path.append('/home5/ifenty/git_repos_others/ECCO-GROUP/ECCO-ACCESS/ecco-cloud-utils')
-#sys.path.append('/home/ifenty/git_repos_others/ECCO-GROUP/ECCOv4-py')
-sys.path.append('/home5/ifenty/git_repos_others/ECCO-GROUP/ECCOv4-py')
+#sys.path.append('/home5/ifenty/git_repos_others/ECCO-GROUP/ECCO-ACCESS/ecco-cloud-utils')
+##sys.path.append('/home/ifenty/git_repos_others/ECCO-GROUP/ECCOv4-py')
+#sys.path.append('/home5/ifenty/git_repos_others/ECCO-GROUP/ECCOv4-py')
+
+sys.path.append('/swbuild/owang/github/ECCO-GROUP/ECCO-ACCESS/ecco-cloud-utils')
+sys.path.append('/swbuild/owang/github/ECCO-GROUP/ECCOv4-py')
+
+
 
 from importlib import reload
 import ecco_v4_py as ecco
@@ -291,7 +296,7 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
     max_k = 50
 
     ecco_start_time = np.datetime64('1992-01-01T12:00:00')
-    ecco_end_time   = np.datetime64('2017-12-31T12:00:00')
+    ecco_end_time   = np.datetime64('2019-12-31T12:00:00')
 
     # Define tail for dataset description (summary)
     dataset_description_tail_native = ' on the native Lat-Lon-Cap 90 (LLC90) model grid from the ECCO Version 4 release 5a (V4r5a) ocean and sea-ice state estimate.'
@@ -300,19 +305,19 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
     filename_tail_latlon = '_ECCO_V4r5a_latlon_0p50deg.nc'
     filename_tail_native = '_ECCO_V4r5a_native_llc0090.nc'
 
-    metadata_fields = ['ECCOV4r5a_global_metadata_for_all_datasets',
-                       'ECCOV4r5a_global_metadata_for_latlon_datasets',
-                       'ECCOV4r5a_global_metadata_for_native_datasets',
-                       'ECCOV4r5a_coordinate_metadata_for_1D_datasets',
-                       'ECCOV4r5a_coordinate_metadata_for_latlon_datasets',
-                       'ECCOV4r5a_coordinate_metadata_for_native_datasets',
-                       'ECCOV4r5a_geometry_metadata_for_latlon_datasets',
-                       'ECCOV4r5a_geometry_metadata_for_native_datasets',
-                       'ECCOV4r5a_groupings_for_1D_datasets',
-                       'ECCOV4r5a_groupings_for_latlon_datasets',
-                       'ECCOV4r5a_groupings_for_native_datasets',
-                       'ECCOV4r5a_variable_metadata',
-                       'ECCOV4r5a_variable_metadata_for_latlon_datasets']
+    metadata_fields = ['ECCOv4r5a_global_metadata_for_all_datasets',
+                       'ECCOv4r5a_global_metadata_for_latlon_datasets',
+                       'ECCOv4r5a_global_metadata_for_native_datasets',
+                       'ECCOv4r5a_coordinate_metadata_for_1D_datasets',
+                       'ECCOv4r5a_coordinate_metadata_for_latlon_datasets',
+                       'ECCOv4r5a_coordinate_metadata_for_native_datasets',
+                       'ECCOv4r5a_geometry_metadata_for_latlon_datasets',
+                       'ECCOv4r5a_geometry_metadata_for_native_datasets',
+                       'ECCOv4r5a_groupings_for_1D_datasets',
+                       'ECCOv4r5a_groupings_for_latlon_datasets',
+                       'ECCOv4r5a_groupings_for_native_datasets',
+                       'ECCOv4r5a_variable_metadata',
+                       'ECCOv4r5a_variable_metadata_for_latlon_datasets']
 
 
     #%% -- -program start
@@ -340,23 +345,23 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
 
 
     # metadata for different variables
-    global_metadata_for_all_datasets = metadata['ECCOV4r5a_global_metadata_for_all_datasets']
-    global_metadata_for_latlon_datasets = metadata['ECCOV4r5a_global_metadata_for_latlon_datasets']
-    global_metadata_for_native_datasets = metadata['ECCOV4r5a_global_metadata_for_native_datasets']
+    global_metadata_for_all_datasets = metadata['ECCOv4r5a_global_metadata_for_all_datasets']
+    global_metadata_for_latlon_datasets = metadata['ECCOv4r5a_global_metadata_for_latlon_datasets']
+    global_metadata_for_native_datasets = metadata['ECCOv4r5a_global_metadata_for_native_datasets']
 
-    coordinate_metadata_for_1D_datasets = metadata['ECCOV4r5a_coordinate_metadata_for_1D_datasets']
-    coordinate_metadata_for_latlon_datasets = metadata['ECCOV4r5a_coordinate_metadata_for_latlon_datasets']
-    coordinate_metadata_for_native_datasets = metadata['ECCOV4r5a_coordinate_metadata_for_native_datasets']
+    coordinate_metadata_for_1D_datasets = metadata['ECCOv4r5a_coordinate_metadata_for_1D_datasets']
+    coordinate_metadata_for_latlon_datasets = metadata['ECCOv4r5a_coordinate_metadata_for_latlon_datasets']
+    coordinate_metadata_for_native_datasets = metadata['ECCOv4r5a_coordinate_metadata_for_native_datasets']
 
-    geometry_metadata_for_latlon_datasets = metadata['ECCOV4r5a_geometry_metadata_for_latlon_datasets']
-    geometry_metadata_for_native_datasets = metadata['ECCOV4r5a_geometry_metadata_for_native_datasets']
+    geometry_metadata_for_latlon_datasets = metadata['ECCOv4r5a_geometry_metadata_for_latlon_datasets']
+    geometry_metadata_for_native_datasets = metadata['ECCOv4r5a_geometry_metadata_for_native_datasets']
 
-    groupings_for_1D_datasets = metadata['ECCOV4r5a_groupings_for_1D_datasets']
-    groupings_for_latlon_datasets = metadata['ECCOV4r5a_groupings_for_latlon_datasets']
-    groupings_for_native_datasets = metadata['ECCOV4r5a_groupings_for_native_datasets']
+    groupings_for_1D_datasets = metadata['ECCOv4r5a_groupings_for_1D_datasets']
+    groupings_for_latlon_datasets = metadata['ECCOv4r5a_groupings_for_latlon_datasets']
+    groupings_for_native_datasets = metadata['ECCOv4r5a_groupings_for_native_datasets']
 
-    variable_metadata_latlon = metadata['ECCOV4r5a_variable_metadata_for_latlon_datasets']
-    variable_metadata_default = metadata['ECCOV4r5a_variable_metadata']
+    variable_metadata_latlon = metadata['ECCOv4r5a_variable_metadata_for_latlon_datasets']
+    variable_metadata_default = metadata['ECCOv4r5a_variable_metadata']
 
     variable_metadata_native = variable_metadata_default + geometry_metadata_for_native_datasets
 
@@ -646,6 +651,8 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
 
     # load files
     field_paths = np.sort(list(mds_diags_root_dir.glob('*' + period_suffix + '*')))
+    print('ZZZ')
+    print(field_paths)
 
     ## load variable file and directory names
     print ('...number of subdirectories found ', len(field_paths))
@@ -686,7 +693,7 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
 
     # find directories with variables
     var_directories = dict()
-
+    print('field_paths: ',field_paths)
     for var in vars_to_load:
         var_match =  "".join([var, "_", period_suffix])
         num_matching_dirs = 0
@@ -909,7 +916,6 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
 
                 elif product_type == 'native':
                     short_mds_name = mds_file.name.split('.')[0]
-
                     F_DS = \
                         ecco.load_ecco_vars_from_mds(mds_var_dir,\
                                                      mds_grid_dir = ecco_grid_dir_mds, \
@@ -1048,6 +1054,9 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
             ## merge the data arrays to make one DATASET
             print('\n... merging F_DS_vars')
             G = xr.merge((F_DS_vars))
+
+            # only output tile 7
+            G = G.isel(tile=[7])
 
             # ADD VARIABLE SPECIFIC METADATA TO VARIABLE ATTRIBUTES (DATA ARRAYS)
             print('\n... adding metadata specific to the variable')
@@ -1341,10 +1350,11 @@ if __name__ == "__main__":
 
 
     # local testing
-    if 1 ==1:
+    if 1 !=1:
         #%%
 #        output_dir_base=Path('/home/ifenty/tmp/v4r5a_nc_output_20210603')
-        output_dir_base=Path('/nobackupp2/ifenty/podaac/matt_wei_20210603/native')
+        #output_dir_base=Path('/nobackupp2/ifenty/podaac/matt_wei_20210603/native')
+        output_dir_base=Path('/nobackupp11/owang/podaac/matt_wei_20210727/native')
         output_freq_code='AVG_MON'
         grouping_to_process=0
         product_type='native'
@@ -1358,18 +1368,21 @@ if __name__ == "__main__":
     #sys.exit()
     reload(ecco)
 
-    mapping_factors_dir = Path('/home/ifenty/tmp/ecco-v4-podaac-mapping-factors')
+    #mapping_factors_dir = Path('/home/ifenty/tmp/ecco-v4-podaac-mapping-factors')
+    mapping_factors_dir = Path('/nobackupp11/owang/tmp/ecco-v4-podaac-mapping-factors')
     #output_dir_base = Path('/home/ifenty/tmp/V4r5a_nc_output_20201223_native')
 
     #diags_root = Path('/home/ifenty/ian1/ifenty/ECCOv4/binary_output/diags_all')
-    diags_root = Path('/nobackupp2/ifenty/ECCO_V4r5a_Ou')
+    #diags_root = Path('/nobackupp2/ifenty/ECCO_V4r5a_Ou')
+    diags_root = Path('/nobackupp11/owang/runs/V4r5/59l4h/iter24/diags/')
 
     ## METADATA
-    metadata_json_dir = Path('/home5/ifenty/git_repos_others/ECCO-GROUP/ECCO-ACCESS/metadata/ECCOv4r5_alpha_metadata_json')
-    podaac_dir = Path('/home/ifenty/git_repos_others/ecco-data-pub/metadata')
+    metadata_json_dir = Path('/swbuild/owang/github/ECCO-GROUP/ECCO-ACCESS/metadata/ECCOv4r5_alpha_metadata_json')
+    #podaac_dir = Path('/home/ifenty/git_repos_others/ecco-data-pub/metadata')
+    podaac_dir = Path('/swbuild/owang/github/ecco-data-pub/metadata')
 
-    ecco_grid_dir = Path('/home/ifenty/data/grids/grid_ECCOV4r5a')
-    ecco_grid_dir_mds = Path('/home/ifenty/data/grids/grid_ECCOV4r5a')
+    ecco_grid_dir = Path('/nobackup/owang/runs/input/grid/V4r5/nctiles_grid')
+    ecco_grid_dir_mds = Path('/nobackup/owang/runs/input/grid/V4r5')
 
     ## PODAAC fields
     ecco_grid_filename = 'ECCO_V4r5a_llc90_grid_geometry.nc'
