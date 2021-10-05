@@ -1,6 +1,3 @@
-solr_host: http://localhost:8983/solr/
-solr_collection_name: ecco_datasets
-
 grids_to_use:
   - ECCO_llc90_demo.nc
   - ECCO_llc270_demo.nc

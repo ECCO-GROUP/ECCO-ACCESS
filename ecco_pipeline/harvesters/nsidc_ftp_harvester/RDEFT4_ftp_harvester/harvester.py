@@ -159,7 +159,6 @@ def cmr_search(short_name, version, time_start, time_end,
                                         time_start=time_start, time_end=time_end,
                                         bounding_box=bounding_box,
                                         polygon=polygon, filename_filter=filename_filter)
-
     cmr_scroll_id = None
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
@@ -224,7 +223,7 @@ def seaice_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=False
     data_time_scale = config['data_time_scale']
 
     if end_time == 'NOW':
-        end_time = datetime.utcnow().stfrtime("%Y%m%dT%H:%M:%SZ")
+        end_time = datetime.utcnow().strftime(date_regex)
 
     target_bucket_name = config['target_bucket_name']
     target_dir = f'{output_path}/{dataset_name}/harvested_granules/'
@@ -244,7 +243,7 @@ def seaice_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=False
     # Code to import ecco utils locally...
     # =====================================================
     generalized_functions_path = Path(
-        f'{Path(__file__).resolve().parents[5]}/ecco-cloud-utils/')
+        f'{Path(__file__).resolve().parents[4]}/ecco-cloud-utils/')
     sys.path.append(str(generalized_functions_path))
     import ecco_cloud_utils as ea  # pylint: disable=import-error
 

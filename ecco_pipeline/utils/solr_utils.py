@@ -3,7 +3,7 @@ import requests
 from datetime import datetime
 
 SOLR_HOST = 'http://localhost:8983/solr/'
-SOLR_COLLECTION = 'ecco_datasets'
+solr_collection = 'ecco_datasets'
 
 
 def solr_query(fq):
@@ -11,21 +11,31 @@ def solr_query(fq):
                'fq': fq,
                'rows': 300000}
 
-    url = f'{SOLR_HOST}{SOLR_COLLECTION}/select?'
+    url = f'{SOLR_HOST}{solr_collection}/select?'
     response = requests.get(url, params=getVars)
+    print(response.text)
     return response.json()['response']['docs']
 
 
 def solr_update(update_body, r=False):
-    url = f'{SOLR_HOST}{SOLR_COLLECTION}/update?commit=true'
+    url = f'{SOLR_HOST}{solr_collection}/update?commit=true'
     response = requests.post(url, json=update_body)
     if r:
         return response
 
 
 def ping_solr():
-    requests.get('http://localhost:8983/solr/ecco_datasets/admin/ping')
+    url = f'{SOLR_HOST}{solr_collection}/admin/ping'
+    requests.get(url)
     return
+
+
+def core_check():
+    url = f'{SOLR_HOST}admin/cores?action=STATUS&core={solr_collection}'
+    response = requests.get(url).json()
+    if response['status'][solr_collection].keys():
+        return True
+    return False
 
 
 def check_grids():
@@ -89,12 +99,12 @@ def clean_solr(config, grids_to_use):
 
     # Remove entries earlier than config start date
     fq = f'dataset_s:{dataset_name} AND date_s:[* TO {config_start}}}'
-    url = f'{SOLR_HOST}{SOLR_COLLECTION}/update?commit=true'
+    url = f'{SOLR_HOST}{solr_collection}/update?commit=true'
     requests.post(url, json={'delete': {'query': fq}})
 
     # Remove entries later than config end date
     fq = f'dataset_s:{dataset_name} AND date_s:{{{config_end} TO *]'
-    url = f'{SOLR_HOST}{SOLR_COLLECTION}/update?commit=true'
+    url = f'{SOLR_HOST}{solr_collection}/update?commit=true'
     requests.post(url, json={'delete': {'query': fq}})
 
     # Add start and end years to '{grid}_years_updated' field in dataset entry

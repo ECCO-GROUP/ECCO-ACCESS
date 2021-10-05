@@ -4,7 +4,7 @@
 # Data is recorded from September - April
 # Data files are named with the end date of the rolling average
 start: "1980-01-01T00:00:00Z"
-end: "NOW" # yyyymmddThh:mm:ssZ for specific date or "NOW" for...now 
+end: "NOW" # yyyymmddThh:mm:ssZ for specific date or "NOW" for...now
 date_regex: "%Y-%m-%dT%H:%M:%SZ"
 regex: '\d{8}'
 

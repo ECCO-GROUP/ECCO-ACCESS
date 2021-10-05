@@ -230,14 +230,16 @@ def osisaf_ftp_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=F
                         if not os.path.exists(local_fp):
                             print(f' - Downloading {newfile} to {local_fp}')
                             with open(local_fp, 'wb') as f:
-                                ftp.retrbinary('RETR '+url, f.write)
+                                ftp.retrbinary(
+                                    'RETR '+url, f.write, blocksize=262144)
 
                         # If file exists, but is out of date, download it
                         elif datetime.fromtimestamp(os.path.getmtime(local_fp)) <= mod_date_time:
                             print(
                                 f' - Updating {newfile} and downloading to {local_fp}')
                             with open(local_fp, 'wb') as f:
-                                ftp.retrbinary('RETR '+url, f.write)
+                                ftp.retrbinary(
+                                    'RETR '+url, f.write, blocksize=262144)
 
                         else:
                             print(

@@ -19,8 +19,9 @@ import yaml
 
 
 RUN_TIME = datetime.now()
+CONFIG_PATH = Path(f'{Path(__file__).resolve().parents[0]}/dataset_configs/')
+ds_status = defaultdict(list)
 
-# Set up logs, paths, and verify Solr is running
 logs_path = Path('ecco_pipeline/logs/')
 logging.config.fileConfig(f'{logs_path}/log.ini',
                           disable_existing_loggers=False)
@@ -28,25 +29,6 @@ log = logging.getLogger(__name__)
 
 logging.getLogger("requests").setLevel(logging.WARNING)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
-
-# Hardcoded output directory path for pipeline files
-# output_dir = Path('/net/b230-cdot2-svm3/ecco_nfs_1/marlis/pipeline_output')
-output_dir = Path('/Users/marlis/Developer/ECCO ACCESS/ecco_output')
-if not Path.is_dir(output_dir):
-    log.fatal('Missing output directory. Please fill in. Exiting.')
-    exit()
-print(f'\nUsing output directory: {output_dir}')
-
-CONFIG_PATH = Path(f'{Path(__file__).resolve().parents[0]}/dataset_configs/')
-
-ds_status = defaultdict(list)
-
-# Verify solr is running
-try:
-    solr_utils.ping_solr()
-except requests.ConnectionError:
-    log.fatal('Solr is not currently running! Start Solr and try again.')
-    exit()
 
 
 def create_parser():
@@ -69,6 +51,9 @@ def create_parser():
     parser.add_argument('--wipe_transformations', default=False, action='store_true',
                         help='deletes transformations with version number different than what is \
                             currently in transformation_config')
+
+    parser.add_argument('--dev_solr', default=False, nargs=1,
+                        help='Uses provided Solr collection name for all Solr entries. Creates core if collection name doesnt exist')
 
     parser.add_argument('--grids_to_use', default=False, nargs='*',
                         help='Names of grids to use during the pipeline')
@@ -204,15 +189,37 @@ if __name__ == '__main__':
     parser = create_parser()
     args = parser.parse_args()
 
+    # Hardcoded output directory path for pipeline files
+    output_dir = Path('/ecco_nfs_1/shared/ECCO-pipeline/pipeline_output')
+
+    if not Path.is_dir(output_dir):
+        print('Missing or invalid output directory. Exiting.')
+        log.fatal('Missing or invalid output directory. Exiting.')
+        exit()
+    print(f'\nUsing output directory: {output_dir}')
+
     print('\n=================================================')
     print('========== ECCO PREPROCESSING PIPELINE ==========')
     print('=================================================')
 
-    # path to harvester and preprocessing folders
-    pipeline_path = Path(__file__).resolve()
+    # ------------------- Dev Solr -------------------
+    if args.dev_solr:
+        solr_utils.solr_collection = args.dev_solr[0]
 
-    path_to_harvesters = Path(f'{pipeline_path.parents[1]}/harvesters')
-    path_to_preprocessing = Path(f'{pipeline_path.parents[1]}/preprocessing')
+        # Check if core exists
+        if not solr_utils.core_check():
+            print(
+                f'Solr core {solr_utils.solr_collection} does not exist. Add a core using "bin/solr create -c {{collection_name}}".')
+            log.fatal(
+                f'Solr core {solr_utils.solr_collection} does not exist. Add a core using "bin/solr create -c {{collection_name}}".')
+            exit()
+    # Verify solr is running
+    try:
+        solr_utils.ping_solr()
+    except requests.ConnectionError:
+        print('\nSolr is not currently running! Start Solr and try again.\n')
+        log.fatal('Solr is not currently running! Start Solr and try again.')
+        exit()
 
     # ------------------- Harvested Entry Validation -------------------
     if args.harvested_entry_validation:
@@ -231,6 +238,7 @@ if __name__ == '__main__':
         try:
             print(f'\n\033[93mRunning grids_to_solr\033[0m')
             print('=========================================================')
+            grids_not_in_solr = []
             try:
                 grids_not_in_solr = grids_to_solr.main(
                     grids_to_use, verify_grids)
