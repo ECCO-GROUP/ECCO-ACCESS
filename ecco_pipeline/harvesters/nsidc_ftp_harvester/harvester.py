@@ -47,7 +47,7 @@ def nsidc_ftp_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=Fa
     ddir = config['ddir']
 
     if end_time == 'NOW':
-        end_time = datetime.utcnow().stfrtime("%Y%m%dT%H:%M:%SZ")
+        end_time = datetime.utcnow().strftime("%Y%m%dT%H:%M:%SZ")
 
     target_dir = f'{output_path}/{dataset_name}/harvested_granules/'
     folder = f'/tmp/{dataset_name}/'

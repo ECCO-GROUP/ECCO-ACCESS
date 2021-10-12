@@ -190,7 +190,7 @@ if __name__ == '__main__':
 
     # Hardcoded output directory path for pipeline files
     output_dir = Path('/ecco_nfs_1/shared/ECCO-pipeline/pipeline_output')
-    output_dir = Path('/Users/marlis/Developer/ECCO ACCESS/ecco_output')
+    # output_dir = Path('/Users/marlis/Developer/ECCO ACCESS/ecco_output')
 
     if not Path.is_dir(output_dir):
         print('Missing or invalid output directory. Exiting.')
