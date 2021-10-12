@@ -14,7 +14,6 @@ from netCDF4 import default_fillvals  # pylint: disable=no-name-in-module
 from utils import file_utils, solr_utils
 
 np.warnings.filterwarnings('ignore')
-
 logs_path = 'ecco_pipeline/logs/'
 logging.config.fileConfig(f'{logs_path}/log.ini',
                           disable_existing_loggers=False)

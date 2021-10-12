@@ -203,7 +203,7 @@ def getdate(regex, fname):
     return date
 
 
-def seaice_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=False):
+def cmr_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=False):
     """
     Uses CMR search to find granules within date range given in harvester_config.yaml.
     If not on_aws, saves locally, else saves to s3 bucket.
@@ -296,10 +296,10 @@ def seaice_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=False
             descendants_docs[key] = doc
 
     # =====================================================
-    # Setup NSIDC RDEFT4 loop variables
+    # Setup EDSC loop variables
     # =====================================================
-    short_name = 'RDEFT4'
-    version = '1'
+    short_name = config['cmr_short_name']
+    version = config['cmr_version']
 
     item = {}
 

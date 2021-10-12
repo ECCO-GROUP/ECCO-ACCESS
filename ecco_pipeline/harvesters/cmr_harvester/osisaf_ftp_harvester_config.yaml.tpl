@@ -1,10 +1,10 @@
 # =====================================================
-# RDEFT4 NSIDC CMR
+# Seaice FTP
 # =====================================================
 start: "" # yyyymmddThh:mm:ssZ
 end: "" # yyyymmddThh:mm:ssZ
-user: "" # does not change
-host: "" # does not change
+user: anonymous # does not change
+host: osisaf.met.no # does not change
 regex: '\d{8}'
 date_regex: "%Y-%m-%dT%H:%M:%SZ" # does not change
 
@@ -12,6 +12,8 @@ date_regex: "%Y-%m-%dT%H:%M:%SZ" # does not change
 # Dataset
 # =====================================================
 ds_name: "" # Name for dataset
+ddir: "" #ex: archive/ice/conc/
+filename_filter: "" # string to match for filenames to download ex: polstere-100_multi
 aggregated: false # if data is available aggregated
 short_name: ""
 data_time_scale: "" # daily or monthly

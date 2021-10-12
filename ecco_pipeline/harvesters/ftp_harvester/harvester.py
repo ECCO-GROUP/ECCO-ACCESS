@@ -16,6 +16,11 @@ logging.config.fileConfig(f'{logs_path}/log.ini',
 log = logging.getLogger(__name__)
 
 
+def collect_granules():
+    all_granules = []
+    return all_granules
+
+
 def valid_date(e, config):
     file_date = file_utils.get_date(config['regex'], e)
 
@@ -53,7 +58,7 @@ def granule_update_check(docs, filename, mod_date_time, time_format):
     return False
 
 
-def osisaf_ftp_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=False):
+def ftp_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=False):
     """
     Pulls data files for OSISAF FTP id and date range given in harvester_config.yaml.
     If not on_aws, saves locally, else saves to s3 bucket.
@@ -138,12 +143,8 @@ def osisaf_ftp_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=F
     # =====================================================
     # OSISAF loop
     # =====================================================
-    try:
-        ftp = FTP(host)
-        ftp.login(config['user'])
-    except Exception as e:
-        log.exception(f'Harvesting failed. Unable to connect to FTP. {e}')
-        return 'Harvesting failed. Unable to connect to FTP.'
+    ftp = FTP(host)
+    ftp.login(config['user'])
     for year_dir in ftp.nlst(ddir):
         year = year_dir.split('/')[-1]
         if year < start_time[:4] or year > end_time[:4]:

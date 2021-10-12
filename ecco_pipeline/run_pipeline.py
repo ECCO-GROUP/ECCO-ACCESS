@@ -97,9 +97,8 @@ def run_harvester(datasets, output_dir, grids_to_use):
                 log.exception(
                     f'Harvester type missing from {ds} config. Exiting.')
                 exit()
-
-            if 'RDEFT4' in ds:
-                from harvesters.nsidc_ftp_harvester.RDEFT4_ftp_harvester import harvester_local
+            if harvester_type == 'cmr':
+                from harvesters.cmr_harvester import harvester_local
             elif harvester_type == 'podaac':
                 from harvesters.podaac_harvester import harvester_local
             elif harvester_type == 'osisaf_ftp':
@@ -191,6 +190,7 @@ if __name__ == '__main__':
 
     # Hardcoded output directory path for pipeline files
     output_dir = Path('/ecco_nfs_1/shared/ECCO-pipeline/pipeline_output')
+    output_dir = Path('/Users/marlis/Developer/ECCO ACCESS/ecco_output')
 
     if not Path.is_dir(output_dir):
         print('Missing or invalid output directory. Exiting.')
@@ -281,7 +281,8 @@ if __name__ == '__main__':
                 f'Unknown option entered, "{chosen_option}", please enter a valid option\n'
             )
     print(CONFIG_PATH)
-    datasets = [ds for ds in os.listdir(CONFIG_PATH) if ds != '.DS_Store']
+    datasets = [ds for ds in os.listdir(
+        CONFIG_PATH) if ds != '.DS_Store' and 'tpl' not in ds]
     datasets.sort()
 
     wipe = args.wipe_transformations

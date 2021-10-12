@@ -1,5 +1,5 @@
 # =====================================================
-# NSIDC - RDEFT4
+# CMR - RDEFT4
 # =====================================================
 # Data is recorded from September - April
 # Data files are named with the end date of the rolling average
@@ -7,12 +7,14 @@ start: "1980-01-01T00:00:00Z"
 end: "NOW" # yyyymmddThh:mm:ssZ for specific date or "NOW" for...now
 date_regex: "%Y-%m-%dT%H:%M:%SZ"
 regex: '\d{8}'
+cmr_short_name: "RDEFT4"
+cmr_version: "1"
 
 # =====================================================
 # Dataset
 # =====================================================
 ds_name: "seaice_conc_RDEFT4"
-harvester_type: "nsidc_ftp"
+harvester_type: "cmr"
 aggregated: false
 data_time_scale: "monthly"
 date_format: yyyymmdd

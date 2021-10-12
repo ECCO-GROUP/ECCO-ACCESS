@@ -118,8 +118,12 @@ def nsidc_ftp_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=Fa
     # =====================================================
     # Setup NSIDC loop variables
     # =====================================================
-    ftp = FTP(host)
-    ftp.login(config['user'])
+    try:
+        ftp = FTP(host)
+        ftp.login(config['user'])
+    except Exception as e:
+        log.exception(f'Harvesting failed. Unable to connect to FTP. {e}')
+        return 'Harvesting failed. Unable to connect to FTP.'
 
     start_time_dt = datetime.strptime(start_time, "%Y%m%dT%H:%M:%SZ")
     end_time_dt = datetime.strptime(end_time, "%Y%m%dT%H:%M:%SZ")

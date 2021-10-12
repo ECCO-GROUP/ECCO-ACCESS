@@ -1,7 +1,7 @@
 # =====================================================
 # Dataset
 # =====================================================
-ds_name: "obp_TELLUS_GRFO_L3_JPL_RL06_OCN_v03" # Name for dataset
+ds_name: "obp_TELLUS_GRFO_L3_JPL_RL06_OCN_v04" # Name for dataset
 version: 1.0 # Update this value if any changes are made to this file
 array_precision: float32
 remove_nan_days_from_data: False # Remove empty days from data when aggregating

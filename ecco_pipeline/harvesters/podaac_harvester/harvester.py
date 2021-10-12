@@ -161,9 +161,16 @@ def podaac_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=False
             updated = chk_time
         start = elem.find('time:start', namespace).text
         end = elem.find('time:end', namespace).text
-        url = elem.find('atom:link[@title="OPeNDAP URL"]',
-                        namespace).attrib['href'][:-5]
-
+        try:
+            url = elem.find('atom:link[@title="OPeNDAP URL"]',
+                            namespace).attrib['href'][:-5]
+        except:
+            # A few of the 1980s AVHRR granules are missing the OPeNDAP URL. We can
+            # generate it by using the http url.
+            url = elem.find('atom:link[@title="HTTP URL"]',
+                            namespace).attrib['href']
+            url = url.replace('podaac-tools.jpl.nasa.gov/drive/files',
+                              'podaac-opendap.jpl.nasa.gov/opendap')
         entry = {'title': title,
                  'updated': updated,
                  'start': start,

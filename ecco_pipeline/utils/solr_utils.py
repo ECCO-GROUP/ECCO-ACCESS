@@ -13,7 +13,6 @@ def solr_query(fq):
 
     url = f'{SOLR_HOST}{solr_collection}/select?'
     response = requests.get(url, params=getVars)
-    print(response.text)
     return response.json()['response']['docs']
 
 
