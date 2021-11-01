@@ -1,0 +1,53 @@
+# =====================================================
+# PODAAC
+# =====================================================
+# PODAAC explicitly expects this date format
+start: "19800101T00:00:01Z" # yyyymmddThh:mm:ssZ
+end: "NOW" # yyyymmddThh:mm:ssZ for specific date or "NOW" for...now 
+user: anonymous # does not change
+host: https://podaac.jpl.nasa.gov/ws/search/granule/?format=atom&pretty=false&itemsPerPage=300000 # does not change
+date_regex: "%Y-%m-%dT%H:%M:%SZ" # does not change
+
+# =====================================================
+# Dataset
+# =====================================================
+ds_name: "sla_MEaSUREs_JPL1812" # Name for dataset
+harvester_type: "podaac"
+podaac_id: "PODAAC-SLREF-CDRV2"
+aggregated: false # if data is available aggregated
+data_time_scale: "daily" # daily or monthly
+date_format: "yyyymmdd" # format of date in file name ex: yyyymmdd
+fields:
+  [
+    {
+      name: SLA,
+      long_name: Sea Level Anomaly Estimate,
+      standard_name: sea_surface_height_above_sea_level,
+      units: m,
+    },
+    {
+      name: SLA_ERR,
+      long_name: "Sea Level Anomaly Error Estimate",
+      standard_name: " ",
+      units: m,
+    },
+  ]
+
+# new_data_attrs:
+original_dataset_title: MEaSUREs Gridded Sea Surface Height Anomalies Version 1812
+original_dataset_short_name: SEA_SURFACE_HEIGHT_ALT_GRIDS_L4_2SATS_5DAY_6THDEG_V_JPL1812
+original_dataset_url: https://podaac.jpl.nasa.gov/dataset/SEA_SURFACE_HEIGHT_ALT_GRIDS_L4_2SATS_5DAY_6THDEG_V_JPL1812
+original_dataset_reference: " "
+original_dataset_doi: 10.5067/SLREF-CDRV2
+
+# =====================================================
+# Solr
+# =====================================================
+solr_host_local: http://localhost:8983/solr/ # doesn't change if following standard Solr setup
+solr_host_aws: http://ec2-3-16-187-19.us-east-2.compute.amazonaws.com:8983/solr/
+solr_collection_name: ecco_datasets # doesn't change
+
+# =====================================================
+# AWS
+# =====================================================
+target_bucket_name: ecco-preprocess

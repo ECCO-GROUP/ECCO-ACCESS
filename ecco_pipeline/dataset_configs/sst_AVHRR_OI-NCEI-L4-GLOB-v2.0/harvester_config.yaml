@@ -1,0 +1,53 @@
+# =====================================================
+# PODAAC
+# =====================================================
+# PODAAC explicitly expects this date format
+start: "19800101T00:00:00Z" # yyyymmddThh:mm:ssZ
+end: "NOW" # yyyymmddThh:mm:ssZ for specific date or "NOW" for...now 
+user: anonymous # does not change
+host: https://podaac.jpl.nasa.gov/ws/search/granule/?format=atom&pretty=false&itemsPerPage=300000 # does not change
+date_regex: "%Y-%m-%dT%H:%M:%SZ" # does not change
+
+# =====================================================
+# Dataset
+# =====================================================
+ds_name: "sst_AVHRR_OI-NCEI-L4-GLOB-v2.0" # Name for dataset
+harvester_type: "podaac"
+podaac_id: "PODAAC-GHAAO-4BC02"
+aggregated: false # if data is available aggregated
+data_time_scale: "daily" # daily or monthly
+date_format: "yyyymmdd" # format of date in file name ex: yyyymmdd
+fields:
+  [
+    {
+      name: analysed_sst,
+      long_name: analysed sea surface temperature,
+      standard_name: sea_surface_temperature,
+      units: kelvin,
+    },
+    {
+      name: analysis_error,
+      long_name: estimated error standard deviation of analysed_sst,
+      standard_name: " ",
+      units: kelvin,
+    },
+  ]
+
+# new_data_attrs:
+original_dataset_title: GHRSST Level 4 AVHRR_OI Global Blended Sea Surface Temperature Analysis (GDS version 2) from NCEI
+original_dataset_short_name: AVHRR_OI-NCEI-L4-GLOB-v2.0
+original_dataset_url: https://podaac.jpl.nasa.gov/dataset/AVHRR_OI-NCEI-L4-GLOB-v2.0
+original_dataset_reference: http://www.earth-syst-sci-data.net/8/165/2016/
+original_dataset_doi: 10.5067/GHAAO-4BC02
+
+# =====================================================
+# Solr
+# =====================================================
+solr_host_local: http://localhost:8983/solr/ # doesn't change if following standard Solr setup
+solr_host_aws: http://ec2-3-16-187-19.us-east-2.compute.amazonaws.com:8983/solr/
+solr_collection_name: ecco_datasets # doesn't change
+
+# =====================================================
+# AWS
+# =====================================================
+target_bucket_name: ecco-preprocess

@@ -1,6 +1,0 @@
-# Local
-# REMEMBER, REPLACE LOCAL PATHS SO THEY POINT TO YOUR /SRC/ DIRECTORY
-solr_host: http://localhost:8983/solr/
-solr_collection_name: ecco_datasets
-
-grids_to_use: ["2x2deg_demo.nc", "ECCO_llc90_demo.nc"]

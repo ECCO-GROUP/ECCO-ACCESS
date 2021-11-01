@@ -1,0 +1,4 @@
+grids_to_use:
+  - ECCO_llc90_demo.nc
+  - ECCO_llc270_demo.nc
+  - grid_tpose6_radius.nc
