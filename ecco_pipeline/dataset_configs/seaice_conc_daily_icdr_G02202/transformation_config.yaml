@@ -2,7 +2,7 @@
 # Dataset
 # =====================================================
 ds_name: "seaice_conc_daily_icdr_G02202" # Name for dataset
-version: 1.4 # Update this value if any changes are made to this file
+version: 1.5 # Update this value if any changes are made to this file
 array_precision: float32
 time_zone_included_with_time: False # Data time values have time zone
 extra_information: [] # Unique things to do for dataset

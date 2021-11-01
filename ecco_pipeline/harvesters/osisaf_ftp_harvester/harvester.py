@@ -153,8 +153,10 @@ def osisaf_ftp_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=F
             try:
                 files = []
                 ftp.dir(month_dir, files.append)
-                files = [
-                    e.split()[-1] for e in files if config["filename_filter"] in e and valid_date(e.split()[-1], config)]
+                files = [e.split()[-1] for e in files 
+                    if config["filename_filter"] in e and 
+                    valid_date(e.split()[-1], config) and
+                    '.nc' in e]
             except:
                 log.exception(
                     f'Error finding files at {month_dir}. Check harvester config.')

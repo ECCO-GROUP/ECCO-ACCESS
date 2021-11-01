@@ -19,8 +19,7 @@ aggregated: false # if data is available aggregated
 data_time_scale: "daily" # daily or monthly
 date_format: "yyyymmdd" # format of date in file name ex: yyyymmdd
 regions: ['north', 'south'] # regions data is split into ex: ['north', 'south']
-fields: [{ name: "ice_conc", long_name: "concentration of sea ice", standard_name: "sea_ice_area_fraction", units: "%" },
-{ name: "confidence_level", long_name: "confidence level", standard_name: " ", units: " " }]
+fields: [{ name: "ice_conc", long_name: "concentration of sea ice", standard_name: "sea_ice_area_fraction", units: "%" }, { name: "confidence_level", long_name: "confidence level", standard_name: " ", units: " " }]
 
 # new_data_attrs:
 original_dataset_title: "Global Sea Ice Concentration (SSMIS)"

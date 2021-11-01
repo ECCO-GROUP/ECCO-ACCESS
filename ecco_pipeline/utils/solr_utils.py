@@ -1,5 +1,6 @@
 import os
 import requests
+import time
 from datetime import datetime
 
 SOLR_HOST = 'http://localhost:8983/solr/'
@@ -12,7 +13,12 @@ def solr_query(fq):
                'rows': 300000}
 
     url = f'{SOLR_HOST}{solr_collection}/select?'
-    response = requests.get(url, params=getVars)
+    try:
+        response = requests.get(url, params=getVars, headers={'Connection': 'close'})
+    except:
+        time.sleep(5)
+        response = requests.get(url, params=getVars, headers={'Connection': 'close'})
+
     return response.json()['response']['docs']
 
 

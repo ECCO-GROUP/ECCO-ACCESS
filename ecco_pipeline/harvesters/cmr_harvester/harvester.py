@@ -243,7 +243,7 @@ def cmr_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=False):
     # Code to import ecco utils locally...
     # =====================================================
     generalized_functions_path = Path(
-        f'{Path(__file__).resolve().parents[4]}/ecco-cloud-utils/')
+        f'{Path(__file__).resolve().parents[3]}/ecco-cloud-utils/')
     sys.path.append(str(generalized_functions_path))
     import ecco_cloud_utils as ea  # pylint: disable=import-error
 
