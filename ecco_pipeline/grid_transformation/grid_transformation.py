@@ -267,7 +267,10 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config,
                 transform['dataset_s'] = dataset_name
                 transform['pre_transformation_file_path_s'] = source_file_path
                 if hemi:
-                    transform['hemisphere_s'] = hemi
+                    if hemi[0] == '_':
+                        transform['hemisphere_s'] = hemi[1:]
+                    else:
+                        transform['hemisphere_s'] = hemi
                 transform['origin_checksum_s'] = origin_checksum
                 transform['grid_name_s'] = grid_name
                 transform['field_s'] = field_name
