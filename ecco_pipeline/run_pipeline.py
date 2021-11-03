@@ -2,7 +2,6 @@ import argparse
 import logging
 import logging.config
 import os
-import re
 from collections import defaultdict
 from datetime import datetime
 from multiprocessing import cpu_count
@@ -13,7 +12,6 @@ from grid_transformation import grid_transformation_local
 from aggregation_by_year import aggregation_local
 from utils import solr_utils
 
-import numpy as np
 import requests
 import yaml
 
@@ -188,15 +186,20 @@ if __name__ == '__main__':
     parser = create_parser()
     args = parser.parse_args()
 
-    # Hardcoded output directory path for pipeline files
-    output_dir = Path('/ecco_nfs_1/shared/ECCO-pipeline/pipeline_output')
-    # output_dir = Path('/Users/marlis/Developer/ECCO ACCESS/ecco_output')
+    config_path = Path('./ECCO_PIPELINE/pipeline_config.yaml')
+    with open(config_path, 'r') as stream:
+        config = yaml.load(stream, yaml.Loader)
 
-    if not Path.is_dir(output_dir):
+    # Hardcoded output directory path for pipeline files
+    output_dir = Path(config['output_dir'])
+
+    if not Path.is_dir(output_dir) or not config['output_dir']:
         print('Missing or invalid output directory. Exiting.')
         log.fatal('Missing or invalid output directory. Exiting.')
         exit()
     print(f'\nUsing output directory: {output_dir}')
+    print(f'\nUsing Solr collection: {solr_utils.solr_collection}')
+
 
     print('\n=================================================')
     print('========== ECCO PREPROCESSING PIPELINE ==========')

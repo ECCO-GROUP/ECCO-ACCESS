@@ -1,10 +1,17 @@
 import os
-import requests
 import time
 from datetime import datetime
+from pathlib import Path
+
+import requests
+import yaml
+
+config_path = Path('./ECCO_PIPELINE/pipeline_config.yaml')
+with open(config_path, 'r') as stream:
+    config = yaml.load(stream, yaml.Loader)
 
 SOLR_HOST = 'http://localhost:8983/solr/'
-solr_collection = 'ecco_datasets'
+solr_collection = config['solr_collection']
 
 
 def solr_query(fq):

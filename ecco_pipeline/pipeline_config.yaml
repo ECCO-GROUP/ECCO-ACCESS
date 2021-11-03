@@ -1,0 +1,2 @@
+output_dir: '/Users/marlis/Developer/ECCO ACCESS/ecco_output'
+solr_collection: 'ecco_datasets'
