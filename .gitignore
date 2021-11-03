@@ -10,6 +10,8 @@
 # factors pickled files
 *_factors
 
+# pipeline config
+*pipeline_config.yaml
 # Editors
 .vscode/
 
