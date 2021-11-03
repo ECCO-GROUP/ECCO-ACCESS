@@ -186,10 +186,16 @@ if __name__ == '__main__':
     parser = create_parser()
     args = parser.parse_args()
 
-    config_path = Path('./ECCO_PIPELINE/pipeline_config.yaml')
-    with open(config_path, 'r') as stream:
-        config = yaml.load(stream, yaml.Loader)
-
+    try:
+        config_path = Path('./ecco_pipeline/pipeline_config.yaml')
+        with open(config_path, 'r') as stream:
+            config = yaml.load(stream, yaml.Loader)
+    except:
+        print('Unable to load pipeline config. Make sure pipeline_config.yaml \
+            has been created from template. Exiting.')
+        log.fatal('Unable to load pipeline config. Make sure pipeline_config.yaml \
+            has been created from template. Exiting.')
+        exit()
     # Hardcoded output directory path for pipeline files
     output_dir = Path(config['output_dir'])
 
