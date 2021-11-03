@@ -6,7 +6,7 @@ from pathlib import Path
 import requests
 import yaml
 
-config_path = Path('./ECCO_PIPELINE/pipeline_config.yaml')
+config_path = Path('./ecco_pipeline/pipeline_config.yaml')
 with open(config_path, 'r') as stream:
     config = yaml.load(stream, yaml.Loader)
 
