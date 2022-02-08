@@ -4,22 +4,15 @@ from datetime import datetime
 from pathlib import Path
 
 import requests
-import yaml
 
-config_path = Path('./ecco_pipeline/pipeline_config.yaml')
-with open(config_path, 'r') as stream:
-    config = yaml.load(stream, yaml.Loader)
-
-SOLR_HOST = 'http://localhost:8983/solr/'
-solr_collection = config['solr_collection']
-
+from conf.global_settings import SOLR_COLLECTION, SOLR_HOST
 
 def solr_query(fq):
     getVars = {'q': '*:*',
                'fq': fq,
                'rows': 300000}
 
-    url = f'{SOLR_HOST}{solr_collection}/select?'
+    url = f'{SOLR_HOST}{SOLR_COLLECTION}/select?'
     try:
         response = requests.get(url, params=getVars, headers={'Connection': 'close'})
     except:
@@ -30,22 +23,22 @@ def solr_query(fq):
 
 
 def solr_update(update_body, r=False):
-    url = f'{SOLR_HOST}{solr_collection}/update?commit=true'
+    url = f'{SOLR_HOST}{SOLR_COLLECTION}/update?commit=true'
     response = requests.post(url, json=update_body)
     if r:
         return response
 
 
 def ping_solr():
-    url = f'{SOLR_HOST}{solr_collection}/admin/ping'
+    url = f'{SOLR_HOST}{SOLR_COLLECTION}/admin/ping'
     requests.get(url)
     return
 
 
 def core_check():
-    url = f'{SOLR_HOST}admin/cores?action=STATUS&core={solr_collection}'
+    url = f'{SOLR_HOST}admin/cores?action=STATUS&core={SOLR_COLLECTION}'
     response = requests.get(url).json()
-    if response['status'][solr_collection].keys():
+    if response['status'][SOLR_COLLECTION].keys():
         return True
     return False
 
@@ -111,12 +104,12 @@ def clean_solr(config, grids_to_use):
 
     # Remove entries earlier than config start date
     fq = f'dataset_s:{dataset_name} AND date_s:[* TO {config_start}}}'
-    url = f'{SOLR_HOST}{solr_collection}/update?commit=true'
+    url = f'{SOLR_HOST}{SOLR_COLLECTION}/update?commit=true'
     requests.post(url, json={'delete': {'query': fq}})
 
     # Remove entries later than config end date
     fq = f'dataset_s:{dataset_name} AND date_s:{{{config_end} TO *]'
-    url = f'{SOLR_HOST}{solr_collection}/update?commit=true'
+    url = f'{SOLR_HOST}{SOLR_COLLECTION}/update?commit=true'
     requests.post(url, json={'delete': {'query': fq}})
 
     # Add start and end years to '{grid}_years_updated' field in dataset entry

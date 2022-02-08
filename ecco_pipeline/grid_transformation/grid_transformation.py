@@ -14,9 +14,8 @@ from netCDF4 import default_fillvals  # pylint: disable=no-name-in-module
 from utils import file_utils, solr_utils
 
 np.warnings.filterwarnings('ignore')
-logs_path = 'ecco_pipeline/logs/'
-logging.config.fileConfig(f'{logs_path}/log.ini',
-                          disable_existing_loggers=False)
+
+logging.config.fileConfig('logs/log.ini', disable_existing_loggers=False)
 log = logging.getLogger(__name__)
 
 
@@ -66,7 +65,7 @@ def run_locally(source_file_path, remaining_transformations, output_dir, config,
     # =====================================================
     file_name = source_file_path.split('/')[-1]
     dataset_name = config['ds_name']
-    transformation_version = config['version']
+    transformation_version = config['t_version']
 
     # Query Solr for dataset entry
     fq = [f'dataset_s:{dataset_name}', 'type_s:dataset']
@@ -450,7 +449,7 @@ def run_using_aws(s3, filename):
     target_bucket_name = config['target_bucket']
     output_suffix = config['aws_output_suffix']
     output_dir = f'{dataset_name}_transformed/'
-    transformation_version = config['version']
+    transformation_version = config['t_version']
 
     solr_host = config['solr_host_aws']
     solr_collection_name = config['solr_collection_name']
@@ -891,7 +890,7 @@ def run_in_any_env(model_grid, grid_name, grid_type, fields, factors, ds, record
         ds_meta['original_dataset_reference'] = original_dataset_metadata['original_dataset_reference_s']
         ds_meta['original_dataset_doi'] = original_dataset_metadata['original_dataset_doi_s']
         ds_meta['interpolated_grid_id'] = grid_name
-        ds_meta['transformation_version'] = config['version']
+        ds_meta['transformation_version'] = config['t_version']
         ds_meta['notes'] = config['notes']
         field_DS = field_DS.assign_attrs(ds_meta)
 

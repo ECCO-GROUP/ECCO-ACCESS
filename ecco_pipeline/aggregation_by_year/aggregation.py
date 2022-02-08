@@ -10,8 +10,7 @@ import xarray as xr
 from netCDF4 import default_fillvals  # pylint: disable=no-name-in-module
 from utils import solr_utils
 
-logs_path = 'ecco_pipeline/logs/'
-logging.config.fileConfig(f'{logs_path}/log.ini',
+logging.config.fileConfig('logs/log.ini',
                           disable_existing_loggers=False)
 log = logging.getLogger(__name__)
 np.warnings.filterwarnings('ignore')
@@ -86,7 +85,7 @@ def run_aggregation(output_dir, config, grids_to_use=[], s3=None):
     dataset_metadata = solr_utils.solr_query(fq)[0]
 
     aggregate_all_years = False
-    aggregation_version = str(config['version'])
+    aggregation_version = str(config['a_version'])
     if 'aggregation_version_s' in dataset_metadata.keys():
         existing_aggregation_version = dataset_metadata['aggregation_version_s']
         if existing_aggregation_version != aggregation_version:
@@ -319,7 +318,7 @@ def run_aggregation(output_dir, config, grids_to_use=[], s3=None):
                     (daily_DS_year), dim='time', combine_attrs='no_conflicts')
                 data_var = list(daily_DS_year_merged.keys())[0]
 
-                daily_DS_year_merged.attrs['aggregation_version'] = config['version']
+                daily_DS_year_merged.attrs['aggregation_version'] = config['a_version']
 
                 daily_DS_year_merged[data_var].attrs['valid_min'] = np.nanmin(
                     daily_DS_year_merged[data_var].values)

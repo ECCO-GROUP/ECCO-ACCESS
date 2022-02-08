@@ -3,10 +3,10 @@ import logging
 import logging.config
 import os
 from collections import defaultdict
-from datetime import datetime
 from multiprocessing import cpu_count
 from pathlib import Path
 
+from conf.global_settings import OUTPUT_DIR, SOLR_COLLECTION
 from grids_to_solr import grids_to_solr
 from grid_transformation import grid_transformation_local
 from aggregation_by_year import aggregation_local
@@ -15,21 +15,44 @@ from utils import solr_utils
 import requests
 import yaml
 
+# CONFIG_PATH = Path(f'{Path(__file__).resolve().parents[0]}/dataset_configs/')
+###########
+# Perform set up and verify system elements
+###########
 
-RUN_TIME = datetime.now()
-CONFIG_PATH = Path(f'{Path(__file__).resolve().parents[0]}/dataset_configs/')
-ds_status = defaultdict(list)
-
-logs_path = Path('ecco_pipeline/logs/')
-logging.config.fileConfig(f'{logs_path}/log.ini',
-                          disable_existing_loggers=False)
+logging.config.fileConfig('logs/log.ini', disable_existing_loggers=False)
 log = logging.getLogger(__name__)
 
+# Set package logging level to WARNING
 logging.getLogger("requests").setLevel(logging.WARNING)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 
+# Verify output directory is valid
+if not Path.is_dir(OUTPUT_DIR):
+    print('Missing output directory. Please fill in. Exiting.')
+    log.fatal('Missing output directory. Please fill in. Exiting.')
+    exit()
+print(f'\nUsing output directory: {OUTPUT_DIR}')
+print(f'\nUsing Solr collection: {SOLR_COLLECTION}')
+
+# Verify solr is running
+try:
+    solr_utils.ping_solr()
+except requests.ConnectionError:
+    print('\nSolr is not currently running! Start Solr and try again.\n')
+    log.fatal('Solr is not currently running! Start Solr and try again.')
+    exit()
+
+ds_status = defaultdict(list)
+
 
 def create_parser():
+    """
+    Creates command line argument parser
+
+    Returns:
+        parser (ArgumentParser): the ArgumentParser object
+    """
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--grids_to_solr', default=False, action='store_true',
@@ -84,9 +107,7 @@ def run_harvester(datasets, output_dir, grids_to_use):
             print(f'\033[93mRunning harvester for {ds}\033[0m')
             print('=========================================================')
 
-            config_path = Path(CONFIG_PATH / f'{ds}/harvester_config.yaml')
-
-            with open(config_path, 'r') as stream:
+            with open(Path(f'conf/ds_configs/{ds}.yaml'), 'r') as stream:
                 config = yaml.load(stream, yaml.Loader)
 
             try:
@@ -103,9 +124,11 @@ def run_harvester(datasets, output_dir, grids_to_use):
                 from harvesters.osisaf_ftp_harvester import harvester_local
             elif harvester_type == 'nsidc_ftp':
                 from harvesters.nsidc_ftp_harvester import harvester_local
+            elif harvester_type == 'ifremer_ftp':
+                from harvesters.ifremer_ftp_harvester import harvester_local
             else:
-                log.exception(
-                    f'{harvester_type} is not a supported harvester type.')
+                print(f'{harvester_type} is not a supported harvester type.')
+                log.exception(f'{harvester_type} is not a supported harvester type.')
                 exit()
 
             status = harvester_local.main(config, output_dir, grids_to_use)
@@ -186,27 +209,6 @@ if __name__ == '__main__':
     parser = create_parser()
     args = parser.parse_args()
 
-    try:
-        config_path = Path('./ecco_pipeline/pipeline_config.yaml')
-        with open(config_path, 'r') as stream:
-            config = yaml.load(stream, yaml.Loader)
-    except:
-        print('Unable to load pipeline config. Make sure pipeline_config.yaml \
-            has been created from template. Exiting.')
-        log.fatal('Unable to load pipeline config. Make sure pipeline_config.yaml \
-            has been created from template. Exiting.')
-        exit()
-    # Hardcoded output directory path for pipeline files
-    output_dir = Path(config['output_dir'])
-
-    if not Path.is_dir(output_dir) or not config['output_dir']:
-        print('Missing or invalid output directory. Exiting.')
-        log.fatal('Missing or invalid output directory. Exiting.')
-        exit()
-    print(f'\nUsing output directory: {output_dir}')
-    print(f'\nUsing Solr collection: {solr_utils.solr_collection}')
-
-
     print('\n=================================================')
     print('========== ECCO PREPROCESSING PIPELINE ==========')
     print('=================================================')
@@ -222,13 +224,6 @@ if __name__ == '__main__':
             log.fatal(
                 f'Solr core {solr_utils.solr_collection} does not exist. Add a core using "bin/solr create -c {{collection_name}}".')
             exit()
-    # Verify solr is running
-    try:
-        solr_utils.ping_solr()
-    except requests.ConnectionError:
-        print('\nSolr is not currently running! Start Solr and try again.\n')
-        log.fatal('Solr is not currently running! Start Solr and try again.')
-        exit()
 
     # ------------------- Harvested Entry Validation -------------------
     if args.harvested_entry_validation:
@@ -289,9 +284,8 @@ if __name__ == '__main__':
             print(
                 f'Unknown option entered, "{chosen_option}", please enter a valid option\n'
             )
-    print(CONFIG_PATH)
-    datasets = [ds for ds in os.listdir(
-        CONFIG_PATH) if ds != '.DS_Store' and 'tpl' not in ds]
+
+    datasets = [ds for ds in os.listdir('conf/ds_configs') if ds != '.DS_Store' and 'tpl' not in ds]
     datasets.sort()
 
     wipe = args.wipe_transformations
@@ -299,20 +293,20 @@ if __name__ == '__main__':
     # Run all
     if chosen_option == '1':
         for ds in datasets:
-            run_harvester([ds], output_dir, grids_to_use)
-            run_transformation([ds], output_dir, multiprocessing,
+            run_harvester([ds], OUTPUT_DIR, grids_to_use)
+            run_transformation([ds], OUTPUT_DIR, multiprocessing,
                                user_cpus, wipe, grids_to_use)
-            run_aggregation([ds], output_dir, grids_to_use)
+            run_aggregation([ds], OUTPUT_DIR, grids_to_use)
 
     # Run harvester
     elif chosen_option == '2':
-        run_harvester(datasets, output_dir, grids_to_use)
+        run_harvester(datasets, OUTPUT_DIR, grids_to_use)
 
     # Run up through transformation
     elif chosen_option == '3':
         for ds in datasets:
-            run_harvester([ds], output_dir, grids_to_use)
-            run_transformation([ds], output_dir, multiprocessing,
+            run_harvester([ds], OUTPUT_DIR, grids_to_use)
+            run_transformation([ds], OUTPUT_DIR, multiprocessing,
                                user_cpus, wipe, grids_to_use)
 
     # Manually enter dataset and pipeline step(s)
@@ -351,16 +345,16 @@ if __name__ == '__main__':
         wanted_steps = steps_dict[int(steps_index)]
 
         if 'harvest' in wanted_steps:
-            run_harvester([wanted_ds], output_dir, grids_to_use)
+            run_harvester([wanted_ds], OUTPUT_DIR, grids_to_use)
         if 'transform' in wanted_steps:
-            run_transformation([wanted_ds], output_dir,
+            run_transformation([wanted_ds], OUTPUT_DIR,
                                multiprocessing, user_cpus, wipe, grids_to_use)
         if 'aggregate' in wanted_steps:
-            run_aggregation([wanted_ds], output_dir, grids_to_use)
+            run_aggregation([wanted_ds], OUTPUT_DIR, grids_to_use)
         if wanted_steps == 'all':
-            run_harvester([wanted_ds], output_dir, grids_to_use)
-            run_transformation([wanted_ds], output_dir,
+            run_harvester([wanted_ds], OUTPUT_DIR, grids_to_use)
+            run_transformation([wanted_ds], OUTPUT_DIR,
                                multiprocessing, user_cpus, wipe, grids_to_use)
-            run_aggregation([wanted_ds], output_dir, grids_to_use)
+            run_aggregation([wanted_ds], OUTPUT_DIR, grids_to_use)
 
     print_statuses()

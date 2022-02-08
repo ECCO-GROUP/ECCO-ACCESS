@@ -10,9 +10,7 @@ import requests
 from utils import solr_utils
 from grid_transformation.grid_transformation import run_locally_wrapper
 
-logs_path = 'ecco_pipeline/logs/'
-logging.config.fileConfig(f'{logs_path}/log.ini',
-                          disable_existing_loggers=False)
+logging.config.fileConfig('logs/log.ini', disable_existing_loggers=False)
 log = logging.getLogger(__name__)
 
 
@@ -80,7 +78,7 @@ def get_remaining_transformations(config, granule_file_path, grids):
                 # 3. compare checksum of harvested file (currently in solr) and checksum
                 #    of the harvested file that was previously transformed (recorded in transformation entry)
                 if 'transformation_version_f' in transformation.keys() and \
-                        transformation['transformation_version_f'] == config['version'] and \
+                        transformation['transformation_version_f'] == config['t_version'] and \
                         origin_checksum == harvested_checksum:
 
                     # all tests passed, we do not need to redo the transformation
@@ -114,7 +112,7 @@ def delete_mismatch_transformations(config):
 
     solr_host = config['solr_host_local']
     solr_collection_name = config['solr_collection_name']
-    config_version = config['version']
+    config_version = config['t_version']
 
     # Query for existing transformations
     fq = [f'dataset_s:{dataset_name}', 'type_s:transformation']
@@ -174,7 +172,7 @@ def main(config, output_path, multiprocessing=False, user_cpus=1, wipe=False, gr
     solr_host = config['solr_host_local']
     solr_collection_name = config['solr_collection_name']
 
-    transformation_version = config['version']
+    transformation_version = config['t_version']
 
     if not os.path.exists(output_path):
         os.makedirs(output_path)
