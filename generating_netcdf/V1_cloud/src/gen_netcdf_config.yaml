@@ -1,0 +1,10 @@
+# Local Directories
+mapping_factors_dir: '/home/bark/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V1_cloud/mapping_factors'
+diags_root: '/home/bark/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V1_cloud/temp_data'
+metadata_json_dir: '/home/bark/ECCO_GROUP/ECCO-ACCESS/metadata/ECCOv4r4_metadata_json'
+podaac_dir: '/home/bark/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V1_cloud/podaac'
+ecco_grid_dir: '/home/bark/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V1_cloud/ecco_grids'
+ecco_grid_dir_mds: '/home/bark/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V1_cloud/ecco_grids'
+
+# ECCO Grid filename
+ecco_grid_filename: 'ECCO_V4r4_llc90_grid_geometry.nc'
