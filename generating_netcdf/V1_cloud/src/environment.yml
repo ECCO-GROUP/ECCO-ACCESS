@@ -1,0 +1,17 @@
+name: ecco_processing
+channels:
+  - defaults
+dependencies:
+  - numpy
+  - pandas
+  - netcdf4
+  - xarray
+  - matplotlib
+  - cartopy
+  - pip
+  - pip:
+    - gh
+    - xmitgcm
+    - xgcm
+    - pyresample
+prefix: /Users/bark/opt/anaconda3/envs/ecco_processing
