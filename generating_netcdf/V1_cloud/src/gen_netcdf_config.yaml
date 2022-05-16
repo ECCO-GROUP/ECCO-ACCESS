@@ -8,3 +8,10 @@ ecco_grid_dir_mds: '/home/bark/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V1_cloud
 
 # ECCO Grid filename
 ecco_grid_filename: 'ECCO_V4r4_llc90_grid_geometry.nc'
+
+# Command line arguments (must include either these, or the actual command line arguments)
+time_steps_to_process: ''
+grouping_to_process: ''
+product_type: ''
+output_freq_code: ''
+output_dir: '.'
