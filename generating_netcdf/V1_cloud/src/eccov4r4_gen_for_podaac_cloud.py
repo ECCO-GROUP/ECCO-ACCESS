@@ -188,9 +188,9 @@ def generate_netcdfs(output_freq_code,
     # ECCO FIELD INPUT DIRECTORY
     # model diagnostic output
     # subdirectories must be
-    #  'diags_all/diag_mon'
-    #  'diags_all/diag_mon'
-    #  'diags_all/snap'
+    #  'diags_all/diags_mon'
+    #  'diags_all/diags_mon'
+    #  'diags_all/diags_inst'
 
     print('\nBEGIN: generate_netcdfs')
     print('OFC', output_freq_code)
@@ -198,8 +198,7 @@ def generate_netcdfs(output_freq_code,
     print('GTP', grouping_to_process)
     print('TSP', time_steps_to_process)
     print('DBG', debug_mode)
-    print('\n')
-
+    print('')
 
 
     # ECCO always uses -9999 for missing data.
@@ -278,12 +277,8 @@ def generate_netcdfs(output_freq_code,
 
     variable_metadata_native = variable_metadata_default + geometry_metadata_for_native_datasets
 
-    
-    # load PODAAC fields
-    podaac_dataset_table = read_csv(podaac_dir / 'datasets.csv')
 
     # load ECCO grid
-    #ecco_grid = ecco.load_ecco_grid_nc(ecco_grid_dir, ecco_grid_filename)
     ecco_grid = xr.open_dataset(ecco_grid_dir / ecco_grid_filename)
 
     print(ecco_grid)
@@ -340,9 +335,6 @@ def generate_netcdfs(output_freq_code,
         # to determine how big of a lookup table we need to do the bin-average interp.
         source_grid_min_L = np.min([float(ecco_grid.dyG.min().values), float(ecco_grid.dxG.min().values)])
         source_grid_max_L = np.max([float(ecco_grid.dyG.max().values), float(ecco_grid.dxG.max().values)])
-
-        #print(int(source_grid_min_L))
-        #print(int(source_grid_max_L))
 
 
         # Define the TARGET GRID -- a lat lon grid
@@ -599,7 +591,6 @@ def generate_netcdfs(output_freq_code,
         num_matching_dirs = 0
         for fp in field_paths:
             if var_match in str(fp):
-                #print(var, fp)
                 var_directories[var] = fp
                 num_matching_dirs += 1
         if num_matching_dirs == 0:
@@ -641,8 +632,6 @@ def generate_netcdfs(output_freq_code,
 
         if 'AVG' in output_freq_code:
             tb, record_center_time = ecco.make_time_bounds_from_ds64(np.datetime64(times[0]), output_freq_code)
-            #print('tb', type(tb))
-            #print(tb)
             print('ORIG  tb, ct ', tb, record_center_time)
 
             # fix beginning of last record
@@ -653,11 +642,9 @@ def generate_netcdfs(output_freq_code,
                 rec_avg_end   = tb[1]
                 rec_avg_delta = rec_avg_end - rec_avg_start
                 rec_avg_middle = rec_avg_start + rec_avg_delta/2
-                #print(rec_avg_start, rec_avg_middle, rec_avg_end)
 
                 tb[0] = rec_avg_start
                 record_center_time = rec_avg_middle
-                #print('NEW  cur_ts, i, tb, ct ', str(cur_ts).zfill(10), str(cur_ts_i).zfill(4), tb, record_center_time)
 
             # truncate to ecco_start_time
             if tb[0].astype('datetime64[D]') == ecco_start_time.astype('datetime64[D]'):
@@ -666,11 +653,9 @@ def generate_netcdfs(output_freq_code,
                 rec_avg_end   = tb[1]
                 rec_avg_delta = tb[1] - ecco_start_time
                 rec_avg_middle = rec_avg_start + rec_avg_delta/2
-                #print(rec_avg_start, rec_avg_middle, rec_avg_end)
 
                 tb[0] = ecco_start_time
                 record_center_time = rec_avg_middle
-                #print('NEW  cur_ts, i, tb, ct ', str(cur_ts).zfill(10), str(cur_ts_i).zfill(4), tb, record_center_time)
 
             record_start_time = tb[0]
             record_end_time = tb[1]
@@ -752,7 +737,6 @@ def generate_netcdfs(output_freq_code,
                         F_ll = np.zeros((nk,360,720))
 
                         for k in range(max_k):
-                            #print(var,k)
                             F_k = F[k]
                             F_wet_native = F_k[wet_pts_k[k]]
 
@@ -862,24 +846,9 @@ def generate_netcdfs(output_freq_code,
 
                 #   fix time bounds.
                 if 'AVG' in output_freq_code:
-                    #print('\nfixing time and  time bounds')
-                    #print('----before')
-                    #print(F_DS.time)
-                    #print(F_DS.time_bnds)
-
                     F_DS.time_bnds.values[0][0] = record_start_time
                     F_DS.time_bnds.values[0][1] = record_end_time
                     F_DS.time.values[0] = record_center_time
-
-                    #print('----after')
-                    #print(F_DS.time)
-                    #print(F_DS.time_bnds)
-
-                # ADD TIME STEP COORDINATE
-            #    print('\n... assigning time step', np.int32(cur_ts))
-            #    for data_var in F_DS.data_vars:
-                #    F_DS[data_var] = F_DS[data_var].assign_coords({"time_step": (("time"), [np.int32(cur_ts)])})
-
 
                 # Possibly rename variable if indicated
                 if 'variable_rename' in grouping.keys():
@@ -927,7 +896,6 @@ def generate_netcdfs(output_freq_code,
                     #   if 3D assign depth bounds, use k as index
                     if dataset_dim == '3D' and 'Z' in list(F_DS.coords):
                         F_DS = F_DS.assign_coords({"Z_bnds": (("k","nv"), depth_bounds)})
-
 
                 # add this dataset to F_DS_vars and repeat for next variable
                 F_DS_vars.append(F_DS)
@@ -988,23 +956,16 @@ def generate_netcdfs(output_freq_code,
             G.attrs['date_issued'] = current_time
 
             # add coordinate attributes to the variables
-            #coord_attrs, coord_G=  get_coordinate_attribute_to_data_vars(G)
-            #print(coord_G)
             dv_coordinate_attrs = dict()
 
             for dv in list(G.data_vars):
                 dv_coords_orig = set(list(G[dv].coords))
 
-                #print(dv, dv_coords_orig)
-
                 # REMOVE TIME STEP FROM LIST OF COORDINATES (PODAAC REQUEST)
-                #coord_attrs[coord] = coord_attrs[coord].split('time_step')[0].strip()
-                #data_var_coorcoord_attrs[coord].split()
                 set_intersect = dv_coords_orig.intersection(set(['XC','YC','XG','YG','Z','Zp1','Zu','Zl','time']))
 
                 dv_coordinate_attrs[dv] = " ".join(set_intersect)
 
-                #print(dv, dv_coordinate_attrs[dv])
 
             print('\n... creating variable encodings')
             # PROVIDE SPECIFIC ENCODING DIRECTIVES FOR EACH DATA VAR
@@ -1017,8 +978,6 @@ def generate_netcdfs(output_freq_code,
 
                 # overwrite default coordinats attribute (PODAAC REQUEST)
                 G[dv].encoding['coordinates'] = dv_coordinate_attrs[dv]
-                #print(G[dv].encoding)
-                #dv_encoding[dv]['coordinates'] = dv_coordinate_attrs[dv]
 
             # PROVIDE SPECIFIC ENCODING DIRECTIVES FOR EACH COORDINATE
             print('\n... creating coordinate encodings')
@@ -1136,6 +1095,7 @@ def generate_netcdfs(output_freq_code,
 
             # get podaac metadata based on filename
             print('\n... getting PODAAC metadata')
+            podaac_dataset_table = read_csv(podaac_dir / 'datasets.csv')
             podaac_metadata = find_podaac_metadata(podaac_dataset_table, filename)
 
             # apply podaac metadata based on filename
@@ -1232,21 +1192,45 @@ if __name__ == "__main__":
     local = True
     if local:
         print('\nGetting local directories from config file')
-        mapping_factors_dir = config['mapping_factors_dir']
+        mapping_factors_dir = Path(config['mapping_factors_dir'])
 
-        diags_root = config['diags_root']
+        diags_root = Path(config['diags_root'])
 
-        #  METADATA
-        metadata_json_dir = config['metadata_json_dir']
-        podaac_dir = config['podaac_dir']
+        # METADATA
+        metadata_json_dir = Path(config['metadata_json_dir'])
+        podaac_dir = Path(config['podaac_dir'])
 
-        ecco_grid_dir = config['ecco_grid_dir']
-        ecco_grid_dir_mds = config['ecco_grid_dir_mds']
+        ecco_grid_dir = Path(config['ecco_grid_dir'])
+        ecco_grid_dir_mds = Path(config['ecco_grid_dir_mds'])
     else:
         print('\nGetting AWS Cloud directories from config file')
         # mapping_factors_dir = config['mapping_factors_dir_cloud']
+    
+    # PODAAC fields
+    ecco_grid_filename = config['ecco_grid_filename']
+
+    # Define precision of output files, float32 is standard
+    array_precision = np.float32
+
+    debug_mode = False
 
     reload(ecco)
+
+    G = []
+    G, ecco_grid =  generate_netcdfs(output_freq_code,
+                                    product_type,
+                                    mapping_factors_dir,
+                                    output_dir_base,
+                                    diags_root,
+                                    metadata_json_dir,
+                                    podaac_dir,
+                                    ecco_grid_dir,
+                                    ecco_grid_dir_mds,
+                                    ecco_grid_filename,
+                                    grouping_to_process,
+                                    time_steps_to_process,
+                                    array_precision,
+                                    debug_mode)
 
     # Ian's paths --------------------------------------------------------
     # mapping_factors_dir = Path('/home/ifenty/tmp/ecco-v4-podaac-mapping-factors')
@@ -1263,68 +1247,3 @@ if __name__ == "__main__":
     # # PODAAC fields
     # ecco_grid_filename = 'ECCO_V4r4_llc90_grid_geometry.nc'
     # --------------------------------------------------------------------
-    
-    # PODAAC fields
-    ecco_grid_filename = config['ecco_grid_filename']
-
-    # Define precision of output files, float32 is standard
-    array_precision = np.float32
-
-    # 20 NATIVE GRID GROUPINGS
-    #        0 dynamic sea surface height and model sea level anomaly
-    # 	 1 ocean bottom pressure and model ocean bottom pressure anomaly
-    # 	 2 ocean and sea-ice surface freshwater fluxes
-    # 	 3 ocean and sea-ice surface heat fluxes
-    # 	 4 atmosphere surface temperature, humidity, wind, and pressure
-    # 	 5 ocean mixed layer depth
-    # 	 6 ocean and sea-ice surface stress
-    # 	 7 sea-ice and snow concentration and thickness
-    # 	 8 sea-ice velocity
-    # 	 9 sea-ice and snow horizontal volume fluxes
-    # 	 10 Gent-McWilliams ocean bolus transport streamfunction
-    # 	 11 ocean three-dimensional volume fluxes
-    # 	 12 ocean three-dimensional potential temperature fluxes
-    # 	 13 ocean three-dimensional salinity fluxes
-    # 	 14 sea-ice salt plume fluxes
-    # 	 15 ocean potential temperature and salinity
-    # 	 16 ocean density, stratification, and hydrostatic pressure
-    # 	 17 ocean velocity
-    # 	 18 Gent-McWilliams ocean bolus velocity
-    # 	 19 ocean three-dimensional momentum tendency
-
-    # ----- > groupings_native_snap (5) = [0, 1, 7, 8, 15]
-    # SSH, obp, sea ice and snow, sea ice velocity, TS
-
-
-    # 13 LATLON GRID GROUPINGS
-    #         0 "dynamic sea surface height",
-    #         1 "ocean bottom pressure",
-    #         2 "ocean and sea-ice surface freshwater fluxes",
-    #         3 "ocean and sea-ice surface heat fluxes",
-    #         4 "atmosphere surface temperature, humidity, wind, and pressure",
-    #         5 "ocean mixed layer depth",
-    #         6 "ocean and sea-ice surface stress",
-    #         7 "sea-ice and snow concentration and thickness",
-    #         8 "sea-ice velocity",
-    #         9 "ocean potential temperature and salinity",
-    #        10 "ocean density, stratification, and hydrostatic pressure",
-    #        11 "ocean velocity",
-    #        12 "Gent-McWilliams ocean bolus velocity",
-
-    debug_mode = False
-
-    G = []
-    # G, ecco_grid =  generate_netcdfs(output_freq_code,
-    #                                 product_type,
-    #                                 mapping_factors_dir,
-    #                                 output_dir_base,
-    #                                 diags_root,
-    #                                 metadata_json_dir,
-    #                                 podaac_dir,
-    #                                 ecco_grid_dir,
-    #                                 ecco_grid_dir_mds,
-    #                                 ecco_grid_filename,
-    #                                 grouping_to_process,
-    #                                 time_steps_to_process,
-    #                                 array_precision,
-    #                                 debug_mode)

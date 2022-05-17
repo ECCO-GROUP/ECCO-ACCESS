@@ -1,17 +1,83 @@
 # Local Directories
-mapping_factors_dir: '/home/bark/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V1_cloud/mapping_factors'
-diags_root: '/home/bark/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V1_cloud/temp_data'
-metadata_json_dir: '/home/bark/ECCO_GROUP/ECCO-ACCESS/metadata/ECCOv4r4_metadata_json'
-podaac_dir: '/home/bark/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V1_cloud/podaac'
-ecco_grid_dir: '/home/bark/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V1_cloud/ecco_grids'
-ecco_grid_dir_mds: '/home/bark/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V1_cloud/ecco_grids'
+# =================================================================================================
+# Directory to look for/download mapping factors
+mapping_factors_dir: '/home/bark/ecco_repos/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V1_cloud/mapping_factors'
+
+# Directory to look for all data. Should have sub folders for 'diags_monthly', 'diags_daily', and/or 'diags_inst'
+diags_root: '/home/bark/ecco_repos/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V1_cloud/diags'
+
+# ECCO-ACCESS metadata information
+metadata_json_dir: '/home/bark/ecco_repos/ECCO_GROUP/ECCO-ACCESS/metadata/ECCOv4r4_metadata_json'
+
+# Path to "metadata" folder in "ecco-data-pub" repository
+podaac_dir: '/home/bark/ecco_repos/ecco-data-pub/metadata'
+
+# Directory containing ECCO grids
+ecco_grid_dir: '/home/bark/ecco_repos/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V1_cloud/ecco_grids'
+
+# Directory containing ECCO grids (to use for native product_type)
+ecco_grid_dir_mds: '/home/bark/ecco_repos/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V1_cloud/ecco_grids'
 
 # ECCO Grid filename
 ecco_grid_filename: 'ECCO_V4r4_llc90_grid_geometry.nc'
 
+
 # Command line arguments (must include either these, or the actual command line arguments)
-time_steps_to_process: ''
-grouping_to_process: ''
-product_type: ''
-output_freq_code: ''
-output_dir: '.'
+# =================================================================================================
+# 'all' or list of numbers
+time_steps_to_process: 'all'
+
+# single integer number
+grouping_to_process: 0
+
+# 'latlon' or 'native'
+product_type: 'latlon'
+
+# 'AVG_MON', 'AVG_DAY', or 'SNAPSHOT'
+output_freq_code: 'AVG_MON'
+
+# Output directory string
+output_dir: '/home/bark/ecco_repos/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V1_cloud/temp_output'
+
+
+# GROUPINGS
+# =================================================================================================
+# 20 NATIVE GRID GROUPINGS
+#    0 dynamic sea surface height and model sea level anomaly
+#    1 ocean bottom pressure and model ocean bottom pressure anomaly
+#    2 ocean and sea-ice surface freshwater fluxes
+#    3 ocean and sea-ice surface heat fluxes
+#    4 atmosphere surface temperature, humidity, wind, and pressure
+#    5 ocean mixed layer depth
+#    6 ocean and sea-ice surface stress
+#    7 sea-ice and snow concentration and thickness
+#    8 sea-ice velocity
+#    9 sea-ice and snow horizontal volume fluxes
+#    10 Gent-McWilliams ocean bolus transport streamfunction
+#    11 ocean three-dimensional volume fluxes
+#    12 ocean three-dimensional potential temperature fluxes
+#    13 ocean three-dimensional salinity fluxes
+#    14 sea-ice salt plume fluxes
+#    15 ocean potential temperature and salinity
+#    16 ocean density, stratification, and hydrostatic pressure
+#    17 ocean velocity
+#    18 Gent-McWilliams ocean bolus velocity
+#    19 ocean three-dimensional momentum tendency
+
+# ----- > groupings_native_snap (5) = [0, 1, 7, 8, 15]
+# SSH, obp, sea ice and snow, sea ice velocity, TS
+
+# 13 LATLON GRID GROUPINGS
+#    0 dynamic sea surface height
+#    1 ocean bottom pressure
+#    2 ocean and sea-ice surface freshwater fluxes
+#    3 ocean and sea-ice surface heat fluxes
+#    4 atmosphere surface temperature, humidity, wind, and pressure
+#    5 ocean mixed layer depth
+#    6 ocean and sea-ice surface stress
+#    7 sea-ice and snow concentration and thickness
+#    8 sea-ice velocity
+#    9 ocean potential temperature and salinity
+#    10 ocean density, stratification, and hydrostatic pressure
+#    11 ocean velocity
+#    12 Gent-McWilliams ocean bolus velocity
