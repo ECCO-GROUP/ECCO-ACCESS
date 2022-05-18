@@ -4,13 +4,13 @@
 mapping_factors_dir: '/home/bark/ecco_repos/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V1_cloud/mapping_factors'
 
 # Directory to look for all data. Should have sub folders for 'diags_monthly', 'diags_daily', and/or 'diags_inst'
-diags_root: '/home/bark/ecco_repos/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V1_cloud/diags'
+diags_root: '/home/bark/ecco_repos/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V1_cloud/diags_all'
 
 # ECCO-ACCESS metadata information
 metadata_json_dir: '/home/bark/ecco_repos/ECCO_GROUP/ECCO-ACCESS/metadata/ECCOv4r4_metadata_json'
 
-# Path to "metadata" folder in "ecco-data-pub" repository
-podaac_dir: '/home/bark/ecco_repos/ecco-data-pub/metadata'
+# Path to PODAAC metadata document
+podaac_dir: '/home/bark/ecco_repos/ECCO_GROUP/ECCO-ACCESS/metadata/ECCOv4r4_metadata_json/PODAAC_datasets-revised_20210226.5.csv'
 
 # Directory containing ECCO grids
 ecco_grid_dir: '/home/bark/ecco_repos/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V1_cloud/ecco_grids'
@@ -19,7 +19,8 @@ ecco_grid_dir: '/home/bark/ecco_repos/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V
 ecco_grid_dir_mds: '/home/bark/ecco_repos/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V1_cloud/ecco_grids'
 
 # ECCO Grid filename
-ecco_grid_filename: 'ECCO_V4r4_llc90_grid_geometry.nc'
+# ecco_grid_filename: 'ECCO_V4r4_llc90_grid_geometry.nc'
+ecco_grid_filename: 'GRID_GEOMETRY_ECCO_V4r4_native_llc0090.nc'
 
 
 # Command line arguments (must include either these, or the actual command line arguments)
