@@ -282,7 +282,7 @@ def latlon_load_2D(ea, ecco, ll_grid, target_grid, mds_var_dir, mds_file, record
                                     operation='mean',
                                     allow_nearest_neighbor=True)
 
-    F_ll_masked = np.expand_dims(F_ll * ll_grid['land_mask_ll'][0,:],0)
+    F_ll_masked = np.expand_dims(F_ll * ll_grid['land_mask'][0,:],0)
 
     F_DA = xr.DataArray(F_ll_masked,
                         coords=[[record_end_time],
@@ -320,7 +320,7 @@ def latlon_load_3D(ea, ecco, ecco_grid, ll_grid, target_grid, mds_var_dir, mds_f
 
 
     # multiple by land mask
-    F_ll_masked = np.expand_dims(F_ll * ll_grid['land_mask_ll'], 0)
+    F_ll_masked = np.expand_dims(F_ll * ll_grid['land_mask'], 0)
 
     Z = ecco_grid.Z.values
 
@@ -355,6 +355,8 @@ def latlon_load(ea, ecco, ecco_grid, ll_grid, target_grid, mds_var_dir, mds_file
                                                                         output_freq_code)
         F_DS = xr.merge((F_DS, tb_ds))
         F_DS = F_DS.set_coords('time_bnds')
+
+    return F_DS
 
 
 def native_load(ecco, var, ecco_land_mask, ecco_grid_dir_mds, mds_var_dir, mds_file, output_freq_code, cur_ts):
@@ -420,7 +422,7 @@ def native_load(ecco, var, ecco_land_mask, ecco_grid_dir_mds, mds_var_dir, mds_f
     return F_DS
 
 
-def global_DS_changes(output_freq_code, grouping, var, array_precision, ecco_grid, depth_bounds, product_type, bounds, netcdf_fill_value, dataset_dim, record_time):
+def global_DS_changes(F_DS, output_freq_code, grouping, var, array_precision, ecco_grid, depth_bounds, product_type, bounds, netcdf_fill_value, dataset_dim, record_time):
     if 'AVG' in output_freq_code:
         F_DS.time_bnds.values[0][0] = record_time['start']
         F_DS.time_bnds.values[0][1] = record_time['end']
@@ -571,7 +573,7 @@ def apply_podaac_metadata(xrds, podaac_metadata):
     return xrds  # Return the updated xarray Dataset.
 
 
-def set_metadata(ecco, G, product_type, all_metadata, dataset_dim, output_freq_code, netcdf_fill_value, grouping, filename_tail, output_dir_freq, dataset_description, podaac_dir):
+def set_metadata(ecco, G, product_type, all_metadata, dataset_dim, output_freq_code, netcdf_fill_value, grouping, filename_tail, output_dir_freq, dataset_description, podaac_dir, grouping_gcmd_keywords):
     # ADD VARIABLE SPECIFIC METADATA TO VARIABLE ATTRIBUTES (DATA ARRAYS)
     print('\n... adding metadata specific to the variable')
     G, grouping_gcmd_keywords = \

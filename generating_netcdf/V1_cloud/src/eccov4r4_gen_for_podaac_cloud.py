@@ -20,10 +20,12 @@ from importlib import reload
 path_to_ecco_group = Path(__file__).parent.parent.parent.parent.parent.resolve()
 sys.path.append(f'{path_to_ecco_group}/ECCO-ACCESS/ecco-cloud-utils')
 sys.path.append(f'{path_to_ecco_group}/ECCOv4-py')
+sys.path.append(f'{Path(__file__).parent.resolve()}')
 import ecco_v4_py as ecco
 import ecco_cloud_utils as ea
+import gen_netcdf_utils as ut
 
-from . import gen_netcdf_utils as ut
+# from . import gen_netcdf_utils as ut
 
 # -------------------------------------------------------------------------------------------------
 
@@ -134,9 +136,6 @@ def generate_netcdfs(output_freq_code,
                     'global_all':global_metadata_for_all_datasets, 
                     'global_native':global_metadata_for_native_datasets, 
                     'global_latlon':global_metadata_for_latlon_datasets}
-    
-    # create dataset description head
-    dataset_description = dataset_description_head + grouping['name'] + dataset_description_tail
     # ======================================================================================================================
 
 
@@ -183,6 +182,33 @@ def generate_netcdfs(output_freq_code,
         else:
             depth_bounds[k,0] = -tmp[k-1]
         depth_bounds[k,1] = -tmp[k]
+    # ======================================================================================================================
+
+
+    # ======================================================================================================================
+    # GROUPINGS
+    # ======================================================================================================================
+    # show groupings
+    print('\nAll groupings')
+    for gi, gg in enumerate(groupings_for_native_datasets):
+        print('\t', gi, gg['name'])
+
+    # determine which grouping to process
+    print('\nDetermining grouping to process')
+    grouping = []
+    print('... using provided grouping ', grouping_to_process)
+    grouping_num = grouping_to_process
+
+    grouping = groupings[grouping_num]
+    print('... grouping to use ', grouping['name'])
+    print('... fields in grouping ', grouping['fields'])
+
+    # dimension of dataset
+    dataset_dim = grouping['dimension']
+    print('... grouping dimension', dataset_dim)
+
+    # define empty list of gcmd keywords pertaining to this dataset
+    grouping_gcmd_keywords = []
     # ======================================================================================================================
 
 
@@ -234,33 +260,9 @@ def generate_netcdfs(output_freq_code,
         all_field_names.append(f.name)
 
     print (all_field_names)
-    # ======================================================================================================================
 
-
-    # ======================================================================================================================
-    # GROUPINGS
-    # ======================================================================================================================
-    # show groupings
-    print('\nAll groupings')
-    for gi, gg in enumerate(groupings_for_native_datasets):
-        print('\t', gi, gg['name'])
-
-    # determine which grouping to process
-    print('\nDetermining grouping to process')
-    grouping = []
-    print('... using provided grouping ', grouping_to_process)
-    grouping_num = grouping_to_process
-
-    grouping = groupings[grouping_num]
-    print('... grouping to use ', grouping['name'])
-    print('... fields in grouping ', grouping['fields'])
-
-    # dimension of dataset
-    dataset_dim = grouping['dimension']
-    print('... grouping dimension', dataset_dim)
-
-    # define empty list of gcmd keywords pertaining to this dataset
-    grouping_gcmd_keywords = []
+    # create dataset description head
+    dataset_description = dataset_description_head + grouping['name'] + dataset_description_tail
     # ======================================================================================================================
 
 
@@ -392,7 +394,7 @@ def generate_netcdfs(output_freq_code,
                                             mds_var_dir, mds_file, output_freq_code, cur_ts)
                 
                 record_times = {'start':record_start_time, 'center':record_center_time, 'end':record_end_time}
-                F_DS = ut.global_DS_changes(output_freq_code, grouping, var, array_precision, ecco_grid, depth_bounds, product_type, bounds, netcdf_fill_value, dataset_dim, record_times)
+                F_DS = ut.global_DS_changes(F_DS, output_freq_code, grouping, var, array_precision, ecco_grid, depth_bounds, product_type, bounds, netcdf_fill_value, dataset_dim, record_times)
 
                 # add this dataset to F_DS_vars and repeat for next variable
                 F_DS_vars.append(F_DS)
@@ -402,10 +404,10 @@ def generate_netcdfs(output_freq_code,
             print('\n... merging F_DS_vars')
             G = xr.merge((F_DS_vars))
 
-            netcdf_output_filename, encoding = ut.set_metadata(ecco, G, product_type, all_metadata, dataset_dim, 
+            G, netcdf_output_filename, encoding = ut.set_metadata(ecco, G, product_type, all_metadata, dataset_dim, 
                                                                 output_freq_code, netcdf_fill_value, 
                                                                 grouping, filename_tail, output_dir_freq, 
-                                                                dataset_description, podaac_dir)
+                                                                dataset_description, podaac_dir, grouping_gcmd_keywords)
 
             # SAVE DATASET
             print('\n... saving to netcdf ', netcdf_output_filename)
@@ -425,20 +427,23 @@ def generate_netcdfs(output_freq_code,
 def create_parser():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--time_steps_to_process', nargs="+",\
+    parser.add_argument('--time_steps_to_process', nargs="+",
                         help='which time steps to process')
 
-    parser.add_argument('--grouping_to_process', type=int,\
+    parser.add_argument('--grouping_to_process', type=int,
                         help='which dataset grouping to process, there are 20 in v4r4')
 
-    parser.add_argument('--product_type', type=str, choices=['latlon', 'native'], \
+    parser.add_argument('--product_type', type=str, choices=['latlon', 'native'],
                         help='one of either "latlon" or "native" ')
 
-    parser.add_argument('--output_freq_code', type=str, choices=['AVG_MON','AVG_DAY','SNAPSHOT'],\
+    parser.add_argument('--output_freq_code', type=str, choices=['AVG_MON','AVG_DAY','SNAPSHOT'],
                         help='one of AVG_MON, AVG_DAY, or SNAPSHOT')
 
-    parser.add_argument('--output_dir', type=str,\
+    parser.add_argument('--output_dir', type=str,
                         help='output directory')
+
+    parser.add_argument('--debug', default=False, action='store_true',
+                        help='Sets debug flag (additional print outs and skips processing')
     return parser
 
 
@@ -497,6 +502,7 @@ if __name__ == "__main__":
     product_type = final_args['product_type']
     output_freq_code = final_args['output_freq_code']
     output_dir_base = Path(final_args['output_dir'])
+    debug_mode = final_args['debug']
 
     print(f'time_steps_to_process: {time_steps_to_process} ({type(time_steps_to_process)})')
     print(f'grouping_to_process: {grouping_to_process} ({type(grouping_to_process)})')
@@ -504,6 +510,7 @@ if __name__ == "__main__":
     print(f'output_freq_code: {output_freq_code} ({type(output_freq_code)})')
     print(f'output_dir: {output_dir_base} ({type(output_dir_base)})')
 
+    # Load directories (local vs AWS)
     local = True
     if local:
         print('\nGetting local directories from config file')
@@ -546,19 +553,3 @@ if __name__ == "__main__":
                                     time_steps_to_process,
                                     array_precision,
                                     debug_mode)
-
-    # Ian's paths --------------------------------------------------------
-    # mapping_factors_dir = Path('/home/ifenty/tmp/ecco-v4-podaac-mapping-factors')
-
-    # diags_root = Path('/home/ifenty/ian1/ifenty/ECCOv4/binary_output/diags_all')
-
-    # # METADATA
-    # metadata_json_dir = Path('/home/ifenty/git_repos_others/ECCO-GROUP/ECCO-ACCESS/metadata/ECCOv4r4_metadata_json')
-    # podaac_dir = Path('/home/ifenty/git_repos_others/ecco-data-pub/metadata')
-
-    # ecco_grid_dir = Path('/home/ifenty/data/grids/grid_ECCOV4r4')
-    # ecco_grid_dir_mds = Path('/home/ifenty/data/grids/grid_ECCOV4r4')
-
-    # # PODAAC fields
-    # ecco_grid_filename = 'ECCO_V4r4_llc90_grid_geometry.nc'
-    # --------------------------------------------------------------------
