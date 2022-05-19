@@ -5,10 +5,13 @@ import datetime
 import numpy as np
 import xarray as xr
 import pyresample as pr
+from pathlib import Path
 from pprint import pprint
 from pandas import read_csv
 from collections import OrderedDict
 
+sys.path.append(f'{Path(__file__).parent.resolve()}')
+from mapping_factors import get_mapping_factors
 
 # ==========================================================================================================================
 # TIME STEPS AND GRID/MASK UTILS
@@ -64,65 +67,6 @@ def find_all_time_steps(vars_to_load, var_directories):
     all_time_steps = unique_ts
 
     return all_time_steps
-
-
-def get_mapping_factors(ea, mapping_factors_dir, debug_mode, source_grid_all, target_grid, target_grid_radius, source_grid_min_L, source_grid_max_L, source_grid_k, nk):
-    print('\nGrid Mappings')
-    grid_mapping_fname = mapping_factors_dir / "ecco_latlon_grid_mappings.p"
-
-    if debug_mode:
-        print('...DEBUG MODE -- SKIPPING GRID MAPPINGS')
-        grid_mappings_all = []
-        grid_mappings_k = []
-    else:
-
-        if 'grid_mappings_k' not in globals():
-
-            # first check to see if you have already calculated the grid mapping factors
-            if grid_mapping_fname.is_file():
-                # if so, load
-                print('... loading latlon_grid_mappings.p')
-
-                [grid_mappings_all, grid_mappings_k] = pickle.load(open(grid_mapping_fname, 'rb'))
-
-            else:
-                # if not, make new grid mapping factors
-                print('... no mapping factors found, recalculating')
-
-                # find the mapping between all points of the ECCO grid and the target grid.
-                grid_mappings_all = \
-                    ea.find_mappings_from_source_to_target(source_grid_all,
-                                                            target_grid,
-                                                            target_grid_radius,
-                                                            source_grid_min_L,
-                                                            source_grid_max_L)
-
-                # then find the mapping factors between all wet points of the ECCO grid
-                # at each vertical level and the target grid
-                grid_mappings_k = dict()
-
-                for k in range(nk):
-                    print(k)
-                    grid_mappings_k[k] = \
-                        ea.find_mappings_from_source_to_target(source_grid_k[k],
-                                                                target_grid,
-                                                                target_grid_radius,
-                                                                source_grid_min_L,
-                                                                source_grid_max_L)
-                if not mapping_factors_dir.exists():
-                    try:
-                        mapping_factors_dir.mkdir()
-                    except:
-                        print ('cannot make %s ' % mapping_factors_dir)
-
-                try:
-                    pickle.dump([grid_mappings_all, grid_mappings_k], open(grid_mapping_fname, 'wb'))
-                except:
-                    print('cannot make %s ' % mapping_factors_dir)
-        else:
-            print('... grid mappings k already in memory')  
-
-    return (grid_mappings_all, grid_mappings_k)
 
 
 def get_land_mask(ea, mapping_factors_dir, debug_mode, nk, target_grid_shape, grid_mappings_all, ecco_land_mask_c_nan):

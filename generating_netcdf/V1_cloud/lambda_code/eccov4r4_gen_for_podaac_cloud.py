@@ -1,5 +1,5 @@
 """
-Created on Thur May 12 15:41:00 2022
+Created May 18, 2022
 
 Author: Duncan Bark
 Adapted from ifenty's "eccov4r4_gen_for_podaac.py"
@@ -8,14 +8,11 @@ Adapted from ifenty's "eccov4r4_gen_for_podaac.py"
 
 import sys
 import json
-import yaml
-import argparse
 import numpy as np
 import pandas as pd
 import xarray as xr
 import netCDF4 as nc4
 from pathlib import Path
-from importlib import reload
 
 path_to_ecco_group = Path(__file__).parent.parent.parent.parent.parent.resolve()
 sys.path.append(f'{path_to_ecco_group}/ECCO-ACCESS/ecco-cloud-utils')
@@ -420,134 +417,3 @@ def generate_netcdfs(output_freq_code,
     # =============================================================================================
 
     return G, ecco_grid
-
-
-def create_parser():
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument('--time_steps_to_process', nargs="+",
-                        help='which time steps to process')
-
-    parser.add_argument('--grouping_to_process', type=int,
-                        help='which dataset grouping to process, there are 20 in v4r4')
-
-    parser.add_argument('--product_type', type=str, choices=['latlon', 'native'],
-                        help='one of either "latlon" or "native" ')
-
-    parser.add_argument('--output_freq_code', type=str, choices=['AVG_MON','AVG_DAY','SNAPSHOT'],
-                        help='one of AVG_MON, AVG_DAY, or SNAPSHOT')
-
-    parser.add_argument('--output_dir', type=str,
-                        help='output directory')
-
-    parser.add_argument('--debug', default=False, action='store_true',
-                        help='Sets debug flag (additional print outs and skips processing')
-    return parser
-
-
-if __name__ == "__main__":
-    # output_freq_codes  one of either 'AVG_DAY' or 'AVG_MON'
-    
-    # time_steps_to_process : one of
-    # 'all'
-    # a list [1,3,4,...]
-
-    # grouping to process:
-    #   a single number
-
-    # diags_root:
-    #   ECCO FIELD INPUT DIRECTORY
-    #   model diagnostic output
-    #   subdirectories must be:
-    #       'diags_all/diags_mon'
-    #       'diags_all/diags_mon'
-    #       'diags_all/diags_inst'
-
-    # Parse command line arguments
-    parser = create_parser()
-    args = parser.parse_args()
-    dict_key_args = {key: value for key, value in args._get_kwargs()} 
-
-    # Testing/setup paths and config -------------------------------------
-    path_to_yaml = Path(__file__).parent.resolve() / 'gen_netcdf_config.yaml'
-    with open(path_to_yaml, "r") as f:
-        config = yaml.load(f, yaml.Loader)
-
-    # Collect arguments.
-    # Check for a value from the command line and from the config file.
-    # If the command line value exists then use that value, otherwise
-    # take the config value. If neither exist, exit. 
-    print('\nCollecting arguments (command line/config file)')
-    final_args = {}
-    missing_args = False
-    for (name, value) in dict_key_args.items():
-        if value == None:
-            if config[name] == '':
-                print(f'\t"{name}" required')
-                missing_args = True
-                final_args[name] = None
-            else:
-                final_args[name] = config[name]
-        else:
-            final_args[name] = value
-
-    if missing_args:
-        print(f'One or more arugments not supplied, exiting. Please check and re-run.\n')
-        sys.exit()
-
-    time_steps_to_process = final_args['time_steps_to_process']
-    grouping_to_process = final_args['grouping_to_process']
-    product_type = final_args['product_type']
-    output_freq_code = final_args['output_freq_code']
-    output_dir_base = Path(final_args['output_dir'])
-    debug_mode = final_args['debug']
-
-    print(f'time_steps_to_process: {time_steps_to_process} ({type(time_steps_to_process)})')
-    print(f'grouping_to_process: {grouping_to_process} ({type(grouping_to_process)})')
-    print(f'product_type: {product_type} ({type(product_type)})')
-    print(f'output_freq_code: {output_freq_code} ({type(output_freq_code)})')
-    print(f'output_dir: {output_dir_base} ({type(output_dir_base)})')
-
-    # Load directories (local vs AWS)
-    local = True
-    if local:
-        print('\nGetting local directories from config file')
-        mapping_factors_dir = Path(config['mapping_factors_dir'])
-
-        diags_root = Path(config['diags_root'])
-
-        # METADATA
-        metadata_json_dir = Path(config['metadata_json_dir'])
-        podaac_dir = Path(config['podaac_dir'])
-
-        ecco_grid_dir = Path(config['ecco_grid_dir'])
-        ecco_grid_dir_mds = Path(config['ecco_grid_dir_mds'])
-    else:
-        print('\nGetting AWS Cloud directories from config file')
-        # mapping_factors_dir = config['mapping_factors_dir_cloud']
-    
-    # PODAAC fields
-    ecco_grid_filename = config['ecco_grid_filename']
-
-    # Define precision of output files, float32 is standard
-    array_precision = np.float32
-
-    debug_mode = False
-
-    reload(ecco)
-
-    G = []
-    G, ecco_grid =  generate_netcdfs(output_freq_code,
-                                    product_type,
-                                    mapping_factors_dir,
-                                    output_dir_base,
-                                    diags_root,
-                                    metadata_json_dir,
-                                    podaac_dir,
-                                    ecco_grid_dir,
-                                    ecco_grid_dir_mds,
-                                    ecco_grid_filename,
-                                    grouping_to_process,
-                                    time_steps_to_process,
-                                    array_precision,
-                                    debug_mode)
