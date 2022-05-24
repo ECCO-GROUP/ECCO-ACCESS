@@ -18,6 +18,12 @@ from eccov4r4_gen_for_podaac_cloud import generate_netcdfs
 def create_parser():
     parser = argparse.ArgumentParser()
 
+    parser.add_argument('--upload_model_to_S3', default=False, action='store_true',
+                        help='Upload model output data to provided directory (or S3 bucket) in config file')
+
+    parser.add_argument('--process_data', default=False, action='store_true',
+                        help='Starts processing model data using config file values')
+
     parser.add_argument('--time_steps_to_process', nargs="+",
                         help='which time steps to process')
 
@@ -30,7 +36,7 @@ def create_parser():
     parser.add_argument('--output_freq_code', type=str, choices=['AVG_MON','AVG_DAY','SNAPSHOT'],
                         help='one of AVG_MON, AVG_DAY, or SNAPSHOT')
 
-    parser.add_argument('--output_dir', type=str,
+    parser.add_argument('--output_dir', type=str, default=f'{Path(__file__).parent.parent.resolve() / "temp_output"}',
                         help='output directory')
 
     parser.add_argument('--debug', default=False, action='store_true',
@@ -66,22 +72,39 @@ if __name__ == "__main__":
     with open(path_to_yaml, "r") as f:
         config = yaml.load(f, yaml.Loader)
 
+
     # Load directories (local vs AWS)
+    # Default directories
+    parent_dir = Path(__file__).parent.resolve()
+    mapping_factors_dir = parent_dir / 'mapping_factors'
+    diags_root = parent_dir / 'diags_all'
+    metadata_json_dir = parent_dir / 'metadata' / 'ECCov4r4_metadata_json'
+    podaac_dir = parent_dir / 'metadata' / 'ECCov4r4_metadata_json' / 'PODAAC_datasets-revised_20210226.5.csv'
+    ecco_grid_dir = parent_dir / 'ecco_grids'
+    ecco_grid_dir_mds = parent_dir / 'ecco_grids'
+    output_dir_base = parent_dir / 'temp_output'
+
     local = True
     if local:
         print('\nGetting local directories from config file')
-        mapping_factors_dir = Path(config['mapping_factors_dir'])
-
-        diags_root = Path(config['diags_root'])
+        if config['mapping_factors_dir'] != '':
+            mapping_factors_dir = Path(config['mapping_factors_dir'])
+        if config['model_data_dir'] != '':
+            diags_root = Path(config['model_data_dir'])
 
         # METADATA
-        metadata_json_dir = Path(config['metadata_json_dir'])
-        podaac_dir = Path(config['podaac_dir'])
+        if config['metadata_json_dir'] != '':
+            metadata_json_dir = Path(config['metadata_json_dir'])
+        if config['podaac_dir'] != '':
+            podaac_dir = Path(config['podaac_dir'])
 
-        ecco_grid_dir = Path(config['ecco_grid_dir'])
-        ecco_grid_dir_mds = Path(config['ecco_grid_dir_mds'])
+        if config['ecco_grid_dir'] != '':
+            ecco_grid_dir = Path(config['ecco_grid_dir'])
+        if config['ecco_grid_dir_mds'] != '':
+            ecco_grid_dir_mds = Path(config['ecco_grid_dir_mds'])
 
-        output_dir_base = Path(config['output_dir'])
+        if config['output_dir'] != '':
+            output_dir_base = config['output_dir']
     else:
         print('\nGetting AWS Cloud directories from config file')
         # mapping_factors_dir = config['mapping_factors_dir_cloud']
@@ -112,6 +135,12 @@ if __name__ == "__main__":
     # loop through all jobs
     # this is where each lambda job would be created
     for (grouping_to_process, product_type, output_freq_code, time_steps_to_process) in all_jobs:
+
+        # **********
+        # TODO: CREATE LAMBDA REQUEST FOR EACH "JOB"
+        # **********
+
+
         print(f'time_steps_to_process: {time_steps_to_process} ({type(time_steps_to_process)})')
         print(f'grouping_to_process: {grouping_to_process} ({type(grouping_to_process)})')
         print(f'product_type: {product_type} ({type(product_type)})')
@@ -132,3 +161,7 @@ if __name__ == "__main__":
                                         time_steps_to_process,
                                         array_precision,
                                         debug_mode)
+
+    # **********
+    # TODO: Check output S3 bucket for data
+    # **********

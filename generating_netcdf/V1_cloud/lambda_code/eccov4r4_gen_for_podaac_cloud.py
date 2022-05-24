@@ -14,10 +14,12 @@ import xarray as xr
 import netCDF4 as nc4
 from pathlib import Path
 
-path_to_ecco_group = Path(__file__).parent.parent.parent.parent.parent.resolve()
-sys.path.append(f'{path_to_ecco_group}/ECCO-ACCESS/ecco-cloud-utils')
-sys.path.append(f'{path_to_ecco_group}/ECCOv4-py')
+# path_to_ecco_group = Path(__file__).parent.parent.parent.parent.resolve()
+# sys.path.append(f'{path_to_ecco_group}/ECCO-ACCESS/ecco-cloud-utils')
+# sys.path.append(f'{Path(__file__).parent.parent.parent.parent.resolve() / "ecco-cloud-utils"}')
+# sys.path.append(f'{path_to_ecco_group}/ECCOv4-py')
 sys.path.append(f'{Path(__file__).parent.resolve()}')
+# sys.path.append(f'{Path(__file__).parent.resolve() / "ECCOv4-py"}')
 import ecco_v4_py as ecco
 import ecco_cloud_utils as ea
 import gen_netcdf_utils as ut

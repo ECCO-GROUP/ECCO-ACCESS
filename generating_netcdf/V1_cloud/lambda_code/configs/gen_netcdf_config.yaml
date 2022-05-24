@@ -1,29 +1,44 @@
 # Local Directories
 # =================================================================================================
 # Directory to look for/download mapping factors
-mapping_factors_dir: '/home/bark/ecco_repos/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V1_cloud/mapping_factors'
+# mapping_factors_dir: '/home/bark/ecco_repos/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V1_cloud/mapping_factors'
+# mapping_factors_dir: '/Users/bark/Documents/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V1_cloud/mapping_factors'
+mapping_factors_dir: ''
 
-# Directory to look for all data. Should have sub folders for 'diags_monthly', 'diags_daily', and/or 'diags_inst'
-diags_root: '/home/bark/ecco_repos/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V1_cloud/diags_all'
+# Directory to look for all data. Should have sub folders for 'diags_monthly', 'diags_daily', and/or 'diags_inst'.
+# Can be set to an S3 bucket address.
+# model_data_dir: '/home/bark/ecco_repos/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V1_cloud/diags_all'
+# model_data_dir: '/Users/bark/Documents/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V1_cloud/diags_all'
+model_data_dir: ''
 
 # ECCO-ACCESS metadata information
-metadata_json_dir: '/home/bark/ecco_repos/ECCO_GROUP/ECCO-ACCESS/metadata/ECCOv4r4_metadata_json'
+# metadata_json_dir: '/home/bark/ecco_repos/ECCO_GROUP/ECCO-ACCESS/metadata/ECCOv4r4_metadata_json'
+# metadata_json_dir: '/Users/bark/Documents/ECCO_GROUP/ECCO-ACCESS/metadata/ECCOv4r4_metadata_json'
+metadata_json_dir: ''
 
 # Path to PODAAC metadata document
-podaac_dir: '/home/bark/ecco_repos/ECCO_GROUP/ECCO-ACCESS/metadata/ECCOv4r4_metadata_json/PODAAC_datasets-revised_20210226.5.csv'
+# podaac_dir: '/home/bark/ecco_repos/ECCO_GROUP/ECCO-ACCESS/metadata/ECCOv4r4_metadata_json/PODAAC_datasets-revised_20210226.5.csv'
+# podaac_dir: '/Users/bark/Documents/ECCO_GROUP/ECCO-ACCESS/metadata/ECCOv4r4_metadata_json/PODAAC_datasets-revised_20210226.5.csv'
+podaac_dir: ''
 
 # Directory containing ECCO grids
-ecco_grid_dir: '/home/bark/ecco_repos/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V1_cloud/ecco_grids'
+# ecco_grid_dir: '/home/bark/ecco_repos/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V1_cloud/ecco_grids'
+# ecco_grid_dir: '/Users/bark/Documents/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V1_cloud/ecco_grids'
+ecco_grid_dir: ''
 
 # Directory containing ECCO grids (to use for native product_type)
-ecco_grid_dir_mds: '/home/bark/ecco_repos/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V1_cloud/ecco_grids'
+# ecco_grid_dir_mds: '/home/bark/ecco_repos/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V1_cloud/ecco_grids'
+# ecco_grid_dir_mds: '/Users/bark/Documents/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V1_cloud/ecco_grids'
+ecco_grid_dir_mds: ''
 
 # ECCO Grid filename
 # ecco_grid_filename: 'ECCO_V4r4_llc90_grid_geometry.nc'
 ecco_grid_filename: 'GRID_GEOMETRY_ECCO_V4r4_native_llc0090.nc'
 
-# Output directory string
-output_dir: '/home/bark/ecco_repos/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V1_cloud/temp_output'
+# Output directory string. Can be set to an S3 bucket address.
+# output_dir: '/home/bark/ecco_repos/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V1_cloud/temp_output'
+# output_dir: '/Users/bark/Documents/ECCO_GROUP/ECCO-ACCESS/generating_netcdf/V1_cloud/temp_output'
+output_dir: ''
 
 # GROUPINGS
 # =================================================================================================
