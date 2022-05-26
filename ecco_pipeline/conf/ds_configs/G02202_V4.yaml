@@ -24,6 +24,10 @@ fields:
     long_name: Passive Microwave Sea Ice Concentration Source Estimated Standard Deviation
     standard_name: " "
     units: " "
+  - name: nsidc_nt_seaice_conc
+    long_name: Passive Microwave Daily Southern Hemisphere Sea Ice Concentration by Bootstrap algorithm processed by NSIDC
+    standard_name: sea_ice_area_fraction
+    units: 1
 original_dataset_title: NOAA/NSIDC Climate Data Record of Passive Microwave Sea Ice Concentration, Version 4
 original_dataset_short_name: G02202_V4
 original_dataset_url: https://nsidc.org/data/G02202/versions/4
