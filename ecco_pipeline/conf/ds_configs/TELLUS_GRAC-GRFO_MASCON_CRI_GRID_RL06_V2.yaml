@@ -1,4 +1,4 @@
-ds_name: GRC-GFO_GRIDDED_AOD1B_JPL_MASCON_RL06 # Name for dataset
+ds_name: TELLUS_GRAC-GRFO_MASCON_CRI_GRID_RL06_V2 # Name for dataset
 start: "19800101T00:00:00Z" # yyyymmddThh:mm:ssZ
 end: "NOW" # yyyymmddThh:mm:ssZ for specific date or "NOW" for...now 
 date_regex: "%Y-%m-%dT%H:%M:%SZ" # does not change
@@ -7,34 +7,34 @@ date_regex: "%Y-%m-%dT%H:%M:%SZ" # does not change
 harvester_type: "podaac"
 host: https://podaac.jpl.nasa.gov/ws/search/granule/?format=atom&pretty=false&itemsPerPage=300000 # does not change
 user: anonymous # does not change
-podaac_id: "PODAAC-GGAOD-3MJ60"
+podaac_id: "PODAAC-TEMSC-3JC62"
 
 # Metadata
-aggregated: false # if data is available aggregated
+aggregated: true # if data is available aggregated
 data_time_scale: "monthly" # daily or monthly
-date_format: "yyyyddd" # format of date in file name ex: yyyymmdd
+date_format: "yyyymm" # format of date in file name ex: yyyymmdd
 regions: []
 fields:
-  - name: GAB_msc_Lmax180
-    long_name: GAB mascon; degree Lmax180
-    standard_name: " "
-    units: meters_Liquid_Water_Equivalent_Thickness
-  - name: GAD_msc_Lmax180
-    long_name: GAD mascon; degree Lmax180
-    standard_name: " "
-    units: meters_Liquid_Water_Equivalent_Thickness
-original_dataset_title: "JPL GRACE/GRACE-FO Gridded-AOD1B Water-Equivalent-Thickness Surface-Mass Anomaly RL06 dataset for Tellus Level-3 mascon 0.5-degree grid"
-original_dataset_short_name: "GRC-GFO_GRIDDED_AOD1B_JPL_MASCON_RL06"
-original_dataset_url: "https://podaac.jpl.nasa.gov/dataset/GRC-GFO_GRIDDED_AOD1B_JPL_MASCON_RL06"
-original_dataset_reference: "https://doi.org/10.5067/GGAOD-3MJ60"
-original_dataset_doi: "10.5067/GGAOD-3MJ60"
+  - name: lwe_thickness
+    long_name: Liquid_Water_Equivalent_Thickness
+    standard_name: Liquid_Water_Equivalent_Thickness
+    units: cm
+  - name: uncertainty
+    long_name: uncertainty
+    standard_name: uncertainty
+    units: cm
+original_dataset_title: "JPL GRACE and GRACE-FO Mascon Ocean, Ice, and Hydrology Equivalent Water Height Coastal Resolution Improvement (CRI) Filtered Release 06 Version 02"
+original_dataset_short_name: "TELLUS_GRAC-GRFO_MASCON_CRI_GRID_RL06_V2"
+original_dataset_url: "https://podaac.jpl.nasa.gov/dataset/TELLUS_GRAC-GRFO_MASCON_CRI_GRID_RL06_V2?ids=&values=&search=mascon"
+original_dataset_reference: "https://podaac.jpl.nasa.gov/GRACE"
+original_dataset_doi: "10.5067/TEMSC-3JC62"
 
 # Transformation
-t_version: 2.0 # Update this value if any changes are made to this portion
+t_version: 1.6 # Update this value if any changes are made to this portion
 array_precision: float32
-time_zone_included_with_time: False # Data time values have time zone
-extra_information: ["time_bounds_var", "time_var"] # Unique things to do for dataset
-data_res: 0.5 # Resolution of dataset
+time_zone_included_with_time: True # Data time values have time zone
+extra_information: ["time_var", "time_bounds_var"] # Unique things to do for dataset
+data_res: 3 # Resolution of dataset
 
 # Values for non split datasets (for datasets split into nh/sh, append '_nh'/'_sh')
 data_max_lat: 90.0 # Maximum latitude in dataset

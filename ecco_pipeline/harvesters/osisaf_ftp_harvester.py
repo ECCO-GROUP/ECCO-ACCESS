@@ -10,15 +10,8 @@ import requests
 from dateutil import parser
 from utils import file_utils, solr_utils
 
-logs_path = 'ecco_pipeline/logs/'
-logging.config.fileConfig(f'{logs_path}/log.ini',
-                          disable_existing_loggers=False)
+logging.config.fileConfig('logs/log.ini', disable_existing_loggers=False)
 log = logging.getLogger(__name__)
-
-
-def collect_granules():
-    all_granules = []
-    return all_granules
 
 
 def valid_date(e, config):
@@ -58,10 +51,9 @@ def granule_update_check(docs, filename, mod_date_time, time_format):
     return False
 
 
-def ftp_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=False):
+def harvester(config, output_path, grids_to_use=[]):
     """
     Pulls data files for OSISAF FTP id and date range given in harvester_config.yaml.
-    If not on_aws, saves locally, else saves to s3 bucket.
     Creates (or updates) Solr entries for dataset, harvested granule, fields,
     and descendants.
     """
@@ -79,7 +71,6 @@ def ftp_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=False):
         end_time = datetime.utcnow().strftime("%Y%m%dT%H:%M:%SZ")
 
     target_dir = f'{output_path}/{dataset_name}/harvested_granules/'
-    folder = f'/tmp/{dataset_name}/'
 
     if not os.path.exists(target_dir):
         os.makedirs(target_dir)
@@ -91,28 +82,9 @@ def ftp_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=False):
     chk_time = datetime.utcnow().strftime(time_format)
     now = datetime.utcnow()
     updating = False
-    aws_upload = False
 
-    # =====================================================
-    # Setup AWS Target Bucket
-    # =====================================================
-    if on_aws:
-        target_bucket_name = config['target_bucket_name']
-        target_bucket = s3.Bucket(target_bucket_name)
-        solr_host = config['solr_host_aws']
-        solr_collection_name = config['solr_collection_name']
-        solr_utils.clean_solr(config, grids_to_use)
-        print(
-            f'Downloading {dataset_name} files and uploading to {target_bucket_name}/{dataset_name}\n')
-    else:
-        solr_host = config['solr_host_local']
-        solr_collection_name = config['solr_collection_name']
-        solr_utils.clean_solr(config, grids_to_use)
-        print(f'Downloading {dataset_name} files to {target_dir}\n')
-
-    # if target path doesn't exist, make them
-    if not os.path.exists(folder):
-        os.makedirs(folder)
+    solr_utils.clean_solr(config, grids_to_use)
+    print(f'Downloading {dataset_name} files to {target_dir}\n')
 
     # =====================================================
     # Pull existing entries from Solr
@@ -143,8 +115,12 @@ def ftp_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=False):
     # =====================================================
     # OSISAF loop
     # =====================================================
-    ftp = FTP(host)
-    ftp.login(config['user'])
+    try:
+        ftp = FTP(host)
+        ftp.login(config['user'])
+    except Exception as e:
+        log.exception(f'Harvesting failed. Unable to connect to FTP. {e}')
+        return 'Harvesting failed. Unable to connect to FTP.'
     for year_dir in ftp.nlst(ddir):
         year = year_dir.split('/')[-1]
         if year < start_time[:4] or year > end_time[:4]:
@@ -154,8 +130,10 @@ def ftp_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=False):
             try:
                 files = []
                 ftp.dir(month_dir, files.append)
-                files = [
-                    e.split()[-1] for e in files if config["filename_filter"] in e and valid_date(e.split()[-1], config)]
+                files = [e.split()[-1] for e in files
+                         if config["filename_filter"] in e and
+                         valid_date(e.split()[-1], config) and
+                         '.nc' in e]
             except:
                 log.exception(
                     f'Error finding files at {month_dir}. Check harvester config.')
@@ -196,7 +174,6 @@ def ftp_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=False):
                 descendants_item['source_s'] = item['source_s']
 
                 updating = False
-                aws_upload = False
 
                 # Attempt to get last modified time of file
                 try:
@@ -212,7 +189,7 @@ def ftp_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=False):
 
                 if updating:
                     year = date[:4]
-                    local_fp = f'{folder}{dataset_name}_granule.nc' if on_aws else f'{target_dir}{year}/{filename}'
+                    local_fp = f'{target_dir}{year}/{filename}'
 
                     if not os.path.exists(f'{target_dir}{year}/'):
                         os.makedirs(f'{target_dir}{year}/')
@@ -248,18 +225,6 @@ def ftp_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=False):
                         item['filename'] = ''
                         item['pre_transformation_file_path_s'] = ''
                         item['file_size_l'] = 0
-
-                    # =====================================================
-                    # Push data to s3 bucket
-                    # =====================================================
-
-                    if on_aws:
-                        aws_upload = True
-                        print("=========uploading file to s3=========")
-                        target_bucket.upload_file(
-                            local_fp, f'{dataset_name}/{filename}')
-                        item['pre_transformation_file_path_s'] = f's3://{config["target_bucket_name"]}/{dataset_name}/{filename}'
-                        print("======uploading file to s3 DONE=======")
 
                     # Update descendant item
                     if hemi:
@@ -404,14 +369,10 @@ def ftp_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=False):
         dataset_metadata = dataset_query[0]
 
         # Query for dates of all harvested docs
-        getVars = {'q': '*:*',
-                   'fq': [f'dataset_s:{dataset_name}', 'type_s:granule', 'harvest_success_b:true'],
-                   'fl': 'date_s',
-                   'rows': 300000}
-
-        url = f'{solr_host}{solr_collection_name}/select?'
-        response = requests.get(url, params=getVars)
-        dates = [x['date_s'] for x in response.json()['response']['docs']]
+        fq = [f'dataset_s:{dataset_name}',
+              'type_s:granule', 'harvest_success_b:true']
+        dates_query = solr_utils.solr_query(fq, fl='date_s')
+        dates = [x['date_s'] for x in dates_query]
 
         # Build update document body
         update_doc = {}

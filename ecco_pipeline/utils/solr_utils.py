@@ -7,17 +7,21 @@ import requests
 
 from conf.global_settings import SOLR_COLLECTION, SOLR_HOST
 
-def solr_query(fq):
+
+def solr_query(fq, fl=''):
     getVars = {'q': '*:*',
                'fq': fq,
+               'fl': fl,
                'rows': 300000}
 
     url = f'{SOLR_HOST}{SOLR_COLLECTION}/select?'
     try:
-        response = requests.get(url, params=getVars, headers={'Connection': 'close'})
+        response = requests.get(url, params=getVars, headers={
+                                'Connection': 'close'})
     except:
         time.sleep(5)
-        response = requests.get(url, params=getVars, headers={'Connection': 'close'})
+        response = requests.get(url, params=getVars, headers={
+                                'Connection': 'close'})
 
     return response.json()['response']['docs']
 
@@ -111,28 +115,3 @@ def clean_solr(config, grids_to_use):
     fq = f'dataset_s:{dataset_name} AND date_s:{{{config_end} TO *]'
     url = f'{SOLR_HOST}{SOLR_COLLECTION}/update?commit=true'
     requests.post(url, json={'delete': {'query': fq}})
-
-    # Add start and end years to '{grid}_years_updated' field in dataset entry
-    # Forces the bounding years to be re-aggregated to account for potential
-    # removed dates
-    start_year = config_start[:4]
-    end_year = config_end[:4]
-    update_body = [{
-        "id": dataset_metadata['id']
-    }]
-
-    for grid in grids:
-        solr_grid_years = f'{grid}_years_updated_ss'
-        if solr_grid_years in dataset_metadata.keys():
-            years = dataset_metadata[solr_grid_years]
-        else:
-            years = []
-        if start_year not in years:
-            years.append(start_year)
-        if end_year not in years:
-            years.append(end_year)
-
-        update_body[0][solr_grid_years] = {"set": years}
-
-    if grids:
-        solr_update(update_body)

@@ -7,15 +7,14 @@ from multiprocessing import cpu_count
 from pathlib import Path
 
 from conf.global_settings import OUTPUT_DIR, SOLR_COLLECTION
-from grids_to_solr import grids_to_solr
+import grids_to_solr
 from grid_transformation import grid_transformation_local
-from aggregation_by_year import aggregation_local
+from aggregation import aggregation
 from utils import solr_utils
 
 import requests
 import yaml
 
-# CONFIG_PATH = Path(f'{Path(__file__).resolve().parents[0]}/dataset_configs/')
 ###########
 # Perform set up and verify system elements
 ###########
@@ -41,6 +40,12 @@ try:
 except requests.ConnectionError:
     print('\nSolr is not currently running! Start Solr and try again.\n')
     log.fatal('Solr is not currently running! Start Solr and try again.')
+    exit()
+if not solr_utils.core_check():
+    print(
+        f'Solr core {SOLR_COLLECTION} does not exist. Add a core using "bin/solr create -c {{collection_name}}".')
+    log.fatal(
+        f'Solr core {SOLR_COLLECTION} does not exist. Add a core using "bin/solr create -c {{collection_name}}".')
     exit()
 
 ds_status = defaultdict(list)
@@ -72,9 +77,6 @@ def create_parser():
     parser.add_argument('--wipe_transformations', default=False, action='store_true',
                         help='deletes transformations with version number different than what is \
                             currently in transformation_config')
-
-    parser.add_argument('--dev_solr', default=False, nargs=1,
-                        help='Uses provided Solr collection name for all Solr entries. Creates core if collection name doesnt exist')
 
     parser.add_argument('--grids_to_use', default=False, nargs='*',
                         help='Names of grids to use during the pipeline')
@@ -117,21 +119,22 @@ def run_harvester(datasets, output_dir, grids_to_use):
                     f'Harvester type missing from {ds} config. Exiting.')
                 exit()
             if harvester_type == 'cmr':
-                from harvesters.cmr_harvester import harvester_local
+                from harvesters.cmr_harvester import harvester
             elif harvester_type == 'podaac':
-                from harvesters.podaac_harvester import harvester_local
+                from harvesters.podaac_harvester import harvester
             elif harvester_type == 'osisaf_ftp':
-                from harvesters.osisaf_ftp_harvester import harvester_local
+                from harvesters.osisaf_ftp_harvester import harvester
             elif harvester_type == 'nsidc_ftp':
-                from harvesters.nsidc_ftp_harvester import harvester_local
+                from harvesters.nsidc_ftp_harvester import harvester
             elif harvester_type == 'ifremer_ftp':
-                from harvesters.ifremer_ftp_harvester import harvester_local
+                from harvesters.ifremer_ftp_harvester import harvester
             else:
                 print(f'{harvester_type} is not a supported harvester type.')
-                log.exception(f'{harvester_type} is not a supported harvester type.')
+                log.exception(
+                    f'{harvester_type} is not a supported harvester type.')
                 exit()
 
-            status = harvester_local.main(config, output_dir, grids_to_use)
+            status = harvester(config, output_dir, grids_to_use)
             ds_status[ds].append(status)
             log.info(f'{ds} harvesting complete. {status}')
             print('\033[92mHarvest successful\033[0m')
@@ -153,10 +156,7 @@ def run_transformation(datasets, output_dir, multiprocessing, user_cpus, wipe, g
             print(f'\033[93mRunning transformation for {ds}\033[0m')
             print('=========================================================')
 
-            config_path = Path(
-                CONFIG_PATH / f'{ds}/transformation_config.yaml')
-
-            with open(config_path, 'r') as stream:
+            with open(Path(f'conf/ds_configs/{ds}.yaml'), 'r') as stream:
                 config = yaml.load(stream, yaml.Loader)
 
             status = grid_transformation_local.main(config,
@@ -186,14 +186,10 @@ def run_aggregation(datasets, output_dir, grids_to_use):
             print(f'\033[93mRunning aggregation for {ds}\033[0m')
             print('=========================================================')
 
-            config_path = Path(CONFIG_PATH / f'{ds}/aggregation_config.yaml')
-
-            with open(config_path, 'r') as stream:
+            with open(Path(f'conf/ds_configs/{ds}.yaml'), 'r') as stream:
                 config = yaml.load(stream, yaml.Loader)
 
-            status = aggregation_local.main(output_dir,
-                                            config,
-                                            grids_to_use)
+            status = aggregation(output_dir, config, grids_to_use)
             ds_status[ds].append(status)
 
             log.info(f'{ds} aggregation complete. {status}')
@@ -213,18 +209,6 @@ if __name__ == '__main__':
     print('========== ECCO PREPROCESSING PIPELINE ==========')
     print('=================================================')
 
-    # ------------------- Dev Solr -------------------
-    if args.dev_solr:
-        solr_utils.solr_collection = args.dev_solr[0]
-
-        # Check if core exists
-        if not solr_utils.core_check():
-            print(
-                f'Solr core {solr_utils.solr_collection} does not exist. Add a core using "bin/solr create -c {{collection_name}}".')
-            log.fatal(
-                f'Solr core {solr_utils.solr_collection} does not exist. Add a core using "bin/solr create -c {{collection_name}}".')
-            exit()
-
     # ------------------- Harvested Entry Validation -------------------
     if args.harvested_entry_validation:
         solr_utils.validate_granules()
@@ -243,11 +227,8 @@ if __name__ == '__main__':
             print(f'\n\033[93mRunning grids_to_solr\033[0m')
             print('=========================================================')
             grids_not_in_solr = []
-            try:
-                grids_not_in_solr = grids_to_solr.main(
-                    grids_to_use, verify_grids)
-            except Exception as e:
-                log.exception(e)
+            grids_not_in_solr = grids_to_solr.main(grids_to_use, verify_grids)
+
             if grids_not_in_solr:
                 for name in grids_not_in_solr:
                     print(
@@ -285,7 +266,8 @@ if __name__ == '__main__':
                 f'Unknown option entered, "{chosen_option}", please enter a valid option\n'
             )
 
-    datasets = [ds for ds in os.listdir('conf/ds_configs') if ds != '.DS_Store' and 'tpl' not in ds]
+    datasets = [os.path.splitext(ds)[0] for ds in os.listdir(
+        'conf/ds_configs') if ds != '.DS_Store' and 'tpl' not in ds]
     datasets.sort()
 
     wipe = args.wipe_transformations

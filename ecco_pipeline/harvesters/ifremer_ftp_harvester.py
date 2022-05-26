@@ -51,10 +51,9 @@ def granule_update_check(docs, filename, mod_date_time, time_format):
     return False
 
 
-def ifremer_ftp_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=False):
+def harvester(config, output_path, grids_to_use=[]):
     """
     Pulls data files for ifremer FTP id and date range given in harvester_config.yaml.
-    If not on_aws, saves locally, else saves to s3 bucket.
     Creates (or updates) Solr entries for dataset, harvested granule, fields,
     and descendants.
     """
@@ -72,8 +71,6 @@ def ifremer_ftp_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=
         end_time = datetime.utcnow().strftime("%Y%m%dT%H:%M:%SZ")
 
     target_dir = f'{output_path}/{dataset_name}/harvested_granules/'
-    folder = f'/tmp/{dataset_name}/'
-
     if not os.path.exists(target_dir):
         os.makedirs(target_dir)
 
@@ -84,28 +81,9 @@ def ifremer_ftp_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=
     chk_time = datetime.utcnow().strftime(time_format)
     now = datetime.utcnow()
     updating = False
-    aws_upload = False
 
-    # =====================================================
-    # Setup AWS Target Bucket
-    # =====================================================
-    if on_aws:
-        target_bucket_name = config['target_bucket_name']
-        target_bucket = s3.Bucket(target_bucket_name)
-        solr_host = config['solr_host_aws']
-        solr_collection_name = config['solr_collection_name']
-        solr_utils.clean_solr(config, grids_to_use)
-        print(
-            f'Downloading {dataset_name} files and uploading to {target_bucket_name}/{dataset_name}\n')
-    else:
-        solr_host = config['solr_host_local']
-        solr_collection_name = config['solr_collection_name']
-        solr_utils.clean_solr(config, grids_to_use)
-        print(f'Downloading {dataset_name} files to {target_dir}\n')
-
-    # if target path doesn't exist, make them
-    if not os.path.exists(folder):
-        os.makedirs(folder)
+    solr_utils.clean_solr(config, grids_to_use)
+    print(f'Downloading {dataset_name} files to {target_dir}\n')
 
     # =====================================================
     # Pull existing entries from Solr
@@ -145,9 +123,11 @@ def ifremer_ftp_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=
 
     try:
         files = ftp.nlst(ddir)
-        files = [f.split('/')[-1] for f in files if valid_date(f.split('/')[-1], config)]
+        files = [f.split('/')[-1]
+                 for f in files if valid_date(f.split('/')[-1], config)]
     except:
-        log.exception(f'Error finding files at {ddir}. Check harvester config.')
+        log.exception(
+            f'Error finding files at {ddir}. Check harvester config.')
         return 'Harvesting failed. Unable to find files on FTP.'
 
     for filename in files:
@@ -180,7 +160,6 @@ def ifremer_ftp_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=
         descendants_item['source_s'] = item['source_s']
 
         updating = False
-        aws_upload = False
 
         # Attempt to get last modified time of file
         try:
@@ -197,7 +176,7 @@ def ifremer_ftp_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=
 
         if updating:
             year = date[:4]
-            local_fp = f'{folder}{dataset_name}_granule.nc' if on_aws else f'{target_dir}{year}/{filename}'
+            local_fp = f'{target_dir}{year}/{filename}'
 
             if not os.path.exists(f'{target_dir}{year}/'):
                 os.makedirs(f'{target_dir}{year}/')
@@ -233,18 +212,6 @@ def ifremer_ftp_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=
                 item['filename'] = ''
                 item['pre_transformation_file_path_s'] = ''
                 item['file_size_l'] = 0
-
-            # =====================================================
-            # Push data to s3 bucket
-            # =====================================================
-
-            if on_aws:
-                aws_upload = True
-                print("=========uploading file to s3=========")
-                target_bucket.upload_file(
-                    local_fp, f'{dataset_name}/{filename}')
-                item['pre_transformation_file_path_s'] = f's3://{config["target_bucket_name"]}/{dataset_name}/{filename}'
-                print("======uploading file to s3 DONE=======")
 
             # Update descendant item
             key = descendants_item['date_s']
@@ -386,14 +353,10 @@ def ifremer_ftp_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=
         dataset_metadata = dataset_query[0]
 
         # Query for dates of all harvested docs
-        getVars = {'q': '*:*',
-                   'fq': [f'dataset_s:{dataset_name}', 'type_s:granule', 'harvest_success_b:true'],
-                   'fl': 'date_s',
-                   'rows': 300000}
-
-        url = f'{solr_host}{solr_collection_name}/select?'
-        response = requests.get(url, params=getVars)
-        dates = [x['date_s'] for x in response.json()['response']['docs']]
+        fq = [f'dataset_s:{dataset_name}',
+              'type_s:granule', 'harvest_success_b:true']
+        dates_query = solr_utils.solr_query(fq, fl='date_s')
+        dates = [x['date_s'] for x in dates_query]
 
         # Build update document body
         update_doc = {}

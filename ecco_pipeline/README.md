@@ -9,9 +9,6 @@ The pipeline utilizes a Solr online database for logging. The Solr database is u
 ## Pipeline Structure 
 Dataset specific harvesting, transformation, and aggregation configuration files are used to provide the necessary information to run the pipeline from generalized code. The run_pipeline.py file provides the user with options for how to run the pipeline, what steps of the pipeline to run and what datasets to send through the pipeline. 
 
-## Cloud Development 
-The current cloud computing functionality of this pipeline has not been tested or verified. As a result, the pipeline can currently only be run via the run_pipeline.py tool script on a local machine.
-
 ## More Information
 More detailed information can be found at the following wiki pages:
   - [Documentation](https://github.com/ECCO-GROUP/ECCO-ACCESS/wiki/Documentation)

@@ -1,4 +1,4 @@
-ds_name: G02202_V3 # Name for dataset
+ds_name: G02202_V4 # Name for dataset
 start: "19800101T00:00:00Z" # yyyymmddThh:mm:ssZ
 end: "NOW" # yyyymmddThh:mm:ssZ for specific date or "NOW" for...now
 date_regex: "%Y-%m-%dT%H:%M:%SZ" # does not change
@@ -14,21 +14,21 @@ ddir: "pub/DATASETS/NOAA/G02202_V3/"
 aggregated: false # if data is available aggregated
 data_time_scale: "daily" # daily or monthly
 date_format: "yyyymmdd" # format of date in file name ex: yyyymmdd
-regions: ['north', 'south']
+regions: ["north", "south"]
 fields:
-  - name: seaice_conc_cdr
+  - name: cdr_seaice_conc
     long_name: NOAA/NSIDC Climate Data Record of Passive Microwave Sea Ice Concentration
     standard_name: sea_ice_area_fraction
     units: 1
-  - name: stdev_of_seaice_conc_cdr
+  - name: stdev_of_cdr_seaice_conc
     long_name: Passive Microwave Sea Ice Concentration Source Estimated Standard Deviation
     standard_name: " "
     units: " "
-original_dataset_title: NOAA/NSIDC Climate Data Record of Passive Microwave Sea Ice Concentration, Version 3
-original_dataset_short_name: G02202_V3
-original_dataset_url: https://nsidc.org/data/G02202/versions/3
-original_dataset_reference: https://nsidc.org/sites/nsidc.org/files/technical-references/SeaIce_CDR_CATBD_final_Rev-7.pdf
-original_dataset_doi: 10.7265/N59P2ZTG
+original_dataset_title: NOAA/NSIDC Climate Data Record of Passive Microwave Sea Ice Concentration, Version 4
+original_dataset_short_name: G02202_V4
+original_dataset_url: https://nsidc.org/data/G02202/versions/4
+original_dataset_reference: https://nsidc.org/sites/nsidc.org/files/technical-references/CDRP-ATBD-final.pdf
+original_dataset_doi: 10.7265/efmz-2t65
 
 # Transformation
 t_version: 1.5 # Update this value if any changes are made to this file

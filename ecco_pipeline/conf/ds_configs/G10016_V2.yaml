@@ -14,7 +14,7 @@ ddir: "pub/DATASETS/NOAA/G10016_V2/"
 aggregated: false # if data is available aggregated
 data_time_scale: "daily" # daily or monthly
 date_format: "yyyymmdd" # format of date in file name ex: yyyymmdd
-regions: ['north', 'south']
+regions: ["north", "south"]
 fields:
   - name: seaice_conc_cdr
     long_name: NOAA/NSIDC Climate Data Record of Passive Microwave Sea Ice Concentration
@@ -27,7 +27,7 @@ fields:
 original_dataset_title: Near-Real-Time NOAA/NSIDC Climate Data Record of Passive Microwave Sea Ice Concentration, Version 1
 original_dataset_short_name: G10016_V2
 original_dataset_url: https://nsidc.org/data/G10016
-original_dataset_reference: https://nsidc.org/sites/nsidc.org/files/technical-references/SeaIce_CDR_CATBD_final_Rev-7.pdf
+original_dataset_reference: https://nsidc.org/sites/nsidc.org/files/technical-references/CDRP-ATBD-final.pdf
 original_dataset_doi: 10.7265/tgam-yv28
 
 # Transformation

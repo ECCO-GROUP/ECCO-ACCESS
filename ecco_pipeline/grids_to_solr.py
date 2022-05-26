@@ -5,23 +5,14 @@ from pathlib import Path
 import xarray as xr
 import yaml
 from utils import file_utils, solr_utils
+from conf.global_settings import GRIDS
 
 
 def main(grids_to_use=[], verify=False):
     # =====================================================
-    # Read configurations from YAML file
-    # =====================================================
-    Path(__file__).parent.resolve() / 'grids_config.yaml'
-    path_to_yaml = Path(__file__).parent.resolve() / 'grids_config.yaml'
-    path_to_file_dir = Path(__file__).parent.resolve() / 'grids/'
-    with open(path_to_yaml, "r") as stream:
-        config = yaml.load(stream, yaml.Loader)
-
-    # =====================================================
     # Scan directory for grid types
     # =====================================================
-    grid_files = [f for f in os.listdir(path_to_file_dir) if Path.is_file(
-        path_to_file_dir / f)]
+    grid_files = [f for f in os.listdir('grids/') if f[-2:] == 'nc']
 
     # =====================================================
     # Extract grid names from netCDF
@@ -30,15 +21,8 @@ def main(grids_to_use=[], verify=False):
 
     # Assumes grids conform to metadata standard (see documentation)
     for grid_file in grid_files:
-        if config['grids_to_use']:
-            if grid_file in config['grids_to_use']:
-                ds = xr.open_dataset(path_to_file_dir / grid_file)
-
-                grid_name = ds.attrs['name']
-                grid_type = ds.attrs['type']
-                grids.append((grid_name, grid_type, grid_file))
-        else:
-            ds = xr.open_dataset(path_to_file_dir / grid_file)
+        if (grids_to_use and grid_file in grids_to_use) or not grids_to_use:
+            ds = xr.open_dataset(f'grids/{grid_file}')
 
             grid_name = ds.attrs['name']
             grid_type = ds.attrs['type']
@@ -50,20 +34,17 @@ def main(grids_to_use=[], verify=False):
     fq = ['type_s:grid']
     docs = solr_utils.solr_query(fq)
 
-    grids_in_solr = []
-
-    if len(docs) > 0:
-        for doc in docs:
-            grids_in_solr.append(doc['grid_name_s'])
+    grids_in_solr = [doc['grid_name_s'] for doc in docs]
 
     # =====================================================
     # Create Solr grid-type document for each missing grid type
     # =====================================================
     for grid_name, grid_type, grid_file in grids:
 
-        grid_path = path_to_file_dir / grid_file
+        grid_path = f'grids/{grid_file}'
         update_body = []
 
+        # Add grid to solr
         if grid_name not in grids_in_solr:
             grid_meta = {}
             grid_meta['type_s'] = 'grid'
@@ -76,6 +57,7 @@ def main(grids_to_use=[], verify=False):
 
             grid_meta['grid_checksum_s'] = file_utils.md5(grid_path)
             update_body.append(grid_meta)
+        # Verify grid in solr matches grid file
         else:
             current_checksum = file_utils.md5(grid_path)
 

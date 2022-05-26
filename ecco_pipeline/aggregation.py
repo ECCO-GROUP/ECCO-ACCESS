@@ -10,38 +10,56 @@ import xarray as xr
 from netCDF4 import default_fillvals  # pylint: disable=no-name-in-module
 from utils import solr_utils
 
-logging.config.fileConfig('logs/log.ini',
-                          disable_existing_loggers=False)
+logging.config.fileConfig('logs/log.ini', disable_existing_loggers=False)
 log = logging.getLogger(__name__)
 np.warnings.filterwarnings('ignore')
 
-
-def find_bucket_key(s3_path):
-    """
-    This is a helper function that given an s3 path such that the path is of
-    the form: bucket/key
-    It will return the bucket and the key represented by the s3 path
-    """
-    s3_components = s3_path.split('/')
-    bucket = s3_components[0]
-    s3_key = ""
-    if len(s3_components) > 1:
-        s3_key = '/'.join(s3_components[1:])
-    return bucket, s3_key
+try:
+    sys.path.append(str(Path('../ecco-cloud-utils/').resolve()))
+    import ecco_cloud_utils as ea  # pylint: disable=import-error
+except Exception as e:
+    log.exception(e)
 
 
-def split_s3_bucket_key(s3_path):
-    """
-    Split s3 path into bucket and key prefix.
-    This will also handle the s3:// prefix.
-    :return: Tuple of ('bucketname', 'keyname')
-    """
-    if s3_path.startswith('s3://'):
-        s3_path = s3_path[5:]
-    return find_bucket_key(s3_path)
+def years_to_aggregate(dataset_name, grid_name):
+
+    years = []
+
+    fq = [f'dataset_s:{dataset_name}',
+          'type_s:transformation', f'grid_name_s:{grid_name}']
+    r = solr_utils.solr_query(fq)
+    transformation_years = list(set([t['date_s'][:4] for t in r]))
+    transformation_years.sort()
+    transformation_docs = r
+
+    # Years with transformations that exist for this dataset and this grid
+    for year in transformation_years:
+        # We want to see if we need to aggregate this year again
+        # 1. check if aggregation exists - if not add it to years to aggregate
+        # 2. if it does - compare prcessing times:
+        #   - if aggregation time is later than all transform times for that year
+        #     no need to aggregate
+        #   - if at least one transformation occured after agg time, year needs to
+        #     be aggregated
+        fq = [f'dataset_s:{dataset_name}', 'type_s:aggregation',
+              f'grid_name_s:{grid_name}', f'year_s:{year}']
+        r = solr_utils.solr_query(fq)
+
+        if r:
+            agg_time = r[0]['aggregation_time_dt']
+            for t in transformation_docs:
+                if t['date_s'][:4] != year:
+                    continue
+                if t['transformation_completed_dt'] > agg_time:
+                    years.append(year)
+                    break
+        else:
+            years.append(year)
+
+    return years
 
 
-def run_aggregation(output_dir, config, grids_to_use=[], s3=None):
+def aggregation(output_dir, config, grids_to_use=[]):
     """
     Aggregates data into annual files, saves them, and updates Solr
     """
@@ -49,22 +67,13 @@ def run_aggregation(output_dir, config, grids_to_use=[], s3=None):
     # =====================================================
     # Code to import ecco utils locally...
     # =====================================================
-    generalized_functions_path = Path(
-        f'{Path(__file__).resolve().parents[2]}/ecco-cloud-utils/')
-    sys.path.append(str(generalized_functions_path))
+    sys.path.append('../ecco-cloud-utils/')
     import ecco_cloud_utils as ea  # pylint: disable=import-error
 
     # =====================================================
     # Set configuration options and Solr metadata
     # =====================================================
     dataset_name = config['ds_name']
-
-    if s3:
-        solr_host = config['solr_host_aws']
-        solr_collection_name = config['solr_collection_name']
-    else:
-        solr_host = config['solr_host_local']
-        solr_collection_name = config['solr_collection_name']
 
     # =====================================================
     # Pull metadata from Solr
@@ -122,14 +131,14 @@ def run_aggregation(output_dir, config, grids_to_use=[], s3=None):
 
         # Only aggregate years with updated transformations
         # Based on years_updated_ss field in dataset Solr entry
-        solr_years_updated = f'{grid_name}_years_updated_ss'
-        if (not aggregate_all_years) and (solr_years_updated in dataset_metadata.keys()):
-            years = dataset_metadata[solr_years_updated]
-        elif aggregate_all_years:
+        if aggregate_all_years:
             start_year = int(dataset_metadata['start_date_dt'][:4])
             end_year = int(dataset_metadata['end_date_dt'][:4])
             years = [str(year) for year in range(start_year, end_year + 1)]
         else:
+            years = years_to_aggregate(dataset_name, grid_name)
+
+        if not years:
             # If no years to aggregate for this grid, continue to next grid
             print(f'No updated years to aggregate for {grid_name}')
             continue
@@ -137,13 +146,7 @@ def run_aggregation(output_dir, config, grids_to_use=[], s3=None):
         print(
             f'\nAggregating years {min(years)} to {max(years)} for {grid_name}\n')
 
-        if grid_path[:5] == 's3://':
-            source_bucket_name, key_name = split_s3_bucket_key(grid_path)
-            obj = s3.Object(source_bucket_name, key_name)
-            # TODO: not sure if xarray can open s3 obj
-            model_grid = xr.open_dataset(obj, decode_times=True)
-        else:
-            model_grid = xr.open_dataset(grid_path, decode_times=True)
+        model_grid = xr.open_dataset(grid_path, decode_times=True)
 
         # =====================================================
         # Loop through years
@@ -218,17 +221,8 @@ def run_aggregation(output_dir, config, grids_to_use=[], s3=None):
                     # open the file, otherwise make empty record
                     opened_datasets = []
                     for doc in docs:
-                        # if running on AWS, get file from s3
-                        if doc['transformation_file_path_s'][:5] == 's3://':
-                            source_bucket_name, key_name = split_s3_bucket_key(
-                                doc['transformation_file_path_s'])
-                            obj = s3.Object(source_bucket_name, key_name)
-                            data_DS = xr.open_dataset(obj, decode_times=True)
-                            # f = obj.get()['Body'].read()
-                            # data = np.frombuffer(f, dtype=dt, count=-1)
-                        else:
-                            data_DS = xr.open_dataset(
-                                doc['transformation_file_path_s'], decode_times=True)
+                        data_DS = xr.open_dataset(
+                            doc['transformation_file_path_s'], decode_times=True)
 
                         # get name of data variable in the dataset
                         # to be used when accessing the values of the transformed data
@@ -373,7 +367,7 @@ def run_aggregation(output_dir, config, grids_to_use=[], s3=None):
                                                                    output_dirs,
                                                                    binary_dtype,
                                                                    grid_type,
-                                                                   on_aws=s3,
+                                                                   on_aws=False,
                                                                    save_binary=config['save_binary'],
                                                                    save_netcdf=config['save_netcdf'],
                                                                    remove_nan_days_from_data=config[
@@ -383,25 +377,6 @@ def run_aggregation(output_dir, config, grids_to_use=[], s3=None):
 
                     print(
                         f' - Saving {str(year)}_{grid_name}_{field_name} file(s) DONE')
-
-                    # Upload files to s3
-                    if s3:
-                        target_bucket_name = config['target_bucket_name']
-                        s3_aggregated_path = config['s3_aggregated_path']
-                        s3_output_dir = f'{s3_aggregated_path}{dataset_name}_transformed_by_year'
-                        target_bucket = s3.Bucket(target_bucket_name)
-
-                        if config['do_monthly_aggregation']:
-                            target_bucket.upload_file(
-                                solr_output_filepaths['daily_bin'], output_filenames['shortest'])
-                            if data_time_scale.upper() != 'MONTHLY':
-                                target_bucket.upload_file(
-                                    solr_output_filepaths['monthly_bin'], output_filenames['monthly'])
-                        else:
-                            target_bucket.upload_file(
-                                solr_output_filepaths['daily_bin'], output_filenames['shortest'])
-
-                        s3_path = f's3://{target_bucket_name}/{s3_output_dir}'
 
                     success = True
 
@@ -468,9 +443,6 @@ def run_aggregation(output_dir, config, grids_to_use=[], s3=None):
                         update_body[0]["monthly_aggregated_uuid_s"] = {
                             "set": uuids[1]}
 
-                    if s3:
-                        update_body[0]['s3_path_s'] = {"set": s3_path}
-
                     if empty_year:
                         update_body[0]["notes_s"] = {
                             "set": 'Empty year (no data present in grid), not saving to disk.'}
@@ -520,9 +492,6 @@ def run_aggregation(output_dir, config, grids_to_use=[], s3=None):
                             "set": solr_output_filepaths['monthly_netCDF']}
                         update_body[0]["monthly_aggregated_uuid_s"] = {
                             "set": uuids[1]}
-
-                    if s3:
-                        update_body[0]['s3_path'] = s3_path
 
                     if empty_year:
                         update_body[0]["notes_s"] = {
@@ -605,11 +574,6 @@ def run_aggregation(output_dir, config, grids_to_use=[], s3=None):
             "aggregation_status_s": {"set": aggregation_status}
         }
     ]
-
-    # Remove {grid}_years_updated field from solr dataset entry
-    for grid in grids:
-        solr_years_updated = f'{grid["grid_name_s"]}_years_updated_ss'
-        update_body[0][solr_years_updated] = {"set": []}
 
     r = solr_utils.solr_update(update_body, r=True)
 

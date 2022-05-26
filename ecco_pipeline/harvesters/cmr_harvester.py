@@ -18,9 +18,7 @@ import numpy as np
 import requests
 from utils import file_utils, solr_utils
 
-logs_path = 'ecco_pipeline/logs/'
-logging.config.fileConfig(f'{logs_path}/log.ini',
-                          disable_existing_loggers=False)
+logging.config.fileConfig('logs/log.ini', disable_existing_loggers=False)
 log = logging.getLogger(__name__)
 
 """
@@ -203,10 +201,9 @@ def getdate(regex, fname):
     return date
 
 
-def cmr_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=False):
+def harvester(config, output_path, grids_to_use=[]):
     """
     Uses CMR search to find granules within date range given in harvester_config.yaml.
-    If not on_aws, saves locally, else saves to s3 bucket.
     Creates (or updates) Solr entries for dataset, harvested granule, fields,
     and descendants.
     """
@@ -225,9 +222,7 @@ def cmr_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=False):
     if end_time == 'NOW':
         end_time = datetime.utcnow().strftime(date_regex)
 
-    target_bucket_name = config['target_bucket_name']
     target_dir = f'{output_path}/{dataset_name}/harvested_granules/'
-    folder = f'/tmp/{dataset_name}/'
 
     time_format = "%Y-%m-%dT%H:%M:%SZ"
     entries_for_solr = []
@@ -247,23 +242,8 @@ def cmr_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=False):
     sys.path.append(str(generalized_functions_path))
     import ecco_cloud_utils as ea  # pylint: disable=import-error
 
-    # =====================================================
-    # Setup AWS Target Bucket
-    # =====================================================
-    if on_aws:
-        target_bucket_name = config['target_bucket_name']
-        target_bucket = s3.Bucket(target_bucket_name)
-        solr_host = config['solr_host_aws']
-        solr_collection_name = config['solr_collection_name']
-        solr_utils.clean_solr(config, grids_to_use)
-        print(
-            f'Downloading {dataset_name} files and uploading to {target_bucket_name}/{dataset_name}\n')
-    else:
-        target_bucket = None
-        solr_host = config['solr_host_local']
-        solr_collection_name = config['solr_collection_name']
-        solr_utils.clean_solr(config, grids_to_use)
-        print(f'Downloading {dataset_name} files to {target_dir}\n')
+    solr_utils.clean_solr(config, grids_to_use)
+    print(f'Downloading {dataset_name} files to {target_dir}\n')
 
     # =====================================================
     # Pull existing entries from Solr
@@ -358,7 +338,7 @@ def cmr_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=False):
             new_date_format = f'{str(tb[0])[:10]}T00:00:00Z'
             year = new_date_format[:4]
 
-            local_fp = f'{folder}{dataset_name}_granule.nc' if on_aws else f'{target_dir}{year}/{filename}'
+            local_fp = f'{target_dir}{year}/{filename}'
 
             if not os.path.exists(f'{target_dir}{year}/'):
                 os.makedirs(f'{target_dir}{year}/')
@@ -410,7 +390,6 @@ def cmr_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=False):
                 descendants_item['source_s'] = item['source_s']
 
                 updating = False
-                aws_upload = False
 
                 try:
                     updating = (not filename in docs.keys()) or \
@@ -455,20 +434,6 @@ def cmr_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=False):
                         # calculate checksum and expected file size
                         item['checksum_s'] = file_utils.md5(local_fp)
                         item['pre_transformation_file_path_s'] = local_fp
-
-                        # =====================================================
-                        # ### Push data to s3 bucket
-                        # =====================================================
-                        if on_aws:
-                            aws_upload = True
-                            output_filename = f'{dataset_name}/{filename}' if on_aws else filename
-                            print("=========uploading file=========")
-                            # print('uploading '+output_filename)
-                            target_bucket.upload_file(
-                                local_fp, output_filename)
-                            item['pre_transformation_file_path_s'] = f's3://{target_bucket_name}/{output_filename}'
-                            print("======uploading file DONE=======")
-
                         item['harvest_success_b'] = True
                         item['file_size_l'] = os.path.getsize(local_fp)
 
@@ -479,12 +444,7 @@ def cmr_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=False):
                 except Exception as e:
                     print('error', e)
                     if updating:
-                        if aws_upload:
-                            print("======aws upload unsuccessful=======")
-                            item['message_s'] = 'aws upload unsuccessful'
-
-                        else:
-                            print(f'    - {filename} failed to download')
+                        print(f'    - {filename} failed to download')
 
                         item['harvest_success_b'] = False
                         item['filename'] = ''
@@ -636,14 +596,10 @@ def cmr_harvester(config, output_path, grids_to_use=[], s3=None, on_aws=False):
         dataset_metadata = dataset_query[0]
 
         # Query for dates of all harvested docs
-        getVars = {'q': '*:*',
-                   'fq': [f'dataset_s:{dataset_name}', 'type_s:granule', 'harvest_success_b:true'],
-                   'fl': 'date_s',
-                   'rows': 300000}
-
-        url = f'{solr_host}{solr_collection_name}/select?'
-        response = requests.get(url, params=getVars)
-        dates = [x['date_s'] for x in response.json()['response']['docs']]
+        fq = [f'dataset_s:{dataset_name}',
+              'type_s:granule', 'harvest_success_b:true']
+        dates_query = solr_utils.solr_query(fq, fl='date_s')
+        dates = [x['date_s'] for x in dates_query]
 
         # Build update document body
         update_doc = {}
