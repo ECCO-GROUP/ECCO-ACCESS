@@ -247,6 +247,10 @@ def generalized_transform_to_model_grid_solr(data_field_info, record_date, model
             except:
                 data_DA.time_start.values[0] = ds.time_bounds[0].values
                 data_DA.time_end.values[0] = ds.time_bounds[1].values
+        elif 'timebounds' in ds.variables:
+            data_DA.time_start.values[0] = ds.timebounds[0].values
+            data_DA.time_end.values[0] = ds.timebounds[1].values
+
     elif 'no_time' in extra_information:
         # If no_time assume record_date is start date
         # The file may not provide the start date, but it is
