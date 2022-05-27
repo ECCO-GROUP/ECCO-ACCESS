@@ -1,0 +1,70 @@
+ds_name: SSMIS_OSI-401-b # Name for dataset
+start: "19800101T00:00:00Z" # yyyymmddThh:mm:ssZ
+end: "NOW" # yyyymmddThh:mm:ssZ for specific date or "NOW" for...now
+date_regex: "%Y-%m-%dT%H:%M:%SZ" # does not change
+
+# Provider specifications
+harvester_type: osisaf_ftp
+host: osisaf.met.no # does not change
+user: anonymous # does not change
+regex: '\d{8}'
+ddir: "archive/ice/conc/"
+filename_filter: "polstere-100_multi"
+
+# Metadata
+aggregated: false # if data is available aggregated
+data_time_scale: "daily" # daily or monthly
+date_format: "yyyymmdd" # format of date in file name ex: yyyymmdd
+regions: ['north', 'south']
+fields:
+  - name: ice_conc
+    long_name: concentration of sea ice
+    standard_name: sea_ice_area_fraction
+    units: "%"
+  - name: confidence_level
+    long_name: confidence level
+    standard_name: " "
+    units: " "
+original_dataset_title: "Global Sea Ice Concentration (SSMIS)"
+original_dataset_short_name: "Global Sea Ice Concentration (SSMIS)"
+original_dataset_url: "http://www.osi-saf.org/?q=content/global-sea-ice-concentration-ssmis"
+original_dataset_reference: "https://osisaf-hl.met.no/sites/osisaf-hl.met.no/files/user_manuals/osisaf_cdop3_ss2_pum_ice-conc_v1p6.pdf"
+original_dataset_doi: "OSI-401-b"
+
+# Transformation
+t_version: 1.7 # Update this value if any changes are made to this file
+array_precision: float32
+time_zone_included_with_time: False # Data time values have time zone
+extra_information: ["time_bounds_var", "time_var"] # Unique things to do for dataset
+data_res: 10/111 # Resolution of dataset
+
+# Values for non split datasets (for datasets split into nh/sh, append '_nh'/'_sh')
+data_max_lat_nh: 90.0
+data_max_lat_sh: -90.0
+area_extent_nh: [-3945000, -5345000, 3945000, 5845000]
+area_extent_sh: [-3945000, -3945000, 3945000, 4345000]
+dims_nh: [760, 1120]
+dims_sh: [790, 830]
+proj_info_nh:
+  area_id: "3411"
+  area_name: "polar_stereographic"
+  proj_id: "3411"
+  proj4_args: "+proj=stere +a=6378273 +b=6356889.44891 +lat_0=90 +lat_ts=70 +lon_0=-45"
+proj_info_sh:
+  area_id: "3412"
+  area_name: "polar_stereographic"
+  proj_id: "3412"
+  proj4_args: "+proj=stere +a=6378273 +b=6356889.44891 +lat_0=-90 +lat_ts=-70 +lon_0=0"
+
+pre_transformation_steps: [] # List of functions to call on the DataSet before transformation
+post_transformation_steps: [] # List of functions to call on the DataArrays after transformation
+notes: "" # String to include in global attributes of output files
+
+# Aggregation
+a_version: 1.0 # Update this value if any changes are made to this file
+remove_nan_days_from_data: False # Remove empty days from data when aggregating
+do_monthly_aggregation: True
+skipna_in_mean: True # Controls skipna when calculating monthly mean
+monthly_tolerance: 8 # Defines the range of days to look for data around the start of the month (exclusive)
+save_binary: True
+save_netcdf: True

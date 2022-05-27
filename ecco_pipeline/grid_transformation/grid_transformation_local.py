@@ -8,11 +8,10 @@ from multiprocessing import Pool
 import requests
 
 from utils import solr_utils
-from grid_transformation.grid_transformation import run_locally_wrapper
+from conf.global_settings import SOLR_HOST, SOLR_COLLECTION
+from grid_transformation.grid_transformation import transformation
 
-logs_path = 'ecco_pipeline/logs/'
-logging.config.fileConfig(f'{logs_path}/log.ini',
-                          disable_existing_loggers=False)
+logging.config.fileConfig('logs/log.ini', disable_existing_loggers=False)
 log = logging.getLogger(__name__)
 
 
@@ -80,7 +79,7 @@ def get_remaining_transformations(config, granule_file_path, grids):
                 # 3. compare checksum of harvested file (currently in solr) and checksum
                 #    of the harvested file that was previously transformed (recorded in transformation entry)
                 if 'transformation_version_f' in transformation.keys() and \
-                        transformation['transformation_version_f'] == config['version'] and \
+                        transformation['transformation_version_f'] == config['t_version'] and \
                         origin_checksum == harvested_checksum:
 
                     # all tests passed, we do not need to redo the transformation
@@ -111,10 +110,7 @@ def delete_mismatch_transformations(config):
     function deletes the transformed file from disk and the entry from Solr.
     """
     dataset_name = config['ds_name']
-
-    solr_host = config['solr_host_local']
-    solr_collection_name = config['solr_collection_name']
-    config_version = config['version']
+    config_version = config['t_version']
 
     # Query for existing transformations
     fq = [f'dataset_s:{dataset_name}', 'type_s:transformation']
@@ -127,7 +123,7 @@ def delete_mismatch_transformations(config):
                 os.remove(transformation['transformation_file_path_s'])
 
             # Remove transformation entry from Solr
-            url = f'{solr_host}{solr_collection_name}/update?commit=true'
+            url = f'{SOLR_HOST}{SOLR_COLLECTION}/update?commit=true'
             requests.post(url, json={'delete': [transformation['id']]})
 
 
@@ -149,7 +145,7 @@ def multiprocess_transformation(granule, config, output_path, grids):
 
     # Perform remaining transformations
     if remaining_transformations:
-        grids_updated, year = run_locally_wrapper(
+        grids_updated, year = transformation(
             f, remaining_transformations, output_path, config, verbose=False)
 
         return (grids_updated, year)
@@ -167,14 +163,8 @@ def main(config, output_path, multiprocessing=False, user_cpus=1, wipe=False, gr
     the Solr dataset entry is updated with additional metadata.
     """
 
-    # import grid_transformation
-
     dataset_name = config['ds_name']
-
-    solr_host = config['solr_host_local']
-    solr_collection_name = config['solr_collection_name']
-
-    transformation_version = config['version']
+    transformation_version = config['t_version']
 
     if not os.path.exists(output_path):
         os.makedirs(output_path)
@@ -251,7 +241,7 @@ def main(config, output_path, multiprocessing=False, user_cpus=1, wipe=False, gr
             remaining_transformations = get_remaining_transformations(
                 config, file_path, grids)
 
-            grids_updated, year = run_locally_wrapper(
+            grids_updated, year = transformation(
                 file_path, remaining_transformations, output_path, config, verbose=True)
 
             for grid in grids_updated:
@@ -299,7 +289,7 @@ def main(config, output_path, multiprocessing=False, user_cpus=1, wipe=False, gr
 
             # Perform remaining transformations
             if remaining_transformations:
-                grids_updated, year = run_locally_wrapper(
+                grids_updated, year = transformation(
                     f, remaining_transformations, output_path, config, verbose=True)
 
                 for grid in grids_updated:
@@ -335,26 +325,11 @@ def main(config, output_path, multiprocessing=False, user_cpus=1, wipe=False, gr
     elif failed_transformations:
         transformation_status = f'{len(failed_transformations)} transformations failed'
 
-    # Update Solr dataset entry years_updated list and status to transformed
+    # Update Solr dataset entry status to transformed
     update_body = [{
         "id": dataset_metadata['id'],
         "transformation_status_s": {"set": transformation_status},
     }]
-
-    # Combine Solr dataset entry years_updated list with transformation years_updated
-    for grid in years_updated.keys():
-        solr_grid_years = f'{grid}_years_updated_ss'
-        if solr_grid_years in dataset_metadata.keys():
-            existing_years = dataset_metadata[solr_grid_years]
-
-            for year in years_updated[grid]:
-                if year not in existing_years:
-                    existing_years.append(year)
-
-        else:
-            existing_years = years_updated[grid]
-
-        update_body[0][solr_grid_years] = {"set": existing_years}
 
     r = solr_utils.solr_update(update_body, r=True)
 

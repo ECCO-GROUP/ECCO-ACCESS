@@ -1,0 +1,69 @@
+ds_name: G10016_V2 # Name for dataset
+start: "19800101T00:00:00Z" # yyyymmddThh:mm:ssZ
+end: "NOW" # yyyymmddThh:mm:ssZ for specific date or "NOW" for...now
+date_regex: "%Y-%m-%dT%H:%M:%SZ" # does not change
+
+# Provider specifications
+harvester_type: nsidc_ftp
+host: sidads.colorado.edu # does not change
+user: anonymous # does not change
+regex: '\d{8}'
+ddir: "pub/DATASETS/NOAA/G10016_V2/"
+
+# Metadata
+aggregated: false # if data is available aggregated
+data_time_scale: "daily" # daily or monthly
+date_format: "yyyymmdd" # format of date in file name ex: yyyymmdd
+regions: ["north", "south"]
+fields:
+  - name: seaice_conc_cdr
+    long_name: NOAA/NSIDC Climate Data Record of Passive Microwave Sea Ice Concentration
+    standard_name: sea_ice_area_fraction
+    units: 1
+  - name: stdev_of_seaice_conc_cdr
+    long_name: Passive Microwave Sea Ice Concentration Source Estimated Standard Deviation
+    standard_name: " "
+    units: " "
+original_dataset_title: Near-Real-Time NOAA/NSIDC Climate Data Record of Passive Microwave Sea Ice Concentration, Version 1
+original_dataset_short_name: G10016_V2
+original_dataset_url: https://nsidc.org/data/G10016
+original_dataset_reference: https://nsidc.org/sites/nsidc.org/files/technical-references/CDRP-ATBD-final.pdf
+original_dataset_doi: 10.7265/tgam-yv28
+
+# Transformation
+t_version: 1.8 # Update this value if any changes are made to this file
+array_precision: float32
+time_zone_included_with_time: False # Data time values have time zone
+extra_information: [] # Unique things to do for dataset
+data_res: 25/111 # Resolution of dataset
+
+# Values for non split datasets (for datasets split into nh/sh, append '_nh'/'_sh')
+data_max_lat_nh: 90.0
+data_max_lat_sh: -90.0
+area_extent_nh: [-3850000.0, -5350000.0, 3750000.0, 5850000.0]
+area_extent_sh: [-3950000.0, -3950000.0, 3950000.0, 4350000.0]
+dims_nh: [304, 448]
+dims_sh: [316, 332]
+proj_info_nh:
+  area_id: "3411"
+  area_name: "polar_stereographic"
+  proj_id: "3411"
+  proj4_args: "+init=EPSG:3411"
+proj_info_sh:
+  area_id: "3412"
+  area_name: "polar_stereographic"
+  proj_id: "3412"
+  proj4_args: "+init=EPSG:3412"
+
+pre_transformation_steps: [] # List of functions to call on the DataSet before transformation
+post_transformation_steps: [] # List of functions to call on the DataArrays after transformation
+notes: "" # String to include in global attributes of output files
+
+# Aggregation
+a_version: 1.0 # Update this value if any changes are made to this file
+remove_nan_days_from_data: False # Remove empty days from data when aggregating
+do_monthly_aggregation: True
+skipna_in_mean: True # Controls skipna when calculating monthly mean
+monthly_tolerance: 8 # Defines the range of days to look for data around the start of the month (exclusive)
+save_binary: True
+save_netcdf: True
