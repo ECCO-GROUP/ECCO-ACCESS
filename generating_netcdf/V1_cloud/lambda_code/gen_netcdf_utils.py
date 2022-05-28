@@ -1,4 +1,6 @@
+import os
 import sys
+import lzma
 import uuid
 import pickle
 import datetime
@@ -11,7 +13,7 @@ from pandas import read_csv
 from collections import OrderedDict
 
 sys.path.append(f'{Path(__file__).parent.resolve()}')
-from mapping_factors import get_mapping_factors
+from mapping_factors import get_mapping_factors, create_mapping_factors
 
 # ==========================================================================================================================
 # TIME STEPS AND GRID/MASK UTILS
@@ -69,63 +71,98 @@ def find_all_time_steps(vars_to_load, var_directories):
     return all_time_steps
 
 
-def get_land_mask(ea, mapping_factors_dir, debug_mode, nk, target_grid_shape, grid_mappings_all, ecco_land_mask_c_nan):
-    print('\nLand Mask')
+def get_land_mask(mapping_factors_dir, k=0, debug_mode=False, extra_prints=False):
+    if extra_prints: print('\nGetting Land Mask')
+
+    if debug_mode:
+        print('...DEBUG MODE -- SKIPPING LAND MASK')
+        land_mask_ll = []
+    else:
+        # check to see if you have already calculated the land mask
+        land_mask_fname = mapping_factors_dir / 'land_mask' / f'ecco_latlon_land_mask_{k}.xz'
+
+        if land_mask_fname.is_file():
+            # if so, load
+            if extra_prints: print('.... loading land_mask_ll')
+            try:
+                land_mask_ll = pickle.load(lzma.open(land_mask_fname, 'rb'))
+            except:
+                    print(f'Unable to load land mask: {land_mask_fname}')
+        else:
+            print(f'Land mask has not been created or cannot be found: {land_mask_fname}')
+
+    return land_mask_ll
+
+
+def create_land_mask(ea, mapping_factors_dir, debug_mode, nk, target_grid_shape, ecco_grid, dataset_dim):
+    print('\nCreating Land Mask')
+
+    ecco_land_mask_c = ecco_grid.maskC.copy(deep=True)
+    ecco_land_mask_c.values = np.where(ecco_land_mask_c==True, 1, np.nan)
+
+    if not mapping_factors_dir.exists():
+                try:
+                    mapping_factors_dir.mkdir()
+                except:
+                    print ('cannot make %s ' % mapping_factors_dir)
+
+    land_mask_fname = mapping_factors_dir / 'land_mask'
+
+    if not land_mask_fname.exists():
+        try:
+            land_mask_fname.mkdir()
+        except:
+            print ('cannot make %s ' % land_mask_fname)
+
     if debug_mode:
         print('...DEBUG MODE -- SKIPPING LAND MASK')
         land_mask_ll = []
 
     else:
-        if 'land_mask_ll' not in globals():
-            # check to see if you have already calculated the land mask
-            land_mask_fname = mapping_factors_dir / "ecco_latlon_land_mask.p"
+        # first check to see if you have already calculated the landmask
+        all_mask = True
+        all_mask_fnames = [f'ecco_latlon_land_mask_{i}.xz' for i in range(nk)]
+        curr_mask_fnames = os.listdir(land_mask_fname)
+        for fname in all_mask_fnames:
+            if fname not in curr_mask_fnames:  
+                all_mask = False
+                break
 
-            if land_mask_fname.is_file():
-                # if so, load
-                print('.... loading land_mask_ll')
-                land_mask_ll = pickle.load(open(land_mask_fname, 'rb'))
+        if all_mask:
+            # Land mask already made, continuing
+            print('... land mask already created')
 
-            else:
-                # if not, recalculate.
-                print('.... making new land_mask_ll')
-                land_mask_ll = np.zeros((nk, target_grid_shape[0], target_grid_shape[1]))
+        else:
+            # if not, recalculate.
+            print('.... making new land_mask_ll')
+            # land_mask_ll = np.zeros((nk, target_grid_shape[0], target_grid_shape[1]))
 
-                source_indices_within_target_radius_i, \
-                num_source_indices_within_target_radius_i, \
-                nearest_source_index_to_target_index_i = grid_mappings_all
+            (source_indices_within_target_radius_i, \
+            nearest_source_index_to_target_index_i), _ = get_mapping_factors(dataset_dim, mapping_factors_dir, 'all', debug_mode)
 
-                for k in range(nk):
-                    print(k)
+            for k in range(nk):
+                print(k)
 
-                    source_field = ecco_land_mask_c_nan.values[k,:].ravel()
+                source_field = ecco_land_mask_c.values[k,:].ravel()
 
-                    land_mask_ll[k,:] =  \
-                        ea.transform_to_target_grid(source_indices_within_target_radius_i,
-                                                    num_source_indices_within_target_radius_i,
-                                                    nearest_source_index_to_target_index_i,
-                                                    source_field, target_grid_shape,
-                                                    operation='nearest', 
-                                                    allow_nearest_neighbor=True)
+                land_mask_ll = ea.transform_to_target_grid(source_indices_within_target_radius_i,
+                                                            nearest_source_index_to_target_index_i,
+                                                            source_field, target_grid_shape,
+                                                            operation='nearest', 
+                                                            allow_nearest_neighbor=True)
 
-                if not mapping_factors_dir.exists():
-                    try:
-                        mapping_factors_dir.mkdir()
-                    except:
-                        print ('cannot make %s ' % mapping_factors_dir)
                 try:
-                    pickle.dump(land_mask_ll, open(land_mask_fname, 'wb'))
+                    fname_mask = land_mask_fname / f'ecco_latlon_land_mask_{k}.xz'
+                    pickle.dump(land_mask_ll, lzma.open(fname_mask, 'wb'))
                 except:
                     print ('cannot pickle dump %s ' % land_mask_fname)
-        else:
-            print('... land mask already in memory')
-
-    return land_mask_ll
+    return
 
 
 # ==========================================================================================================================
 # VARIABLE LOADING UTILS
 # ==========================================================================================================================
-def latlon_setup(ea, ecco_grid, mapping_factors_dir, nk, ecco_land_mask_c_nan, debug_mode):
+def latlon_setup(ea, ecco_grid, mapping_factors_dir, nk, dataset_dim, debug_mode):
     wet_pts_k = {}
     xc_wet_k = {}
     yc_wet_k = {}
@@ -193,17 +230,13 @@ def latlon_setup(ea, ecco_grid, mapping_factors_dir, nk, ecco_land_mask_c_nan, d
 
 
     # CALCULATE GRID-TO-GRID MAPPING FACTORS
-    grid_mappings_all, grid_mappings_k = get_mapping_factors(ea, 
-                                                                mapping_factors_dir, debug_mode, 
-                                                                source_grid_all, target_grid, 
-                                                                target_grid_radius, source_grid_min_L, 
-                                                                source_grid_max_L, source_grid_k, nk)
+    create_mapping_factors(ea, dataset_dim, mapping_factors_dir, debug_mode, 
+                            source_grid_all, target_grid, target_grid_radius, 
+                            source_grid_min_L, source_grid_max_L, source_grid_k, nk)
 
     # make a land mask in lat-lon using hfacC
-    land_mask_ll = get_land_mask(ea, mapping_factors_dir, 
-                                    debug_mode, nk, target_grid_shape, 
-                                    grid_mappings_all, ecco_land_mask_c_nan)
-
+    create_land_mask(ea, mapping_factors_dir, debug_mode, nk, 
+                        target_grid_shape, ecco_grid, dataset_dim)
 
     ## MAKE LAT AND LON BOUNDS FOR NEW DATA ARRAYS
     lat_bounds = np.zeros((dims[1],2))
@@ -219,11 +252,10 @@ def latlon_setup(ea, ecco_grid, mapping_factors_dir, nk, ecco_land_mask_c_nan, d
 
     bounds = {'lat':lat_bounds, 'lon':lon_bounds}
     target_grid_d = {'shape':target_grid_shape, 'lats_1D':target_grid_lats_1D, 'lons_1D':target_grid_lons_1D}
-    ll_grid = {'wet_pts_k':wet_pts_k, 'grid_mappings_k':grid_mappings_k, 'land_mask':land_mask_ll}
-    return (ll_grid, target_grid_d, bounds)
+    return (wet_pts_k, target_grid_d, bounds)
 
 
-def latlon_load_2D(ea, ecco, ll_grid, target_grid, mds_var_dir, mds_file, record_end_time):
+def latlon_load_2D(ea, ecco, wet_pts_k, target_grid, mds_var_dir, mds_file, record_end_time, mapping_factors_dir):
     F = ecco.read_llc_to_tiles(mds_var_dir, mds_file.name,
                                 llc=90, skip=0,
                                 nk=1, nl=1,
@@ -231,24 +263,26 @@ def latlon_load_2D(ea, ecco, ll_grid, target_grid, mds_var_dir, mds_file, record
                                 less_output=True,
                                 use_xmitgcm=False)
 
-    F_wet_native = F[ll_grid['wet_pts_k'][0]]
+    F_wet_native = F[wet_pts_k[0]]
 
     # get mapping factors for the the surface level
+    _, grid_mappings_k = get_mapping_factors('2D', mapping_factors_dir, 'k', k=0)
+
     source_indices_within_target_radius_i, \
-    num_source_indices_within_target_radius_i, \
-    nearest_source_index_to_target_index_i = ll_grid['grid_mappings_k'][0]
+    nearest_source_index_to_target_index_i = grid_mappings_k
 
     # transform to new grid
     F_ll =  \
         ea.transform_to_target_grid(source_indices_within_target_radius_i,
-                                    num_source_indices_within_target_radius_i,
                                     nearest_source_index_to_target_index_i,
                                     F_wet_native,
                                     target_grid['shape'],
                                     operation='mean',
                                     allow_nearest_neighbor=True)
 
-    F_ll_masked = np.expand_dims(F_ll * ll_grid['land_mask'][0,:],0)
+    ll_land_mask = get_land_mask(mapping_factors_dir, k=0)
+
+    F_ll_masked = np.expand_dims(F_ll * ll_land_mask,0)
 
     F_DA = xr.DataArray(F_ll_masked,
                         coords=[[record_end_time],
@@ -259,7 +293,7 @@ def latlon_load_2D(ea, ecco, ll_grid, target_grid, mds_var_dir, mds_file, record
     return F_DA
 
 
-def latlon_load_3D(ea, ecco, ecco_grid, ll_grid, target_grid, mds_var_dir, mds_file, record_end_time, nk, max_k):
+def latlon_load_3D(ea, ecco, ecco_grid, wet_pts_k, target_grid, mds_var_dir, mds_file, record_end_time, nk, max_k, mapping_factors_dir):
     F = ecco.read_llc_to_tiles(mds_var_dir, mds_file,
                                 llc=90, skip=0, nk=nk,
                                 nl=1,
@@ -269,28 +303,35 @@ def latlon_load_3D(ea, ecco, ecco_grid, ll_grid, target_grid, mds_var_dir, mds_f
 
     F_ll = np.zeros((nk,360,720))
 
+    # ll_land_mask = get_land_mask(mapping_factors_dir)
+
     for k in range(max_k):
         F_k = F[k]
-        F_wet_native = F_k[ll_grid['wet_pts_k'][k]]
+        F_wet_native = F_k[wet_pts_k[k]]
+
+        _, grid_mappings_k = get_mapping_factors('3D', mapping_factors_dir, 'k', k=k, extra_prints=False)
+        ll_land_mask = get_land_mask(mapping_factors_dir, k=k)
 
         source_indices_within_target_radius_i, \
-        num_source_indices_within_target_radius_i,\
-        nearest_source_index_to_target_index_i = ll_grid['grid_mappings_k'][k]
+        nearest_source_index_to_target_index_i = grid_mappings_k
 
         F_ll[k,:] =  \
             ea.transform_to_target_grid(source_indices_within_target_radius_i,
-                                        num_source_indices_within_target_radius_i,
                                         nearest_source_index_to_target_index_i,
                                         F_wet_native, target_grid['shape'],
                                         operation='mean', allow_nearest_neighbor=True)
+        # multiply by land mask
+        F_ll[k] *= ll_land_mask
 
+    # expand F_ll with time dimension
+    F_ll = np.expand_dims(F_ll, 0)
 
-    # multiple by land mask
-    F_ll_masked = np.expand_dims(F_ll * ll_grid['land_mask'], 0)
+    # Delete F from memory, not needed anymore
+    del(F)
 
     Z = ecco_grid.Z.values
 
-    F_DA = xr.DataArray(F_ll_masked,
+    F_DA = xr.DataArray(F_ll,
                         coords=[[record_end_time],
                                 Z,
                                 target_grid['lats_1D'],
@@ -300,13 +341,13 @@ def latlon_load_3D(ea, ecco, ecco_grid, ll_grid, target_grid, mds_var_dir, mds_f
     return F_DA
 
 
-def latlon_load(ea, ecco, ecco_grid, ll_grid, target_grid, mds_var_dir, mds_file, record_end_time, nk, max_k, dataset_dim, var, output_freq_code):
+def latlon_load(ea, ecco, ecco_grid, wet_pts_k, target_grid, mds_var_dir, mds_file, record_end_time, nk, max_k, dataset_dim, var, output_freq_code, mapping_factors_dir):
     if dataset_dim == '2D':
-        F_DA = latlon_load_2D(ea, ecco, ll_grid, target_grid, 
-                                mds_var_dir, mds_file, record_end_time)
+        F_DA = latlon_load_2D(ea, ecco, wet_pts_k, target_grid, 
+                                mds_var_dir, mds_file, record_end_time, mapping_factors_dir)
     elif dataset_dim == '3D':
-        F_DA = latlon_load_3D(ea, ecco, ecco_grid, ll_grid, target_grid, 
-                                mds_var_dir, mds_file, record_end_time, nk, max_k)
+        F_DA = latlon_load_3D(ea, ecco, ecco_grid, wet_pts_k, target_grid, 
+                                mds_var_dir, mds_file, record_end_time, nk, max_k, mapping_factors_dir)
 
     # assign name to data array
     print('... assigning name', var)
@@ -325,7 +366,15 @@ def latlon_load(ea, ecco, ecco_grid, ll_grid, target_grid, mds_var_dir, mds_file
     return F_DS
 
 
-def native_load(ecco, var, ecco_land_mask, ecco_grid_dir_mds, mds_var_dir, mds_file, output_freq_code, cur_ts):
+def native_load(ecco, var, ecco_grid, ecco_grid_dir_mds, mds_var_dir, mds_file, output_freq_code, cur_ts):
+    # land masks
+    ecco_land_mask_c  = ecco_grid.maskC.copy(deep=True)
+    ecco_land_mask_c.values = np.where(ecco_land_mask_c==True, 1, np.nan)
+    ecco_land_mask_w  = ecco_grid.maskW.copy(deep=True)
+    ecco_land_mask_w.values = np.where(ecco_land_mask_w==True, 1, np.nan)
+    ecco_land_mask_s  = ecco_grid.maskS.copy(deep=True)
+    ecco_land_mask_s.values = np.where(ecco_land_mask_s==True, 1, np.nan)
+
     short_mds_name = mds_file.name.split('.')[0]
 
     F_DS = ecco.load_ecco_vars_from_mds(mds_var_dir,
@@ -357,29 +406,29 @@ def native_load(ecco, var, ecco_land_mask, ecco_grid_dir_mds, mds_var_dir, mds_f
         # 'i, j = 'c' point
         if len(set.intersection(data_var_dims, set(['i','j']))) == 2 :
             if data_var_3D:
-                F_DS[data_var].values = F_DS[data_var].values * ecco_land_mask['c_nan'].values
+                F_DS[data_var].values = F_DS[data_var].values * ecco_land_mask_c.values
                 print('... masking with 3D maskC ', data_var)
             else:
                 print('... masking with 2D maskC ', data_var)
-                F_DS[data_var].values= F_DS[data_var].values * ecco_land_mask['c_nan'][0,:].values
+                F_DS[data_var].values= F_DS[data_var].values * ecco_land_mask_c[0,:].values
 
         # i_g, j = 'u' point
         elif len(set.intersection(data_var_dims, set(['i_g','j']))) == 2 :
             if data_var_3D:
                 print('... masking with 3D maskW ', data_var)
-                F_DS[data_var].values = F_DS[data_var].values * ecco_land_mask['w_nan'].values
+                F_DS[data_var].values = F_DS[data_var].values * ecco_land_mask_w.values
             else:
                 print('... masking with 2D maskW ', data_var)
-                F_DS[data_var].values = F_DS[data_var].values * ecco_land_mask['w_nan'][0,:].values
+                F_DS[data_var].values = F_DS[data_var].values * ecco_land_mask_w[0,:].values
 
         # i, j_g = 's' point
         elif len(set.intersection(data_var_dims, set(['i','j_g']))) == 2 :
             if data_var_3D:
                 print('... masking with 3D maskS ', data_var)
-                F_DS[data_var].values = F_DS[data_var].values * ecco_land_mask['s_nan'].values
+                F_DS[data_var].values = F_DS[data_var].values * ecco_land_mask_s.values
             else:
                 print('... masking with 2D maskS ', data_var)
-                F_DS[data_var].values = F_DS[data_var].values * ecco_land_mask['s_nan'][0,:].values
+                F_DS[data_var].values = F_DS[data_var].values * ecco_land_mask_s[0,:].values
 
         else:
             print('I cannot determine dimension of data variable ', data_var)

@@ -146,21 +146,20 @@ if __name__ == "__main__":
         print(f'product_type: {product_type} ({type(product_type)})')
         print(f'output_freq_code: {output_freq_code} ({type(output_freq_code)})')
 
-        G = []
-        G, ecco_grid =  generate_netcdfs(output_freq_code,
-                                        product_type,
-                                        mapping_factors_dir,
-                                        output_dir_base,
-                                        diags_root,
-                                        metadata_json_dir,
-                                        podaac_dir,
-                                        ecco_grid_dir,
-                                        ecco_grid_dir_mds,
-                                        ecco_grid_filename,
-                                        grouping_to_process,
-                                        time_steps_to_process,
-                                        array_precision,
-                                        debug_mode)
+        generate_netcdfs(output_freq_code,
+                            product_type,
+                            mapping_factors_dir,
+                            output_dir_base,
+                            diags_root,
+                            metadata_json_dir,
+                            podaac_dir,
+                            ecco_grid_dir,
+                            ecco_grid_dir_mds,
+                            ecco_grid_filename,
+                            grouping_to_process,
+                            time_steps_to_process,
+                            array_precision,
+                            debug_mode)
 
     # **********
     # TODO: Check output S3 bucket for data

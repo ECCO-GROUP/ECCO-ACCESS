@@ -143,14 +143,16 @@ def generate_netcdfs(output_freq_code,
     ecco_grid = xr.open_dataset(ecco_grid_dir / ecco_grid_filename)
     print(ecco_grid)
 
+
     # land masks
-    ecco_land_mask = {}
-    ecco_land_mask['c_nan']  = ecco_grid.maskC.copy(deep=True)
-    ecco_land_mask['c_nan'].values = np.where(ecco_land_mask['c_nan']==True, 1, np.nan)
-    ecco_land_mask['w_nan']  = ecco_grid.maskW.copy(deep=True)
-    ecco_land_mask['w_nan'].values = np.where(ecco_land_mask['w_nan']==True, 1, np.nan)
-    ecco_land_mask['s_nan']  = ecco_grid.maskS.copy(deep=True)
-    ecco_land_mask['s_nan'].values = np.where(ecco_land_mask['s_nan']==True, 1, np.nan)
+    # ecco_land_mask = {}
+    # ecco_land_mask['c_nan']  = ecco_grid.maskC.copy(deep=True)
+    # ecco_land_mask['c_nan'].values = np.where(ecco_land_mask['c_nan']==True, 1, np.nan)
+    # ecco_land_mask['w_nan']  = ecco_grid.maskW.copy(deep=True)
+    # ecco_land_mask['w_nan'].values = np.where(ecco_land_mask['w_nan']==True, 1, np.nan)
+    # ecco_land_mask['s_nan']  = ecco_grid.maskS.copy(deep=True)
+    # ecco_land_mask['s_nan'].values = np.where(ecco_land_mask['s_nan']==True, 1, np.nan)
+
 
     print('\nproduct type', product_type)
     if product_type == 'native':
@@ -165,9 +167,11 @@ def generate_netcdfs(output_freq_code,
         groupings = groupings_for_latlon_datasets
         output_dir_type = output_dir_base / 'lat-lon'
 
-        ll_grid, target_grid, bounds = ut.latlon_setup(ea, ecco_grid, 
-                                                        mapping_factors_dir, nk, 
-                                                        ecco_land_mask['c_nan'], debug_mode)
+        # Get dataset_dim for mapping factor handling
+        dataset_dim = groupings[grouping_to_process]['dimension']
+
+        wet_pts_k, target_grid, bounds = ut.latlon_setup(ea, ecco_grid, mapping_factors_dir, nk, 
+                                                            dataset_dim, debug_mode)
     
     # Make depth bounds
     depth_bounds = np.zeros((nk,2))
@@ -305,7 +309,9 @@ def generate_netcdfs(output_freq_code,
     # PROCESS EACH TIME LEVEL
     # ======================================================================================================================
     print('\nLooping through time levels')
+    ctr = 0
     for cur_ts_i, cur_ts in enumerate(time_steps_to_process):
+        ctr += 1
 
         # ==================================================================================================================
         # CALCULATE TIMES
@@ -382,24 +388,29 @@ def generate_netcdfs(output_freq_code,
 
                 # Load latlon vs native variable
                 if product_type == 'latlon':
-                    F_DS = ut.latlon_load(ea, ecco, ecco_grid, ll_grid, target_grid, 
+                    F_DS = ut.latlon_load(ea, ecco, ecco_grid, wet_pts_k, target_grid, 
                                             mds_var_dir, mds_file, record_end_time, nk, 
-                                            max_k, dataset_dim, var, output_freq_code)
+                                            max_k, dataset_dim, var, output_freq_code, mapping_factors_dir)
                     
                 elif product_type == 'native':
-                    F_DS = ut.native_load(ecco, var, ecco_land_mask, ecco_grid_dir_mds, 
+                    F_DS = ut.native_load(ecco, var, ecco_grid, ecco_grid_dir_mds, 
                                             mds_var_dir, mds_file, output_freq_code, cur_ts)
                 
                 record_times = {'start':record_start_time, 'center':record_center_time, 'end':record_end_time}
                 F_DS = ut.global_DS_changes(F_DS, output_freq_code, grouping, var, array_precision, ecco_grid, depth_bounds, product_type, bounds, netcdf_fill_value, dataset_dim, record_times)
 
+                # TODO: Figure out way to not need to append each var DS to a list and merge via xarray. New way should
+                # do it in less memory
+
                 # add this dataset to F_DS_vars and repeat for next variable
                 F_DS_vars.append(F_DS)
-
 
             # merge the data arrays to make one DATASET
             print('\n... merging F_DS_vars')
             G = xr.merge((F_DS_vars))
+
+            # delete F_DS_vars from memory
+            del(F_DS_vars)
 
             G, netcdf_output_filename, encoding = ut.set_metadata(ecco, G, product_type, all_metadata, dataset_dim, 
                                                                 output_freq_code, netcdf_fill_value, 
@@ -415,7 +426,10 @@ def generate_netcdfs(output_freq_code,
 
             print('\n... checking existence of new file: ', netcdf_output_filename.exists())
             print('\n')
+
+        # if ctr == 1:
+            # return
         # ==================================================================================================================
     # =============================================================================================
 
-    return G, ecco_grid
+    return
