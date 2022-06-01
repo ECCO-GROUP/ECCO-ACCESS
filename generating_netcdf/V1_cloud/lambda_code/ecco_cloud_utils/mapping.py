@@ -14,13 +14,14 @@ import pyresample as pr
 # %%
 def transform_to_target_grid(source_indices_within_target_radius_i,
                              nearest_source_index_to_target_index_i,
-                             source_field, target_grid_shape,
+                             source_field, target_grid_shape, land_mask=[],
                              operation='mean', allow_nearest_neighbor=True):
 
     # source_indices_within_target_radius_i
     # nearest_source_index_to_target_index_i
     # source field: 2D field
     # target_grid_shape : shape of target grid array (2D)
+    # land_mask: land mask for current level (or nothing if creating land mask)
     # operation : mean or median
 
     source_field_r = source_field.ravel()
@@ -31,11 +32,14 @@ def transform_to_target_grid(source_indices_within_target_radius_i,
     # get a 1D version of source_on_target_grid
     tmp_r = source_on_target_grid.ravel()
 
-    # loop through every target grid point
-    for i in range(len(tmp_r)):
+    if land_mask == []:
+        land_mask = np.ones(len(tmp_r))
+
+    # loop through every VALID (wet) target grid point
+    for i in np.where(~np.isnan(land_mask))[0]:
 
         # if the number of source_field points at target grid cell i > 0
-        if type(source_indices_within_target_radius_i[i]) == type([]):
+        if source_indices_within_target_radius_i[i] != -1:
 
             tmp_source_indices = source_indices_within_target_radius_i[i]
 
@@ -145,10 +149,10 @@ def find_mappings_from_source_to_target(source_grid, target_grid,
 
     # define a dictionary, which will contain the list of SOURCE grid cells
     # that are within the search radius of each TARGET grid cell
-    # A value of nan indicates an invalid value, or 0 source cells within radius
+    # A value of -1 indicates an invalid value, or 0 source cells within radius
     # Where there are source indices within radius, a list of indices is returned
     source_indices_within_target_radius_i =\
-        np.full((target_grid_radius.shape), np.nan, dtype=object)
+        np.full((target_grid_radius.shape), -1, dtype=object)
 
     # SECOND FIND THE SINGLE SOURCE GRID CELL THAT IS CLOSEST TO EACH
     # TARGET GRID CELL, BUT ONLY SEARCH AS FAR AS SOURCE_GRID_MAX_L

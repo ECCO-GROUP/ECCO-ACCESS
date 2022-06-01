@@ -153,7 +153,7 @@ def create_land_mask(ea, mapping_factors_dir, debug_mode, nk, target_grid_shape,
 
                 try:
                     fname_mask = land_mask_fname / f'ecco_latlon_land_mask_{k}.xz'
-                    pickle.dump(land_mask_ll, lzma.open(fname_mask, 'wb'))
+                    pickle.dump(land_mask_ll.ravel(), lzma.open(fname_mask, 'wb'))
                 except:
                     print ('cannot pickle dump %s ' % land_mask_fname)
     return
@@ -271,6 +271,8 @@ def latlon_load_2D(ea, ecco, wet_pts_k, target_grid, mds_var_dir, mds_file, reco
     source_indices_within_target_radius_i, \
     nearest_source_index_to_target_index_i = grid_mappings_k
 
+    ll_land_mask = get_land_mask(mapping_factors_dir, k=0)
+
     # transform to new grid
     F_ll =  \
         ea.transform_to_target_grid(source_indices_within_target_radius_i,
@@ -278,13 +280,13 @@ def latlon_load_2D(ea, ecco, wet_pts_k, target_grid, mds_var_dir, mds_file, reco
                                     F_wet_native,
                                     target_grid['shape'],
                                     operation='mean',
+                                    land_mask=ll_land_mask,
                                     allow_nearest_neighbor=True)
 
-    ll_land_mask = get_land_mask(mapping_factors_dir, k=0)
+    # expand F_ll with time dimension
+    F_ll = np.expand_dims(F_ll, 0)
 
-    F_ll_masked = np.expand_dims(F_ll * ll_land_mask,0)
-
-    F_DA = xr.DataArray(F_ll_masked,
+    F_DA = xr.DataArray(F_ll,
                         coords=[[record_end_time],
                                 target_grid['lats_1D'],
                                 target_grid['lons_1D']],
@@ -303,8 +305,6 @@ def latlon_load_3D(ea, ecco, ecco_grid, wet_pts_k, target_grid, mds_var_dir, mds
 
     F_ll = np.zeros((nk,360,720))
 
-    # ll_land_mask = get_land_mask(mapping_factors_dir)
-
     for k in range(max_k):
         F_k = F[k]
         F_wet_native = F_k[wet_pts_k[k]]
@@ -318,10 +318,9 @@ def latlon_load_3D(ea, ecco, ecco_grid, wet_pts_k, target_grid, mds_var_dir, mds
         F_ll[k,:] =  \
             ea.transform_to_target_grid(source_indices_within_target_radius_i,
                                         nearest_source_index_to_target_index_i,
-                                        F_wet_native, target_grid['shape'],
+                                        F_wet_native, target_grid['shape'], land_mask=ll_land_mask,
                                         operation='mean', allow_nearest_neighbor=True)
-        # multiply by land mask
-        F_ll[k] *= ll_land_mask
+
 
     # expand F_ll with time dimension
     F_ll = np.expand_dims(F_ll, 0)

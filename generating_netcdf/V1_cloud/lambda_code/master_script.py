@@ -8,11 +8,13 @@ Author: Duncan Bark
 import sys
 import yaml
 import argparse
+import subprocess
 import numpy as np
 from pathlib import Path
 
 sys.path.append(f'{Path(__file__).parent.resolve()}')
 from eccov4r4_gen_for_podaac_cloud import generate_netcdfs
+from upload_S3 import upload_S3
 
 
 def create_parser():
@@ -84,30 +86,28 @@ if __name__ == "__main__":
     ecco_grid_dir_mds = parent_dir / 'ecco_grids'
     output_dir_base = parent_dir / 'temp_output'
 
-    local = True
-    if local:
+    if config['local']:
         print('\nGetting local directories from config file')
         if config['mapping_factors_dir'] != '':
             mapping_factors_dir = Path(config['mapping_factors_dir'])
+
         if config['model_data_dir'] != '':
             diags_root = Path(config['model_data_dir'])
-
-        # METADATA
-        if config['metadata_json_dir'] != '':
-            metadata_json_dir = Path(config['metadata_json_dir'])
-        if config['podaac_dir'] != '':
-            podaac_dir = Path(config['podaac_dir'])
-
-        if config['ecco_grid_dir'] != '':
-            ecco_grid_dir = Path(config['ecco_grid_dir'])
-        if config['ecco_grid_dir_mds'] != '':
-            ecco_grid_dir_mds = Path(config['ecco_grid_dir_mds'])
 
         if config['output_dir'] != '':
             output_dir_base = config['output_dir']
     else:
         print('\nGetting AWS Cloud directories from config file')
-        # mapping_factors_dir = config['mapping_factors_dir_cloud']
+        if config['model_granule_path'] != '':
+            diags_root = Path(config['model_granule_path'])
+
+        model_granule_bucket = 'ecco-model-granules'
+        if config['model_granule_bucket'] != '':
+            model_granule_bucket = config['model_granule_bucket']
+
+        processed_data_bucket = 'ecco-processed-data'
+        if config['processed_data_bucket'] != '':
+            processed_data_bucket = config['processed_data_bucket']
     
     # PODAAC fields
     ecco_grid_filename = config['ecco_grid_filename']
@@ -127,8 +127,35 @@ if __name__ == "__main__":
             all_jobs.append([int(line_vals[0]), line_vals[1], line_vals[2], line_vals[3]])
 
 
+    # Verify AWS access keys
+    if not config['local']:
+
+        try:
+            subprocess.run(['aws-login.darwin.amd64', '-r', f'{config["aws_region"]}'])
+        except:
+            print(f'Unable to login to AWS')
+
+        cred_path = Path.home() / '.aws/credentials'
+        credentials = {}
+        with open(cred_path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line == '' or line[0] == '#':
+                    continue
+                if line[0] == '[':
+                    credentials['profile_name'] = line[1:-1]
+                    continue
+                name, value = line.split(' = ')
+                credentials[name] = value
+        
+
+        # Upload data to S3 bucket
+        upload_S3(diags_root, model_granule_bucket, credentials)
+
+
     # **********
     # TODO: Run mapping_factors for all jobs and include path to correct factors in running of the job below
+    # Just pick first job and run it without any saving (new args?)
     # **********
 
 
@@ -137,7 +164,15 @@ if __name__ == "__main__":
     for (grouping_to_process, product_type, output_freq_code, time_steps_to_process) in all_jobs:
 
         # **********
-        # TODO: CREATE LAMBDA REQUEST FOR EACH "JOB"
+        # TODO: CREATE LAMBDA REQUEST FOR EACH "JOB" (END GAME TODO)
+        # **********
+
+        # **********
+        # TODO: Verify data in S3 bucket for run
+        # **********
+
+        # **********
+        # TODO: Have code access S3 bucket for data instead of local directories
         # **********
 
 
