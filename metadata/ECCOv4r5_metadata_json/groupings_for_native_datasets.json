@@ -9,8 +9,8 @@
    },
    {
     "name" : "ocean bottom pressure and model ocean bottom pressure anomaly",
-    "fields": "OBP, OBPGMAP, PHIBOT",
-    "comment": "Ocean bottom pressure excluding (OBP) and including (OBPGMAP) the contribution from global mean atmospheric pressure. Note: PHIBOT is model hydrostatic bottom pressure anomaly and should not be compared with satellite bottom pressure products (e.g., from GRACE and GRACE-FO), see OBP and PHIBOT for more details.",
+    "fields": "OBP, OBPGMAP, PHIBOT, OBPAnoma, OBPGMAPA",
+    "comment": "Ocean bottom pressure excluding (OBP) and including (OBPGMAP) the contribution from global mean atmospheric pressure. Note: PHIBOT is model hydrostatic bottom pressure anomaly and should not be compared with satellite bottom pressure products (e.g., from GRACE and GRACE-FO), see OBP and PHIBOT for more details. OBPAnoma and OBPGMAPA are OBP and OBPGMAP anomalies referenced to the respective 2005-2010 means.",
     "product": "native",
     "filename" : "OCEAN_BOTTOM_PRESSURE",
     "dimension" : "2D"
@@ -66,7 +66,7 @@
    },
    {
     "name": "sea-ice and snow horizontal volume fluxes",
-    "fields":"ADVxHEFF, ADVyHEFF, ADVxSNOW , ADVySNOW, DFxESNOW, DFyEHEFF, DFxEHEFF, DFyESNOW",
+    "fields":"ADVxHEFF, ADVyHEFF, ADVxSNOW , ADVySNOW",
     "product": "native",
     "filename" : "SEA_ICE_HORIZ_VOLUME_FLUX",
     "dimension" : "2D"
@@ -141,11 +141,67 @@
     "dimension" : "3D"
    },
    {
-    "name": "ocean three-dimensional momentum tendency",
-    "fields":"Um_dPHdx, Vm_dPHdy",
+    "name": "ocean three-dimensional momentum tendency along model x-direction",
+    "fields": "TOTUTEND, Um_Cori, Um_Advec, Um_Diss, Um_Ext, Um_dPhiX, AB_gU, Um_ImplD",
     "product": "native",
-    "filename" : "OCEAN_3D_MOMENTUM_TEND",
+    "filename" : "OCEAN_3D_MOMENTUM_TEND_U",
     "dimension" : "3D"
+   },
+   {
+    "name": "ocean three-dimensional advective momentum tendency (optional) along model x-direction",
+    "fields": "Um_AdvZ3, Um_AdvRe, Um_dKEdx",
+    "product": "native",
+    "filename" : "OCEAN_3D_MOMENTUM_TEND_U_ADV_OPTIONAL",
+    "dimension" : "3D"
+   },
+   {
+    "name": "ocean three-dimensional dissipative momentum tendency (optional) along model x-direction",
+    "fields": "Um_Diss2, Um_Diss4, UBotDrag, USidDrag, UShIDrag",
+    "product": "native",
+    "filename" : "OCEAN_3D_MOMENTUM_TEND_U_DISS_OPTIONAL",
+    "dimension" : "3D"
+   },
+   {
+    "name": "ocean three-dimensional momentum tendency along model y-direction",
+    "fields": "TOTVTEND, Vm_Cori, Vm_Advec, Vm_Diss, Vm_Ext, Vm_dPhiY, AB_gV, Vm_ImplD",
+    "product": "native",
+    "filename" : "OCEAN_3D_MOMENTUM_TEND_V",
+    "dimension" : "3D"
+   },
+   {
+    "name": "ocean three-dimensional advective momentum tendency (optional) along model y-direction",
+    "fields": "Vm_AdvZ3, Vm_AdvRe, Vm_dKEdy",
+    "product": "native",
+    "filename" : "OCEAN_3D_MOMENTUM_TEND_V_ADV_OPTIONAL",
+    "dimension" : "3D"
+   },
+   {
+    "name": "ocean three-dimensional dissipative momentum tendency (optional) along model y-direction",
+    "fields": "Vm_Diss2, Vm_Diss4, VBotDrag, VSidDrag, VShIDrag",
+    "product": "native",
+    "filename" : "OCEAN_3D_MOMENTUM_TEND_V_DISS_OPTIONAL",
+    "dimension" : "3D"
+   },
+   {
+    "name": "ice-shelf freshwater and heat fluxes",
+    "fields": "SHIfwFlx, SHIhtFlx",
+    "product": "native",
+    "filename" : "ICESHELF_FLUX",
+    "dimension" : "2D"
+   },
+   {
+    "name": "ice-front freshwater and heat fluxes",
+    "fields": "ICFfwFlx, ICFhtFlx",
+    "product": "native",
+    "filename" : "ICEFRONT_FLUX",
+    "dimension" : "3D"
+   },
+   {
+    "name": "sea-ice thermo budget",
+    "fields": "SIFao, SIFionet, SIFianet, SIFmi, SIFFlood, SIsnAccR, SIsnmltS, SIgamma",
+    "product": "native",
+    "filename" : "SEA_ICE_THERMO_BUDG",
+    "dimension" : "2D"
    },
    {
     "name": "ocean three-dimensional Gent-Mcwilliams, Redi, and background vertical diffusivity coefficients",

@@ -9,8 +9,8 @@
    },
    {
     "name": "ocean bottom pressure",
-    "fields": "OBP, OBPGMAP",
-    "comment": "Ocean bottom pressure given in equivalent water thickness excluding (OBP) and including (OBPGMAP) the contribution from global mean atmospheric pressure.",
+    "fields": "OBP, OBPGMAP, OBPAnoma, OBPGMAPA",
+    "comment": "Ocean bottom pressure given in equivalent water thickness excluding (OBP) and including (OBPGMAP) the contribution from global mean atmospheric pressure. OBPAnoma and OBPGMAPA are OBP and OBPGMAP anomalies referenced to the respective 2005-2010 means",
     "product": "latlon",
     "filename" : "OCEAN_BOTTOM_PRESSURE",
     "dimension" : "2D"
