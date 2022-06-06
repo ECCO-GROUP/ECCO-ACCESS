@@ -19,9 +19,6 @@ aws_profile_name: 'saml-pub'
 # AWS region
 aws_region: 'us-west-2'
 
-# Directory to look for all data. Should have sub folders for 'diags_monthly', 'diags_daily', and/or 'diags_inst'.
-model_granule_path: ''
-
 # S3 bucket name for all data (leave blank if local, i.e. in the docker image).
 model_granule_bucket: 'ecco-model-granules'
 
@@ -32,9 +29,6 @@ processed_data_bucket: 'ecco-processed-data'
 
 # Misc
 # =================================================================================================
-# ECCO Grid filename
-ecco_grid_filename: 'GRID_GEOMETRY_ECCO_V4r4_native_llc0090.nc'
-
 # All local vs Cloud
 local: False
 

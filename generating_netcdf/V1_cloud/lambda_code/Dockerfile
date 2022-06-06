@@ -26,21 +26,23 @@ COPY ./gen_netcdf_utils.py .
 COPY ./mapping_factors.py .
 COPY ./master_script.py .
 COPY ./requirements.txt .
+COPY ./upload_S3.py .
+COPY ./aws-login.linux.amd64 .
 
-RUN mkdir ./temp_output
+# RUN mkdir ./temp_output
 
 # copy data files
-RUN mkdir ./diags_all
-COPY ./diags_all ./diags_all
+# RUN mkdir ./diags_all
+# COPY ./diags_all ./diags_all
 
 # install dependencies
 RUN python3 -m pip install --upgrade pip setuptools wheel
 RUN python3 -m pip install -r ./requirements.txt
 
 # install valgrind for mem testing
-RUN apt-get update
-RUN apt-get upgrade -y
-RUN apt-get install g++ valgrind -y
+# RUN apt-get update
+# RUN apt-get upgrade -y
+# RUN apt-get install g++ valgrind -y
 
 # run test command
-# CMD ["python3", "eccov4r4_gen_for_podaac_cloud.py"]
+CMD ["chmod", "+x", "aws-login.linux.amd64"]

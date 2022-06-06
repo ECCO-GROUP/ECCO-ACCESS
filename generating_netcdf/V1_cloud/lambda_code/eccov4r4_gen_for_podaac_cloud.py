@@ -6,41 +6,33 @@ Adapted from ifenty's "eccov4r4_gen_for_podaac.py"
 
 """
 
+import os
 import sys
 import json
+import boto3
 import numpy as np
 import pandas as pd
 import xarray as xr
 import netCDF4 as nc4
 from pathlib import Path
+from collections import defaultdict
 
-# path_to_ecco_group = Path(__file__).parent.parent.parent.parent.resolve()
-# sys.path.append(f'{path_to_ecco_group}/ECCO-ACCESS/ecco-cloud-utils')
-# sys.path.append(f'{Path(__file__).parent.parent.parent.parent.resolve() / "ecco-cloud-utils"}')
-# sys.path.append(f'{path_to_ecco_group}/ECCOv4-py')
 sys.path.append(f'{Path(__file__).parent.resolve()}')
-# sys.path.append(f'{Path(__file__).parent.resolve() / "ECCOv4-py"}')
 import ecco_v4_py as ecco
 import ecco_cloud_utils as ea
 import gen_netcdf_utils as ut
 
-# -------------------------------------------------------------------------------------------------
+# ==========================================================================================================================
 
 
 def generate_netcdfs(output_freq_code,
                      product_type,
-                     mapping_factors_dir,
-                     output_dir_base,
-                     diags_root,
-                     metadata_json_dir,
-                     podaac_dir,
-                     ecco_grid_dir,
-                     ecco_grid_dir_mds,
-                     ecco_grid_filename,
                      grouping_to_process,
                      time_steps_to_process,
-                     array_precision = np.float32,
-                     debug_mode=False):
+                     config_metadata,
+                     debug_mode,
+                     local,
+                     credentials):
 
     print('\nBEGIN: generate_netcdfs')
     print('OFC', output_freq_code)
@@ -50,36 +42,41 @@ def generate_netcdfs(output_freq_code,
     print('DBG', debug_mode)
     print('')
 
+    # Setup S3
+    buckets = (config_metadata['source_bucket'], config_metadata['output_bucket'])
+    if not local and buckets != None and credentials != None:
+        boto3.setup_default_session(profile_name=credentials['profile_name'])
+        s3 = boto3.client('s3')
+        model_granule_bucket, processed_data_bucket = buckets
+
     # Define fill values for binary and netcdf
     # ECCO always uses -9999 for missing data.
-    binary_fill_value = -9999
-    if array_precision == np.float32:
+    binary_fill_value = config_metadata['binary_fill_value']
+    if config_metadata['array_precision'] == 'float32':
         # binary_output_dtype = '>f4'
+        array_precision = np.float32
         netcdf_fill_value = nc4.default_fillvals['f4']
-
-    elif array_precision == np.float64:
+    else:
         # binary_output_dtype = '>f8'
+        array_precision = np.float64
         netcdf_fill_value = nc4.default_fillvals['f8']
 
     # num of depth levels
-    nk = 50
+    nk = config_metadata['num_vertical_levels']
 
-    # levels to process (for testing purposes make less than nk)
-    max_k = 50
-
-    ecco_start_time = np.datetime64('1992-01-01T12:00:00')
-    ecco_end_time   = np.datetime64('2017-12-31T12:00:00')
+    ecco_start_time = np.datetime64(config_metadata['model_start_time'])
+    ecco_end_time   = np.datetime64(config_metadata['model_end_time'])
 
 
     # ======================================================================================================================
     # METADATA SETUP
     # ======================================================================================================================
     # Define tail for dataset description (summary)
-    dataset_description_tail_native = ' on the native Lat-Lon-Cap 90 (LLC90) model grid from the ECCO Version 4 revision 4 (V4r4) ocean and sea-ice state estimate.'
-    dataset_description_tail_latlon = ' interpolated to a regular 0.5-degree grid from the ECCO Version 4 revision 4 (V4r4) ocean and sea-ice state estimate.'
+    dataset_description_tail_native = config_metadata['dataset_description_tail_native']
+    dataset_description_tail_latlon = config_metadata['dataset_description_tail_latlon']
 
-    filename_tail_latlon = '_ECCO_V4r4_latlon_0p50deg.nc'
-    filename_tail_native = '_ECCO_V4r4_native_llc0090.nc'
+    filename_tail_native = config_metadata['filename_tail_native']
+    filename_tail_latlon = config_metadata['filename_tail_latlon']
 
     metadata_fields = ['ECCOv4r4_global_metadata_for_all_datasets',
                        'ECCOv4r4_global_metadata_for_latlon_datasets',
@@ -102,7 +99,7 @@ def generate_netcdfs(output_freq_code,
     for mf in metadata_fields:
         mf_e = mf + '.json'
         print(mf_e)
-        with open(str(metadata_json_dir / mf_e), 'r') as fp:
+        with open(str(config_metadata['metadata_dir'] / mf_e), 'r') as fp:
             metadata[mf] = json.load(fp)
 
     # metadata for different variables
@@ -137,52 +134,23 @@ def generate_netcdfs(output_freq_code,
 
 
     # ======================================================================================================================
-    # NATIVE vs LATLON SETUP (ECCO GRID & MASK SETUP)
+    # NATIVE vs LATLON SETUP
     # ======================================================================================================================
-    # load ECCO grid
-    ecco_grid = xr.open_dataset(ecco_grid_dir / ecco_grid_filename)
-    print(ecco_grid)
-
-
-    # land masks
-    # ecco_land_mask = {}
-    # ecco_land_mask['c_nan']  = ecco_grid.maskC.copy(deep=True)
-    # ecco_land_mask['c_nan'].values = np.where(ecco_land_mask['c_nan']==True, 1, np.nan)
-    # ecco_land_mask['w_nan']  = ecco_grid.maskW.copy(deep=True)
-    # ecco_land_mask['w_nan'].values = np.where(ecco_land_mask['w_nan']==True, 1, np.nan)
-    # ecco_land_mask['s_nan']  = ecco_grid.maskS.copy(deep=True)
-    # ecco_land_mask['s_nan'].values = np.where(ecco_land_mask['s_nan']==True, 1, np.nan)
-
-
     print('\nproduct type', product_type)
     if product_type == 'native':
         dataset_description_tail = dataset_description_tail_native
         filename_tail = filename_tail_native
         groupings = groupings_for_native_datasets
-        output_dir_type = output_dir_base / 'native'
+        output_dir_type = config_metadata['output_dir_base'] / 'native'
 
     elif product_type == 'latlon':
         dataset_description_tail = dataset_description_tail_latlon
         filename_tail = filename_tail_latlon
         groupings = groupings_for_latlon_datasets
-        output_dir_type = output_dir_base / 'lat-lon'
+        output_dir_type = config_metadata['output_dir_base'] / 'lat-lon'
 
-        # Get dataset_dim for mapping factor handling
-        dataset_dim = groupings[grouping_to_process]['dimension']
-
-        wet_pts_k, target_grid, bounds = ut.latlon_setup(ea, ecco_grid, mapping_factors_dir, nk, 
-                                                            dataset_dim, debug_mode)
-    
-    # Make depth bounds
-    depth_bounds = np.zeros((nk,2))
-    tmp = np.cumsum(ecco_grid.drF.values)
-
-    for k in range(nk):
-        if k == 0:
-            depth_bounds[k,0] = 0.0
-        else:
-            depth_bounds[k,0] = -tmp[k-1]
-        depth_bounds[k,1] = -tmp[k]
+        latlon_bounds, depth_bounds, target_grid, wet_pts_k = ut.get_latlon_grid(config_metadata['mapping_factors_dir'], debug_mode)
+        # CHANGE TO TWO DICTS (BOUNDS, and GRID)
     # ======================================================================================================================
 
 
@@ -207,15 +175,14 @@ def generate_netcdfs(output_freq_code,
     # dimension of dataset
     dataset_dim = grouping['dimension']
     print('... grouping dimension', dataset_dim)
-
-    # define empty list of gcmd keywords pertaining to this dataset
-    grouping_gcmd_keywords = []
     # ======================================================================================================================
 
 
     # ======================================================================================================================
     # DIRECTORIES & FILE PATHS
     # ======================================================================================================================
+    diags_root = config_metadata['model_data_dir']
+
     print('\nGetting directories for group variables')
     if output_freq_code == 'AVG_DAY':
         mds_diags_root_dir = diags_root / 'diags_daily'
@@ -242,25 +209,56 @@ def generate_netcdfs(output_freq_code,
     print('...making output_dir freq ', output_dir_freq)
 
     # make output directory
-    if not output_dir_freq.exists():
-        try:
-            output_dir_freq.mkdir()
-            print('... made %s ' % output_dir_freq)
-        except:
-            print('...cannot make %s ' % output_dir_freq)
+    if local:
+        if not output_dir_freq.exists():
+            try:
+                output_dir_freq.mkdir()
+                print('... made %s ' % output_dir_freq)
+            except:
+                print('...cannot make %s ' % output_dir_freq)
+    else:
+        print(f'Making output bucket {processed_data_bucket}')
+        # *****
+        # TODO: Make bucket if not present (maybe)
+        # *****
 
-    # load files
-    field_paths = np.sort(list(mds_diags_root_dir.glob('*' + period_suffix + '*')))
+
+    # get files
+    s3_files = defaultdict(list)
+    if local:
+        # get list of files from local directory
+        model_granule_roots = np.sort(list(mds_diags_root_dir.glob('*' + period_suffix + '*')))
+    else:
+        # get list of files from S3 bucket
+        response = s3.list_objects(Bucket=model_granule_bucket)
+        if response['ResponseMetadata']['HTTPStatusCode'] != 200:
+            print(f'Unable to collect objects in bucket {model_granule_bucket}')
+            return -1
+        else:
+            model_granule_roots = []
+            for k in response['Contents']:
+                k = k['Key']
+                if '.data' in k:
+                    var = k.split('/')[-2].replace(f'_{period_suffix}', '')
+                    s3_files[var].append(k)
+                    k_root = k.split(f'{period_suffix}/')[0] + period_suffix
+                    if k_root not in model_granule_roots:
+                        model_granule_roots.append(k_root)
+
 
     ## load variable file and directory names
-    print ('...number of subdirectories found ', len(field_paths))
+    print ('...number of subdirectories found ', len(model_granule_roots))
     all_field_names = []
 
     # extract record name out of full directory
-    for f in field_paths:
-        all_field_names.append(f.name)
+    if local:
+        for f in model_granule_roots:
+            all_field_names.append(f.name)
+    else:
+        for f in model_granule_roots:
+            all_field_names.append(f.split('/')[-2])
 
-    print (all_field_names)
+    print(all_field_names)
 
     # create dataset description head
     dataset_description = dataset_description_head + grouping['name'] + dataset_description_tail
@@ -278,12 +276,11 @@ def generate_netcdfs(output_freq_code,
 
     # find directories with variables
     var_directories = {}
-
     for var in vars_to_load:
         var_match =  "".join([var, "_", period_suffix])
         num_matching_dirs = 0
-        for fp in field_paths:
-            if var_match in str(fp):
+        for fp in model_granule_roots:
+            if var_match == str(fp).split('/')[-1]:
                 var_directories[var] = fp
                 num_matching_dirs += 1
         if num_matching_dirs == 0:
@@ -291,15 +288,17 @@ def generate_netcdfs(output_freq_code,
         elif num_matching_dirs > 1 :
             print('>>>>>> more than one matching dir for ', var)
 
+
     print('\nDirectories with the variables in the grouping')
     for var in vars_to_load:
         print('... ', var, var_directories[var])
 
     print('\nDetermining time steps to load')
+
     # determine which time steps to process
     if time_steps_to_process == 'all':
         print('...using all time steps')
-        time_steps_to_process = ut.find_all_time_steps(vars_to_load, var_directories)
+        time_steps_to_process = ut.find_all_time_steps(vars_to_load, var_directories, local, s3_files)
     else:
         print('...using provided time steps to process list ', time_steps_to_process)
     # ======================================================================================================================
@@ -308,11 +307,12 @@ def generate_netcdfs(output_freq_code,
     # ======================================================================================================================
     # PROCESS EACH TIME LEVEL
     # ======================================================================================================================
-    print('\nLooping through time levels')
-    ctr = 0
-    for cur_ts_i, cur_ts in enumerate(time_steps_to_process):
-        ctr += 1
+    # load ECCO grid
+    ecco_grid = xr.open_dataset(config_metadata['ecco_grid_dir'] / config_metadata['ecco_grid_filename'])
+    print(ecco_grid)
 
+    print('\nLooping through time levels')
+    for cur_ts_i, cur_ts in enumerate(time_steps_to_process):
         # ==================================================================================================================
         # CALCULATE TIMES
         # ==================================================================================================================
@@ -362,6 +362,8 @@ def generate_netcdfs(output_freq_code,
             record_start_time = np.datetime64(times[0])
             record_end_time = np.datetime64(times[0])
             record_center_time = np.datetime64(times[0])
+
+        record_times = {'start':record_start_time, 'center':record_center_time, 'end':record_end_time}
         # ==================================================================================================================
 
 
@@ -377,7 +379,13 @@ def generate_netcdfs(output_freq_code,
 
                 print ('\nProcessing ', var, mds_var_dir)
 
-                mds_file = list(mds_var_dir.glob(var + '*' + str(cur_ts).zfill(10) + '*.data'))
+                if local:
+                    mds_file = list(mds_var_dir.glob(var + '*' + str(cur_ts).zfill(10) + '*.data'))
+                else:
+                    mds_file = []
+                    for f in s3_files[var]:
+                        if str(cur_ts).zfill(10) in f:
+                            mds_file.append(f)
 
                 if len(mds_file) != 1:
                     print('invalid # of mds files')
@@ -386,18 +394,35 @@ def generate_netcdfs(output_freq_code,
                 else:
                     mds_file = mds_file[0]
 
+                # Download mds_file from S3
+                if not local:
+                    # temp_mds_var_dir = f''
+                    if not Path(mds_var_dir).exists():
+                        try:
+                            Path(mds_var_dir).mkdir(parents=True, exist_ok=True)
+                        except:
+                            print (f'cannot make {mds_var_dir}')
+                            sys.exit()
+                    s3.download_file(model_granule_bucket, mds_file, mds_file)
+                    
+
                 # Load latlon vs native variable
                 if product_type == 'latlon':
-                    F_DS = ut.latlon_load(ea, ecco, ecco_grid, wet_pts_k, target_grid, 
+                    F_DS = ut.latlon_load(ea, ecco, ecco_grid.Z.values, wet_pts_k, target_grid, 
                                             mds_var_dir, mds_file, record_end_time, nk, 
-                                            max_k, dataset_dim, var, output_freq_code, mapping_factors_dir)
+                                            dataset_dim, var, output_freq_code, config_metadata['mapping_factors_dir'])
                     
                 elif product_type == 'native':
-                    F_DS = ut.native_load(ecco, var, ecco_grid, ecco_grid_dir_mds, 
+                    F_DS = ut.native_load(ecco, var, ecco_grid, config_metadata['ecco_grid_dir_mds'], 
                                             mds_var_dir, mds_file, output_freq_code, cur_ts)
+
+                # delete downloaded file from cloud disks
+                if not local:
+                    os.remove(mds_file)
                 
-                record_times = {'start':record_start_time, 'center':record_center_time, 'end':record_end_time}
-                F_DS = ut.global_DS_changes(F_DS, output_freq_code, grouping, var, array_precision, ecco_grid, depth_bounds, product_type, bounds, netcdf_fill_value, dataset_dim, record_times)
+                F_DS = ut.global_DS_changes(F_DS, output_freq_code, grouping, var,
+                                            array_precision, ecco_grid, depth_bounds, product_type, 
+                                            latlon_bounds, netcdf_fill_value, dataset_dim, record_times)
 
                 # TODO: Figure out way to not need to append each var DS to a list and merge via xarray. New way should
                 # do it in less memory
@@ -412,10 +437,11 @@ def generate_netcdfs(output_freq_code,
             # delete F_DS_vars from memory
             del(F_DS_vars)
 
+            podaac_dir = config_metadata['metadata_dir'] / config_metadata['podaac_metadata_filename']
             G, netcdf_output_filename, encoding = ut.set_metadata(ecco, G, product_type, all_metadata, dataset_dim, 
                                                                 output_freq_code, netcdf_fill_value, 
                                                                 grouping, filename_tail, output_dir_freq, 
-                                                                dataset_description, podaac_dir, grouping_gcmd_keywords)
+                                                                dataset_description, podaac_dir)
 
             # SAVE DATASET
             print('\n... saving to netcdf ', netcdf_output_filename)
@@ -425,10 +451,21 @@ def generate_netcdfs(output_freq_code,
             G.close()
 
             print('\n... checking existence of new file: ', netcdf_output_filename.exists())
-            print('\n')
 
-        # if ctr == 1:
-            # return
+
+            # Upload output netcdf to s3
+            if not local:
+                print('\n... uploading new file to S3 bucket')
+                name = str(netcdf_output_filename).replace(f'{str(config_metadata["output_dir_base"])}/', '')
+                try:
+                    response = s3.upload_file(str(netcdf_output_filename), processed_data_bucket, name)
+                    print(f'\n... Uploaded {netcdf_output_filename} to bucket {processed_data_bucket}')
+                except:
+                    print(f'Unable to upload file {netcdf_output_filename} to bucket {processed_data_bucket}')
+                    sys.exit()
+                os.remove(netcdf_output_filename)
+
+            print('\n')
         # ==================================================================================================================
     # =============================================================================================
 
