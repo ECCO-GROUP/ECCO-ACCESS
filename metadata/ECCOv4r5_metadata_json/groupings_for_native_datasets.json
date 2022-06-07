@@ -148,17 +148,17 @@
     "dimension" : "3D"
    },
    {
-    "name": "ocean three-dimensional advective momentum tendency (optional) along model x-direction",
+    "name": "ocean three-dimensional advective momentum tendency components along model x-direction",
     "fields": "Um_AdvZ3, Um_AdvRe, Um_dKEdx",
     "product": "native",
-    "filename" : "OCEAN_3D_MOMENTUM_TEND_U_ADV_OPTIONAL",
+    "filename" : "OCEAN_3D_MOMENTUM_TEND_U_ADV_COMPONENTS",
     "dimension" : "3D"
    },
    {
-    "name": "ocean three-dimensional dissipative momentum tendency (optional) along model x-direction",
+    "name": "ocean three-dimensional dissipative momentum tendency components along model x-direction",
     "fields": "Um_Diss2, Um_Diss4, UBotDrag, USidDrag, UShIDrag",
     "product": "native",
-    "filename" : "OCEAN_3D_MOMENTUM_TEND_U_DISS_OPTIONAL",
+    "filename" : "OCEAN_3D_MOMENTUM_TEND_U_DISS_COMPONENTS",
     "dimension" : "3D"
    },
    {
@@ -169,17 +169,17 @@
     "dimension" : "3D"
    },
    {
-    "name": "ocean three-dimensional advective momentum tendency (optional) along model y-direction",
+    "name": "ocean three-dimensional advective momentum tendency components along model y-direction",
     "fields": "Vm_AdvZ3, Vm_AdvRe, Vm_dKEdy",
     "product": "native",
-    "filename" : "OCEAN_3D_MOMENTUM_TEND_V_ADV_OPTIONAL",
+    "filename" : "OCEAN_3D_MOMENTUM_TEND_V_ADV_COMPONENTS",
     "dimension" : "3D"
    },
    {
-    "name": "ocean three-dimensional dissipative momentum tendency (optional) along model y-direction",
+    "name": "ocean three-dimensional dissipative momentum tendency components along model y-direction",
     "fields": "Vm_Diss2, Vm_Diss4, VBotDrag, VSidDrag, VShIDrag",
     "product": "native",
-    "filename" : "OCEAN_3D_MOMENTUM_TEND_V_DISS_OPTIONAL",
+    "filename" : "OCEAN_3D_MOMENTUM_TEND_V_DISS_COMPONENTS",
     "dimension" : "3D"
    },
    {
