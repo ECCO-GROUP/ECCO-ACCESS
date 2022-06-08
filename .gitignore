@@ -23,3 +23,7 @@ __pycache__/
 *$py.class
 
 *.log
+*.dump
+*.data
+generating_netcdf/V1_cloud/aws/valgrind_runs/*
+*test_lambda*
