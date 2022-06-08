@@ -1,0 +1,52 @@
+[
+    {
+        "name": "profile_name",
+        "type": "s",
+        "value": "saml-pub"
+     },
+     {
+        "name": "region",
+        "type": "s",
+        "value": "us-west-2"
+     },
+     {
+        "name": "source_bucket",
+        "type": "s",
+        "value": "ecco-model-granules"
+     },
+     {
+        "name": "output_bucket",
+        "type": "s",
+        "value": "ecco-processed-data"
+     },
+     {
+        "name": "account_id",
+        "type": "s",
+        "value": "448078824696"
+     },
+     {
+        "name": "image_uri",
+        "type": "s",
+        "value": "448078824696.dkr.ecr.us-west-2.amazonaws.com/ecco_processing:latest"
+     },
+     {
+        "name": "memory_size",
+        "type": "i",
+        "value": 1024
+     },
+     {
+        "name": "function_name",
+        "type": "s",
+        "value": "ecco_processing"
+     },
+     {
+        "name": "role",
+        "type": "s",
+        "value": "lambda-role"
+     },
+     {
+        "name": "test_bucket",
+        "type": "s",
+        "value": "ecco-test-lambda"
+     }
+]
