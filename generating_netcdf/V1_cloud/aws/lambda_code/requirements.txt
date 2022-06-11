@@ -2,7 +2,6 @@ numpy
 pandas
 xarray
 pyresample
-xgcm
 xmitgcm
 netCDF4
 boto3

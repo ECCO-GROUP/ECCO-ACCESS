@@ -8,10 +8,6 @@ import numpy as np
 import pyresample as pr
 
 
-# %%
-
-
-# %%
 def transform_to_target_grid(source_indices_within_target_radius_i,
                              nearest_source_index_to_target_index_i,
                              source_field, target_grid_shape, land_mask=[],
@@ -78,7 +74,6 @@ def transform_to_target_grid(source_indices_within_target_radius_i,
     return source_on_target_grid
 
 
-# %%
 def find_mappings_from_source_to_target(source_grid, target_grid,
                                         target_grid_radius,
                                         source_grid_min_L, source_grid_max_L,
@@ -186,14 +181,14 @@ def find_mappings_from_source_to_target(source_grid, target_grid,
 
     current_valid_target_i = 0
 
-    if not less_output:
-        print('length of target grid: ', len_target_grid)
+    # if not less_output:
+    #     print('length of target grid: ', len_target_grid)
         
     for i in range(len_target_grid):
 
         
-        if not less_output:
-            print('looping through all points of target grid: ', i)
+        # if not less_output:
+        #     print('looping through all points of target grid: ', i)
         
         if Ax_nearest_within_source_grid_max_L[1][i] == True:
 

@@ -57,7 +57,8 @@ def find_all_time_steps(vars_to_load, var_directories, local, s3_files):
     unique_ts = np.unique(all_time_steps_all_vars)
     for var in vars_to_load:
         if np.array_equal(unique_ts, np.array(all_time_steps_var[var])):
-            print('--- number of time steps equal ', var)
+            # print('--- number of time steps equal ', var)
+            continue
         else:
             print('--- number of time steps not equal ', var)
             sys.exit()
@@ -792,12 +793,12 @@ def set_metadata(ecco, G, product_type, all_metadata, dataset_dim, output_freq_c
     # ADD VARIABLE SPECIFIC METADATA TO VARIABLE ATTRIBUTES (DATA ARRAYS)
     # print('\n... adding metadata specific to the variable')
     G, grouping_gcmd_keywords = \
-        ecco.add_variable_metadata(all_metadata['var_native'], G, less_output=False)
+        ecco.add_variable_metadata(all_metadata['var_native'], G)
 
     if product_type == 'latlon':
         # print('\n... using latlon dataseta metadata specific to the variable')
         G, grouping_gcmd_keywords = \
-            ecco.add_variable_metadata(all_metadata['var_latlon'], G, less_output=False)
+            ecco.add_variable_metadata(all_metadata['var_latlon'], G)
 
     # ADD COORDINATE METADATA
     if product_type == 'latlon':

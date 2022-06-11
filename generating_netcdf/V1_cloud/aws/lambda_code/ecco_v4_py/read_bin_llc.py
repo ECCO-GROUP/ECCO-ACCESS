@@ -11,18 +11,15 @@ The llc layout is used for ECCO v4.
 
 """
 
-from __future__ import division,print_function
-from xmitgcm import open_mdsdataset
+
+import sys
 import xmitgcm
+import datetime
 import numpy as np
 import xarray as xr
-import time
-import sys
-import datetime
+from xmitgcm import open_mdsdataset
 
-from .llc_array_conversion  import llc_compact_to_tiles, \
-    llc_compact_to_faces, llc_faces_to_tiles, llc_faces_to_compact, \
-    llc_tiles_to_faces, llc_tiles_to_compact
+from .llc_array_conversion  import llc_compact_to_tiles
 
 from .read_bin_gen import load_binary_array
 
@@ -30,7 +27,7 @@ from .ecco_utils import make_time_bounds_and_center_times_from_ecco_dataset
 from .ecco_utils import add_global_metadata
 from .ecco_utils import add_variable_metadata
 from .ecco_utils import add_coordinate_metadata
-from .ecco_utils import sort_all_attrs, sort_attrs
+from .ecco_utils import sort_attrs
 
 
 def load_ecco_vars_from_mds(mds_var_dir,
@@ -178,11 +175,11 @@ def load_ecco_vars_from_mds(mds_var_dir,
 
 
     if model_time_steps_to_load == 'all':
-        if not less_output:
-            print ('loading all model time steps')
-            print('read bin_llc:')
-            print(mds_var_dir)
-            print(mds_grid_dir)
+        # if not less_output:
+        #     print ('loading all model time steps')
+        #     print('read bin_llc:')
+        #     print(mds_var_dir)
+        #     print(mds_grid_dir)
 
         ecco_dataset = open_mdsdataset(data_dir = mds_var_dir,
                                        grid_dir = mds_grid_dir,
@@ -199,8 +196,8 @@ def load_ecco_vars_from_mds(mds_var_dir,
                                        **kwargs)
 
     else:
-        if not less_output:
-            print ('loading subset of  model time steps')
+        # if not less_output:
+        #     print ('loading subset of  model time steps')
 
         if isinstance(model_time_steps_to_load, int):
             model_time_steps_to_load = [model_time_steps_to_load]
@@ -262,12 +259,12 @@ def load_ecco_vars_from_mds(mds_var_dir,
     if not isinstance(vars_to_load, list):
         vars_to_load = [vars_to_load]
 
-    if not less_output:
-        print ('vars to load ', vars_to_load)
+    # if not less_output:
+    #     print ('vars to load ', vars_to_load)
 
     if 'all' not in vars_to_load:
-        if not less_output:
-            print ('loading subset of variables: ', vars_to_load)
+        # if not less_output:
+        #     print ('loading subset of variables: ', vars_to_load)
 
         # remove variables that are not on the vars_to_load_list
         for ecco_var in ecco_dataset.keys():
@@ -279,32 +276,32 @@ def load_ecco_vars_from_mds(mds_var_dir,
             else:
                 vars_loaded.append(ecco_var)
 
-        if not less_output:
-            print ('loaded  : ', vars_loaded)
-            print ('ignored : ', vars_ignored)
+        # if not less_output:
+        #     print ('loaded  : ', vars_loaded)
+        #     print ('ignored : ', vars_ignored)
 
-    else:
-        if not less_output:
-            print ('loaded all variables  : ', ecco_dataset.keys())
+    # else:
+    #     if not less_output:
+    #         print ('loaded all variables  : ', ecco_dataset.keys())
 
     # keep tiles in the 'tiles_to_load' list.
     if not isinstance(tiles_to_load, list) and not isinstance(tiles_to_load,range):
         tiles_to_load = [tiles_to_load]
 
-    if not less_output:
-        print ('subsetting tiles to ', tiles_to_load)
+    # if not less_output:
+    #     print ('subsetting tiles to ', tiles_to_load)
 
     ecco_dataset = ecco_dataset.sel(tile = tiles_to_load)
 
     # add time bounds for datasets with time-averaged quantities
-    if not less_output:
-        print ('creating time bounds .... ')
+    # if not less_output:
+    #     print ('creating time bounds .... ')
 
     if 'AVG' in output_freq_code and \
         'time_bnds' not in ecco_dataset.keys():
 
-        if not less_output:
-            print ('avg in output freq code and time bounds not in ecco keys')
+        # if not less_output:
+        #     print ('avg in output freq code and time bounds not in ecco keys')
 
         time_bnds_ds, center_times = \
             make_time_bounds_and_center_times_from_ecco_dataset(ecco_dataset,\
@@ -314,30 +311,30 @@ def load_ecco_vars_from_mds(mds_var_dir,
 
         ecco_dataset = ecco_dataset.set_coords('time_bnds')
 
-        if not less_output:
-            print ('time bounds -----')
-            print (time_bnds_ds)
-            print ('center times -----')
-            print (center_times)
-            print ('ecco dataset time values type', type(ecco_dataset.time.values))
-            print ('ecco dataset time_bnds typ   ', type(ecco_dataset.time_bnds))
-            print ('ecco dataset time_bnds       ', ecco_dataset.time_bnds)
+        # if not less_output:
+        #     print ('time bounds -----')
+        #     print (time_bnds_ds)
+        #     print ('center times -----')
+        #     print (center_times)
+        #     print ('ecco dataset time values type', type(ecco_dataset.time.values))
+        #     print ('ecco dataset time_bnds typ   ', type(ecco_dataset.time_bnds))
+        #     print ('ecco dataset time_bnds       ', ecco_dataset.time_bnds)
 
         if isinstance(ecco_dataset.time.values, np.datetime64):
-            if not less_output:
-                print ('replacing time.values....')
+            # if not less_output:
+            #     print ('replacing time.values....')
             ecco_dataset['time'].values = center_times
 
         elif isinstance(center_times, np.datetime64):
-            if not less_output:
-                print ('replacing time.values....')
+            # if not less_output:
+            #     print ('replacing time.values....')
             center_times = np.array(center_times)
             ecco_dataset['time'].values[:] = center_times
 
         elif isinstance(ecco_dataset.time.values, np.ndarray) and \
               isinstance(center_times, np.ndarray):
-            if not less_output:
-                print ('replacing time.values....')
+            # if not less_output:
+            #     print ('replacing time.values....')
             ecco_dataset = ecco_dataset.assign_coords({'time': center_times})
             #ecco_dataset['time'] = center_times
 
@@ -355,8 +352,8 @@ def load_ecco_vars_from_mds(mds_var_dir,
     for ecco_var in ecco_dataset.data_vars:
         all_var_dims = set.union(all_var_dims, set(ecco_dataset[ecco_var].dims))
 
-    if not less_output:
-        print('all_var_dims ', all_var_dims)
+    # if not less_output:
+    #     print('all_var_dims ', all_var_dims)
 
 
     # update global, coordinate, and variable metadata
@@ -396,26 +393,26 @@ def load_ecco_vars_from_mds(mds_var_dir,
     if drop_unused_coords:
 
         if dataset_dim == '2D':
-            if not less_output:
-                print('\n only 2D variables, dropping 3D dims and coords')
-                print(all_var_dims)
+            # if not less_output:
+            #     print('\n only 2D variables, dropping 3D dims and coords')
+            #     print(all_var_dims)
 
             # drop 3D dimensions
             dims_to_drop = set(ecco_dataset.dims).intersection(set(['k','k_u','k_l','k_p1']))
-            if not less_output:
-                print('\n dropping 3D dims and coords')
-                print(dims_to_drop)
+            # if not less_output:
+            #     print('\n dropping 3D dims and coords')
+            #     print(dims_to_drop)
 
             for dim in dims_to_drop:
-                if not less_output:
-                    print('--> dropping', dim)
+                # if not less_output:
+                #     print('--> dropping', dim)
                 ecco_dataset = ecco_dataset.drop(dim)
 
             # drop 3D coords
             coords_to_drop = set(ecco_dataset.coords).intersection(set(['Z','Zp1','Zu','Zl']))
             for coord in coords_to_drop:
-                if not less_output:
-                    print('--> dropping ', coord)
+                # if not less_output:
+                #     print('--> dropping ', coord)
                 ecco_dataset = ecco_dataset.drop(coord)
 
     # apply global metadata
@@ -427,9 +424,9 @@ def load_ecco_vars_from_mds(mds_var_dir,
             add_global_metadata(global_metadata, ecco_dataset, dataset_dim,\
                                 less_output=less_output)
 
-    if not less_output:
-        print('dataset dim: ', dataset_dim)
-        print('dataset_coords : ', ecco_dataset.coords)
+    # if not less_output:
+    #     print('dataset dim: ', dataset_dim)
+    #     print('dataset_coords : ', ecco_dataset.coords)
 
     # add current time and date
     current_time = datetime.datetime.now().isoformat()[0:19]
@@ -438,8 +435,8 @@ def load_ecco_vars_from_mds(mds_var_dir,
     ecco_dataset.attrs['date_metadata_modified'] = current_time
     ecco_dataset.attrs['date_issued'] = current_time
 
-    if not less_output:
-        print('output_freq_code: ', output_freq_code)
+    # if not less_output:
+    #     print('output_freq_code: ', output_freq_code)
     # set the long name of the time attribute
     if 'AVG' in output_freq_code:
         ecco_dataset.time.attrs['long_name'] = 'center time of averaging period'
@@ -447,8 +444,8 @@ def load_ecco_vars_from_mds(mds_var_dir,
         ecco_dataset.time.attrs['long_name'] = 'snapshot time'
 
     # set averaging period duration and resolution
-    if not less_output:
-        print('\n... setting time coverage resolution')
+    # if not less_output:
+    #     print('\n... setting time coverage resolution')
     # --- AVG DAY
     if output_freq_code == 'AVG_MON':
         ecco_dataset.attrs['time_coverage_duration'] = 'P1M'
@@ -469,13 +466,13 @@ def load_ecco_vars_from_mds(mds_var_dir,
     ecco_dataset.attrs = sort_attrs(ecco_dataset.attrs)
 
 
-    if not less_output:
-        for dim in ecco_dataset.dims:
-            print(dim, ecco_dataset[dim].attrs)
+    # if not less_output:
+    #     for dim in ecco_dataset.dims:
+    #         print(dim, ecco_dataset[dim].attrs)
 
     return ecco_dataset
 
-#%%
+
 def read_llc_to_compact(fdir, fname, llc=90, skip=0, nk=1, nl=1,
             filetype = '>f4', less_output = False ):
     """
@@ -543,7 +540,6 @@ def read_llc_to_compact(fdir, fname, llc=90, skip=0, nk=1, nl=1,
     return data_compact
 
 
-#%%
 def read_llc_to_tiles(fdir, fname, llc=90, skip=0, nk=1, nl=1,
               	      filetype = '>f', less_output = False,
                       use_xmitgcm=False):
@@ -614,8 +610,8 @@ def read_llc_to_tiles(fdir, fname, llc=90, skip=0, nk=1, nl=1,
 
         full_filename = '%s/%s' % (fdir,fname)
 
-        if not less_output:
-            print('read_llc_to_tiles: full_filename: ',full_filename)
+        # if not less_output:
+        #     print('read_llc_to_tiles: full_filename: ',full_filename)
 
         # Handle "skipped" records by reading up until that record, and
         # dropping preceding records afterward
@@ -650,72 +646,3 @@ def read_llc_to_tiles(fdir, fname, llc=90, skip=0, nk=1, nl=1,
 
     # return the array
     return data_tiles
-
-#%%
-def read_llc_to_faces(fdir, fname, llc=90, skip=0, nk=1, nl=1,
-        filetype = '>f4', less_output = False):
-    """
-
-    Loads an MITgcm binary file in the 'compact' format of the
-    lat-lon-cap (LLC) grids and converts it to the '5 faces' format
-    of the LLC grids.
-
-    Can load 2D and 3D arrays.
-
-    Array is returned with the following dimension order:
-    - [N_faces][N_recs, N_z, N_y, N_x]
-
-    where if either N_z or N_recs =1, then that dimension is collapsed
-    and not present in the returned array.
-
-    Parameters
-    ----------
-    fdir : string
-        A string with the directory of the binary file to open
-
-    fname : string
-        A string with the name of the binary file to open
-
-    llc : int, optional, default 90
-        the size of the llc grid.  For ECCO v4, we use the llc90 domain (llc=90)
-
-    skip : int, optional, default 0
-        the number of 2D slices (or records) to skip.
-        Records could be vertical levels of a 3D field, or different 2D fields, or both.
-
-    nk : int, optional, default 1 [singleton]
-        number of 2D slices (or records) to load in the depth dimension.
-
-    nl : int, optional, default 1 [singleton]
-        number of 2D slices (or records) to load in the "record" dimension.
-
-    filetype : string, default '>f4'
-        the file type, default is big endian (>) 32 bit float (f4)
-        alternatively, ('<d') would be little endian (<) 64 bit float (d)
-
-    less_output : boolean, optional, default False
-        A debugging flag.  False = less debugging output
-
-
-    Returns
-    -------
-    data_faces : dict
-        a dictionary containing the five lat-lon-cap faces data_faces[n]
-        dimensions of each 2D slice of data_faces
-        f1,f2: 3*llc x llc
-        f3: llc x llc
-        4,f5: llc x 3*llc
-
-    """
-
-    data_compact = read_llc_to_compact(fdir, fname, llc=llc, skip=skip, nk=nk, nl=nl,
-                                    filetype = filetype, less_output=less_output)
-
-    data_faces = llc_compact_to_faces(data_compact, less_output = less_output)
-
-    #data_tiles = read_llc_to_tiles(fdir,fname,llc=llc,nk=nk,nl=nl,skip=skip,
-    #                               filetype=filetype)
-
-    #data_faces = llc_tiles_to_faces(data_tiles, less_output = less_output)
-
-    return data_faces

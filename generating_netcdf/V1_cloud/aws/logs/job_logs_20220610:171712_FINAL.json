@@ -1,0 +1,124 @@
+{
+    "Cost Information": {
+        "1024 MB Total Time (s)": 132.85266000000001,
+        "1024 MB Total Billed Time (s)": 134.65200000000002,
+        "1024 MB Total GB*s": 134.65200000000002,
+        "1024 MB Total Cost (USD)": 0.0022442044884,
+        "Total Cost": 0.0022442044884
+    },
+    "b68a1587-be49-49f9-ac31-2c2b87a2c56c": {
+        "date": "Sat, 11 Jun 2022 00:16:24 GMT",
+        "status": 202,
+        "data": {
+            "grouping_to_process": 0,
+            "product_type": "latlon",
+            "output_freq_code": "AVG_MON",
+            "time_steps_to_process": "all"
+        },
+        "report": [
+            {
+                "logStreamName": "2022/06/11/[$LATEST]580b7e8d13ca4dce943c86a7fd3eb384",
+                "Duration (ms)": 26882.02,
+                "Billed Duration (ms)": 27291.0,
+                "Memory Size (MB)": 1024,
+                "Max Memory Used (MB)": 280,
+                "Init Duration (ms)": 408.55,
+                "Cost Estimate (USD)": 0.00045485090970000003
+            }
+        ],
+        "error": [],
+        "end": true
+    },
+    "ca6b528c-fa35-4ba8-ad6f-661e1c95850a": {
+        "date": "Sat, 11 Jun 2022 00:16:24 GMT",
+        "status": 202,
+        "data": {
+            "grouping_to_process": 0,
+            "product_type": "latlon",
+            "output_freq_code": "AVG_MON",
+            "time_steps_to_process": "all"
+        },
+        "report": [
+            {
+                "logStreamName": "2022/06/11/[$LATEST]a6d6a7a0103e4515beadd49f5351ecc8",
+                "Duration (ms)": 25918.03,
+                "Billed Duration (ms)": 26239.0,
+                "Memory Size (MB)": 1024,
+                "Max Memory Used (MB)": 276,
+                "Init Duration (ms)": 320.16,
+                "Cost Estimate (USD)": 0.00043731754130000005
+            }
+        ],
+        "error": [],
+        "end": true
+    },
+    "0655b29a-e281-43cb-8cb0-1c45427b35cd": {
+        "date": "Sat, 11 Jun 2022 00:16:24 GMT",
+        "status": 202,
+        "data": {
+            "grouping_to_process": 0,
+            "product_type": "latlon",
+            "output_freq_code": "AVG_MON",
+            "time_steps_to_process": "all"
+        },
+        "report": [
+            {
+                "logStreamName": "2022/06/11/[$LATEST]cbb49d6c5cbd4fb6ac0a2ff9e47c34eb",
+                "Duration (ms)": 25950.68,
+                "Billed Duration (ms)": 26227.0,
+                "Memory Size (MB)": 1024,
+                "Max Memory Used (MB)": 277,
+                "Init Duration (ms)": 276.24,
+                "Cost Estimate (USD)": 0.0004371175409
+            }
+        ],
+        "error": [],
+        "end": true
+    },
+    "3aa018ba-bead-47f6-903e-ca2098adaf21": {
+        "date": "Sat, 11 Jun 2022 00:16:25 GMT",
+        "status": 202,
+        "data": {
+            "grouping_to_process": 0,
+            "product_type": "latlon",
+            "output_freq_code": "AVG_MON",
+            "time_steps_to_process": "all"
+        },
+        "report": [
+            {
+                "logStreamName": "2022/06/11/[$LATEST]066f4848d14045d98763cea38b36979b",
+                "Duration (ms)": 26369.62,
+                "Billed Duration (ms)": 26680.0,
+                "Memory Size (MB)": 1024,
+                "Max Memory Used (MB)": 276,
+                "Init Duration (ms)": 310.36,
+                "Cost Estimate (USD)": 0.00044466755600000004
+            }
+        ],
+        "error": [],
+        "end": true
+    },
+    "a2cde691-3ded-4be4-85a7-823e19bbd54a": {
+        "date": "Sat, 11 Jun 2022 00:16:25 GMT",
+        "status": 202,
+        "data": {
+            "grouping_to_process": 0,
+            "product_type": "latlon",
+            "output_freq_code": "AVG_MON",
+            "time_steps_to_process": "all"
+        },
+        "report": [
+            {
+                "logStreamName": "2022/06/11/[$LATEST]2eaf7bb1028b44bcaa29277721e9b449",
+                "Duration (ms)": 27732.31,
+                "Billed Duration (ms)": 28215.0,
+                "Memory Size (MB)": 1024,
+                "Max Memory Used (MB)": 276,
+                "Init Duration (ms)": 482.49,
+                "Cost Estimate (USD)": 0.0004702509405
+            }
+        ],
+        "error": [],
+        "end": true
+    }
+}

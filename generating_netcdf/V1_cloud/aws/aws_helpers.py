@@ -1,9 +1,62 @@
 import sys
 import glob
 import time
+import json
 import boto3
 import subprocess
 from pathlib import Path
+
+
+def get_logs(log_client, log_group_name, log_stream_names, start_time=0, end_time=0, filter_pattern='', type=''):
+    if type == 'event':
+        events_current = log_client.filter_log_events(logGroupName=log_group_name, logStreamNames=log_stream_names, filterPattern=filter_pattern, startTime=start_time, endTime=end_time)
+        ret_logs = events_current['events']
+        while True:
+            if 'nextToken' in events_current.keys():
+                events_current = log_client.filter_log_events(logGroupName=log_group_name, logStreamNames=log_stream_names, filterPattern=filter_pattern, nextToken=events_current['nextToken'])
+                if events_current['events'] != []:
+                    ret_logs.extend(events_current['events'])
+            else:
+                break
+    elif type == 'logStream':
+        log_streams_current = log_client.describe_log_streams(logGroupName=log_group_name, orderBy='LastEventTime')
+        ret_logs = log_streams_current['logStreams']
+        while True:
+            if 'nextToken' in log_streams_current.keys():
+                log_streams_current = log_client.describe_log_streams(logGroupName=log_group_name, orderBy='LastEventTime', nextToken=log_streams_current['nextToken'])
+                if log_streams_current['logStreams'] != []:
+                    ret_logs.extend(log_streams_current['logStreams'])
+            else:
+                break
+    return ret_logs
+
+
+def save_logs(job_logs, ms_to_sec, MB_to_GB, estimated_jobs, fn_extra=''):
+    for job in job_logs.keys():
+        if job != 'Cost Information':
+            if job not in estimated_jobs:
+                if (fn_extra != 'INITIAL') and (job_logs[job]['end']):
+                    estimated_jobs.append(job)
+                if job_logs[job]['report'] != []:
+                    job_reports = job_logs[job]['report']
+                    for job_report in job_reports:
+                        request_duration_time = job_report["Duration (ms)"] * ms_to_sec
+                        request_time = job_report["Billed Duration (ms)"] * ms_to_sec
+                        request_memory = job_report["Memory Size (MB)"]
+                        cost_estimate = job_report["Cost Estimate (USD)"]
+                        job_logs['Cost Information'][f'{job_report["Memory Size (MB)"]} MB Total Time (s)'] += request_duration_time
+                        job_logs['Cost Information'][f'{job_report["Memory Size (MB)"]} MB Total Billed Time (s)'] += request_time
+                        job_logs['Cost Information'][f'{job_report["Memory Size (MB)"]} MB Total GB*s'] += (request_memory * MB_to_GB * request_time)
+                        job_logs['Cost Information'][f'{job_report["Memory Size (MB)"]} MB Total Cost (USD)'] += cost_estimate
+                        job_logs['Cost Information']['Total Cost'] += cost_estimate
+
+    if fn_extra != '' and fn_extra[0] != '_':
+        fn_extra = f'_{fn_extra}'
+    time_str = time.strftime('%Y%m%d:%H%M%S', time.localtime())
+    with open(f'./logs/job_logs_{time_str}{fn_extra}.json', 'w') as f:
+        json.dump(job_logs, f, indent=4)
+    
+    return job_logs, estimated_jobs
 
 
 def upload_S3(source_path, bucket, credentials, check_list=True):
@@ -19,6 +72,7 @@ def upload_S3(source_path, bucket, credentials, check_list=True):
 
     # Collect files currently on the S3 bucket
     # If, when uploading, the name exists in this list, skip it.
+    files_on_s3 = []
     if check_list:
         response = s3.list_objects(Bucket=bucket)
         if response['ResponseMetadata']['HTTPStatusCode'] != 200:

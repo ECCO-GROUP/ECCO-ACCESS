@@ -6,12 +6,8 @@ Created on Sun Jun 21 19:28:40 2020
 """
 import numpy as np
 
-
-#%%
 R_Earth = 6371.008800000000000000e3 # m
-R_Earth_sq = R_Earth **2
-
-#6371.0088e3 # m
+R_Earth_sq = R_Earth**2
 
 
 def area_of_latlon_grid_cell(lon0, lon1, lat0, lat1):
@@ -40,7 +36,7 @@ def area_of_latlon_grid_cell(lon0, lon1, lat0, lat1):
     return A
 
 
-def area_of_latlon_grid(lon0, lon1, lat0, lat1, dx, dy, less_output=False):
+def area_of_latlon_grid(lon0, lon1, lat0, lat1, dx, dy, less_output=True):
     # Calculates area of a latlon grid with edges lon0 and lon1
     # lat0 and lat1 with grid spacing of dx and dy
 
@@ -60,9 +56,9 @@ def area_of_latlon_grid(lon0, lon1, lat0, lat1, dx, dy, less_output=False):
 
     A = np.zeros((num_grid_cells_y))
 
-    if not less_output:
-        print(lons_grid_cell_edges)
-        print(lats_grid_cell_edges)
+    # if not less_output:
+    #     print(lons_grid_cell_edges)
+    #     print(lats_grid_cell_edges)
 
     for lat_i in range(num_grid_cells_y):
         A[lat_i] = area_of_latlon_grid_cell(lons_grid_cell_edges[0], lons_grid_cell_edges[1],\
@@ -76,5 +72,3 @@ def area_of_latlon_grid(lon0, lon1, lat0, lat1, dx, dy, less_output=False):
     results['num_grid_cells_y'] = num_grid_cells_y
 
     return results
-
-

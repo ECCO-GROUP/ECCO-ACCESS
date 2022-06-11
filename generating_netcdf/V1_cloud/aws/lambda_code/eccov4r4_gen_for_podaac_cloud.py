@@ -181,12 +181,12 @@ def generate_netcdfs(output_freq_code,
     grouping_num = grouping_to_process
 
     grouping = groupings[grouping_num]
-    print('... grouping to use ', grouping['name'])
-    print('... fields in grouping ', grouping['fields'])
+    # print('... grouping to use ', grouping['name'])
+    # print('... fields in grouping ', grouping['fields'])
 
     # dimension of dataset
     dataset_dim = grouping['dimension']
-    print('... grouping dimension', dataset_dim)
+    # print('... grouping dimension', dataset_dim)
     # ======================================================================================================================
 
 
@@ -195,7 +195,7 @@ def generate_netcdfs(output_freq_code,
     # ======================================================================================================================
     diags_root = Path(config_metadata['model_data_dir'])
 
-    print('\nGetting directories for group variables')
+    # print('\nGetting directories for group variables')
     if output_freq_code == 'AVG_DAY':
         mds_diags_root_dir = diags_root / 'diags_daily'
         period_suffix = 'day_mean'
@@ -391,7 +391,7 @@ def generate_netcdfs(output_freq_code,
                 mds_var_dir = var_directories[var]
                 mds_var_dir = Path('/tmp') / mds_var_dir
 
-                print ('\nProcessing ', var, mds_var_dir)
+                # print ('\nProcessing ', var, mds_var_dir)
 
                 if local:
                     mds_file = list(mds_var_dir.glob(var + '*' + str(cur_ts).zfill(10) + '*.data'))
@@ -408,9 +408,9 @@ def generate_netcdfs(output_freq_code,
                 else:
                     mds_file = mds_file[0]
 
-                print(f'mds_file: {mds_file}')
+                # print(f'mds_file: {mds_file}')
                 tmp_file_path = mds_var_dir / str(mds_file).split('/')[-1]
-                print(f'Temp file path: {tmp_file_path}')
+                # print(f'Temp file path: {tmp_file_path}')
 
                 # Download mds_file from S3
                 if not local:

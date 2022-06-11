@@ -9,32 +9,29 @@ This module includes utility routines that operate on the Dataset or DataArray O
    https://github.com/ECCO-GROUP/ECCOv4-py
 """
 
-from __future__ import division, print_function
-import numpy as np
-import xarray as xr
 import datetime
 import dateutil
-import xgcm
-from pprint import pprint
+import numpy as np
+import xarray as xr
+# from pprint import pprint
 from collections import OrderedDict
 
 def find_metadata_in_json_dictionary(var, key, metadata, print_output=False):
     for m in metadata:
         if key in m.keys():
             if m[key] == var:
-                if print_output:
-                    print(m)
+                # if print_output:
+                #     print(m)
                 return m
 
     return []
 
 
-
 def add_global_metadata(metadata, G, dataset_dim, less_output=True):
 
-    if not less_output:
-        print('adding global metadata')
-        pprint(metadata)
+    # if not less_output:
+    #     print('adding global metadata')
+        # pprint(metadata)
 
     # loop through pairs
     for mc in metadata:
@@ -66,8 +63,8 @@ def add_global_metadata(metadata, G, dataset_dim, less_output=True):
                 G.attrs[mname] = np.int32(mc['value'])
             else:
                 print('INVALID MTYPE ! ', mtype)
-        else:
-            print('\t> not adding ', mc)
+        # else:
+        #     print('\t> not adding ', mc)
 
     return G
 
@@ -79,8 +76,8 @@ def add_coordinate_metadata(metadata_dict, G, less_output=True):
 
     for coord in G.coords:
 
-        if not less_output:
-            print('\n### ', coord)
+        # if not less_output:
+        #     print('\n### ', coord)
         # look for coordinate in metadat dictionary
         mv = find_metadata_in_json_dictionary(coord, 'name', metadata_dict)
 
@@ -92,10 +89,10 @@ def add_coordinate_metadata(metadata_dict, G, less_output=True):
                 if m_key not in keys_to_exclude:
                     G[coord].attrs[m_key] = mv[m_key]
 
-                    if not less_output:
-                        print('\t',m_key, ':', mv[m_key])
-        else:
-            print('...... no metadata found in dictionary')
+                    # if not less_output:
+                    #     print('\t',m_key, ':', mv[m_key])
+        # else:
+        #     print('...... no metadata found in dictionary')
 
     return G
 
@@ -109,21 +106,22 @@ def add_variable_metadata(variable_metadata_dict, G, \
                        'grid_location']
 
     for var in G.data_vars:
-        if not less_output:
-            print('\n### ', var)
+        # if not less_output:
+        #     print('\n### ', var)
 
         mv = find_metadata_in_json_dictionary(var, 'name', variable_metadata_dict)
 
         if len(mv) == 0:
-            print('...... no metadata found in dictionary')
+            continue
+            # print('...... no metadata found in dictionary')
 
         else:
             # loop through each key, add if not on exclude list
             for m_key in sorted(mv.keys()):
                 if m_key not in keys_to_exclude:
                     G[var].attrs[m_key] = mv[m_key]
-                    if not less_output:
-                        print('\t',m_key, ':', mv[m_key])
+                    # if not less_output:
+                    #     print('\t',m_key, ':', mv[m_key])
 
             # merge the two comment fields (both *MUST* be present in the json file
             # but they can be empty strings "")
@@ -146,11 +144,11 @@ def add_variable_metadata(variable_metadata_dict, G, \
                 elif len(mv['comments_2']) > 0:
                    G[var].attrs['comment'] = mv['comments_2']
 
-                if not less_output:
-                    print('\t', 'comment', ':', G[var].attrs['comment'])
-            else:
-                if not less_output:
-                    print('\t', 'comment fields are empty')
+                # if not less_output:
+                #     print('\t', 'comment', ':', G[var].attrs['comment'])
+            # else:
+            #     if not less_output:
+            #         print('\t', 'comment fields are empty')
 
             # append GCMD keywords, if present
             if 'GCMD_keywords' in mv.keys():
@@ -158,8 +156,8 @@ def add_variable_metadata(variable_metadata_dict, G, \
                # attributes
                gcmd_keywords = mv['GCMD_keywords'].split(',')
 
-               if not less_output:
-                   print('\t','GCMD keywords : ', gcmd_keywords)
+            #    if not less_output:
+            #        print('\t','GCMD keywords : ', gcmd_keywords)
 
                for gcmd_keyword in gcmd_keywords:
                    grouping_gcmd_keywords.append(gcmd_keyword.strip())
@@ -192,43 +190,6 @@ def sort_attrs(attrs):
         od[k] = attrs[k]
 
     return od
-
-
-def sort_all_attrs(ecco_dataset, print_output=False):
-    """
-
-    Alphabetically sort all attributes in a ecco_dataset object (ecco_dataset)
-    including the attributes of coordinates, data variables,
-    and the global attributes.
-
-    Parameters
-    ----------
-    ecco_dataset : xarray Dataset
-        an xarray dataset
-
-    Returns
-    -------
-    ecco_dataset : xarray Dataset
-        an xarray dataset with all attributes sorted alphabetically
-
-    """
-
-    for coord in list(ecco_dataset.coords):
-        if print_output:
-            print(coord)
-        new_attrs = sort_attrs(ecco_dataset[coord].attrs)
-        ecco_dataset[coord].attrs = new_attrs
-
-    for dv in list(ecco_dataset.data_vars):
-        if print_output:
-            print(dv)
-        new_attrs = sort_attrs(ecco_dataset[dv].attrs)
-        ecco_dataset[dv].attrs = new_attrs
-
-    new_attrs = sort_attrs(ecco_dataset.attrs)
-    ecco_dataset.attrs = new_attrs
-
-    return ecco_dataset
 
 
 def make_time_bounds_and_center_times_from_ecco_dataset(ecco_dataset, \
@@ -308,7 +269,7 @@ def make_time_bounds_and_center_times_from_ecco_dataset(ecco_dataset, \
 
     return time_bnds_ds, center_times
 
-#%%
+
 def make_time_bounds_from_ds64(rec_avg_end, output_freq_code):
     """
 
@@ -378,7 +339,7 @@ def make_time_bounds_from_ds64(rec_avg_end, output_freq_code):
         print ('you provided ' + str(output_freq_code))
         return [],[]
 
-#%%
+
 def extract_yyyy_mm_dd_hh_mm_ss_from_datetime64(dt64):
     """
 
@@ -416,162 +377,3 @@ def extract_yyyy_mm_dd_hh_mm_ss_from_datetime64(dt64):
     elif isinstance(dt64,np.datetime64):
         xdates = extract_yyyy_mm_dd_hh_mm_ss_from_datetime64(xr.DataArray(np.array([dt64])))
         return tuple([int(x.values) for x in xdates])
-
-#%%
-def minimal_metadata(ds):
-    """
-
-    This routine removes some of the redundant metadata that is included with the ECCO v4 netcdf tiles from the Dataset object `ds`.  Specifically, metadata with the tags `A` through `Z` (those metadata records) that describe the origin of the ECCO v4 output.
-
-    Parameters
-    ----------
-    ds : xarray Dataset
-        An `xarray` Dataset object that was created by loading an
-        ECCO v4 tile netcdf file
-
-
-    """
-
-    print('Removing Dataset Attributes A-Z\n')
-    # generate a list of upper case letters in teh alphabet
-    myDict= map(chr, range(65, 91))
-
-    for key, value in ds.attrs.items():
-        if key in myDict:
-            del ds.attrs[key]
-
-
-
-#%%
-def months2days(nmon=288, baseyear=1992, basemon=1):
-    """
-
-    This routine converts the mid-month time to days from January 1st of a particular year.
-
-    Parameters
-    ----------
-    nmon : dtype=integer
-        number of months
-
-    baseyear : dtype=integer
-        year of time of origin
-
-    basemon : dtype=integer
-        month of time of origin
-
-    Returns
-    -------
-        time_days : ndarray
-            the middle time of each month in days from Jan 1 baseyear (numpy array [nmon], dtype=double)
-
-        time_days_bnds : ndarray
-            time bounds (numpy array [nmon, 2], dtype=double)
-
-        ansi_date : ndarray
-            array of ANSI date strings
-
-    """
-
-    time_days_bnds = np.zeros([nmon,2])
-    time_1stdayofmon = np.zeros([nmon+1])
-
-    basetime = datetime.datetime(baseyear, basemon, 1, 0, 0, 0)
-
-    for mon in range(nmon+1):
-        #monfrombasemon is how many months fron basemon
-        monfrombasemon=basemon+mon-1
-        yrtmp = monfrombasemon//12+baseyear
-        montmp = monfrombasemon%12+1
-        tmpdate = datetime.datetime(yrtmp,montmp,1,0,0,0)-basetime
-        time_1stdayofmon[mon] = tmpdate.days
-    #time bounds are the 1st day of each month.
-    time_days_bnds[:,0]= time_1stdayofmon[0:nmon]
-    time_days_bnds[:,1]= time_1stdayofmon[1:nmon+1]
-    #center time of each month is the mean of the time bounds.
-    time_days = np.mean(time_days_bnds,axis=1)
-
-    ansi_datetmp = np.array([basetime + datetime.timedelta(days=time_days[i]) for i in range(nmon)])
-    ansi_date = [str.replace(ansi_datetmp[i].isoformat(),'T',' ') for i in range(nmon)]
-
-    return time_days, time_days_bnds, ansi_date
-
-#%%
-
-def get_llc_grid(ds,domain='global'):
-    """
-    Define xgcm Grid object for the LLC grid
-    See example usage in the xgcm documentation:
-    https://xgcm.readthedocs.io/en/latest/example_eccov4.html#Spatially-Integrated-Heat-Content-Anomaly
-
-    Parameters
-    ----------
-    ds : xarray Dataset
-        formed from LLC90 grid, must have the basic coordinates:
-        i,j,i_g,j_g,k,k_l,k_u,k_p1
-
-    Returns
-    -------
-    grid : xgcm Grid object
-        defines horizontal connections between LLC tiles
-
-    """
-
-    if 'domain' in ds.attrs:
-        domain = ds.attrs['domain']
-
-    if domain == 'global':
-        # Establish grid topology
-        tile_connections = {'tile':  {
-                0: {'X': ((12, 'Y', False), (3, 'X', False)),
-                    'Y': (None, (1, 'Y', False))},
-                1: {'X': ((11, 'Y', False), (4, 'X', False)),
-                    'Y': ((0, 'Y', False), (2, 'Y', False))},
-                2: {'X': ((10, 'Y', False), (5, 'X', False)),
-                    'Y': ((1, 'Y', False), (6, 'X', False))},
-                3: {'X': ((0, 'X', False), (9, 'Y', False)),
-                    'Y': (None, (4, 'Y', False))},
-                4: {'X': ((1, 'X', False), (8, 'Y', False)),
-                    'Y': ((3, 'Y', False), (5, 'Y', False))},
-                5: {'X': ((2, 'X', False), (7, 'Y', False)),
-                    'Y': ((4, 'Y', False), (6, 'Y', False))},
-                6: {'X': ((2, 'Y', False), (7, 'X', False)),
-                    'Y': ((5, 'Y', False), (10, 'X', False))},
-                7: {'X': ((6, 'X', False), (8, 'X', False)),
-                    'Y': ((5, 'X', False), (10, 'Y', False))},
-                8: {'X': ((7, 'X', False), (9, 'X', False)),
-                    'Y': ((4, 'X', False), (11, 'Y', False))},
-                9: {'X': ((8, 'X', False), None),
-                    'Y': ((3, 'X', False), (12, 'Y', False))},
-                10: {'X': ((6, 'Y', False), (11, 'X', False)),
-                     'Y': ((7, 'Y', False), (2, 'X', False))},
-                11: {'X': ((10, 'X', False), (12, 'X', False)),
-                     'Y': ((8, 'Y', False), (1, 'X', False))},
-                12: {'X': ((11, 'X', False), None),
-                     'Y': ((9, 'Y', False), (0, 'X', False))}
-        }}
-
-        grid = xgcm.Grid(ds,
-                periodic=False,
-                face_connections=tile_connections
-        )
-    elif domain == 'aste':
-        tile_connections = {'tile':{
-                    0:{'X':((5,'Y',False),None),
-                       'Y':(None,(1,'Y',False))},
-                    1:{'X':((4,'Y',False),None),
-                       'Y':((0,'Y',False),(2,'X',False))},
-                    2:{'X':((1,'Y',False),(3,'X',False)),
-                       'Y':(None,(4,'X',False))},
-                    3:{'X':((2,'X',False),None),
-                       'Y':(None,None)},
-                    4:{'X':((2,'Y',False),(5,'X',False)),
-                       'Y':(None,(1,'X',False))},
-                    5:{'X':((4,'X',False),None),
-                       'Y':(None,(0,'X',False))}
-                   }}
-        grid = xgcm.Grid(ds,periodic=False,face_connections=tile_connections)
-    else:
-        raise TypeError(f'Domain {domain} not recognized')
-
-
-    return grid

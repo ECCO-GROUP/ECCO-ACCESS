@@ -9,7 +9,6 @@ This module includes routines for converting arrays between the model
 
 """
 
-from __future__ import division,print_function
 import numpy as np
 import xarray as xr
 from xmitgcm.variables import dimensions
@@ -21,7 +20,6 @@ except ImportError:
     from collections import OrderedDict
 
 
-#%%
 def llc_compact_to_tiles(data_compact, less_output = False):
     """
 
@@ -58,45 +56,7 @@ def llc_compact_to_tiles(data_compact, less_output = False):
 
     return data_tiles
 
-# %%
-def llc_tiles_to_compact(data_tiles, less_output = False):
-    """
 
-    Converts a numpy binary array in the 'compact' format of the
-    lat-lon-cap (LLC) grids and converts it to the '13 tiles' format
-    of the LLC grids.
-
-    Parameters
-    ----------
-    data_tiles : ndarray
-        a numpy array organized by, at most,
-        13 tiles x nl x nk x llc x llc
-
-        where dimensions 'nl' and 'nk' are optional.
-
-    less_output : boolean, optional, default False
-        A debugging flag.  False = less debugging output
-
-    Returns
-    -------
-    data_compact : ndarray
-        a numpy array of dimension nl x nk x 13*llc x llc
-
-    Note
-    ----
-    If dimensions nl or nk are singular, they are not included
-    as dimensions in data_compact
-
-    """
-
-    data_faces   = llc_tiles_to_faces(data_tiles, less_output=less_output)
-    data_compact = llc_faces_to_compact(data_faces, less_output=less_output)
-
-    return data_compact
-
-
-
-#%%
 def llc_compact_to_faces(data_compact, less_output = False):
     """
     Converts a numpy binary array in the 'compact' format of the
@@ -143,9 +103,9 @@ def llc_compact_to_faces(data_compact, less_output = False):
     # dtype of compact array
     arr_dtype = data_compact.dtype
 
-    if not less_output:
-        print('llc_compact_to_faces: dims, llc ', dims, llc)
-        print('llc_compact_to_faces: data_compact array type ', data_compact.dtype)
+    # if not less_output:
+    #     print('llc_compact_to_faces: dims, llc ', dims, llc)
+    #     print('llc_compact_to_faces: data_compact array type ', data_compact.dtype)
 
     if num_dims == 2: # we have a single 2D slices (y, x)
         f1 = np.zeros((3*llc, llc), dtype=arr_dtype)
@@ -274,7 +234,6 @@ def llc_compact_to_faces(data_compact, less_output = False):
     return F
 
 
-#%%
 def llc_faces_to_tiles(F, less_output=False):
     """
 
@@ -348,9 +307,9 @@ def llc_faces_to_tiles(F, less_output=False):
         return []
 
     # llc is the length of the second dimension
-    if not less_output:
-        print ('llc_faces_to_tiles: data_tiles shape ', data_tiles.shape)
-        print ('llc_faces_to_tiles: data_tiles dtype ', data_tiles.dtype)
+    # if not less_output:
+    #     print ('llc_faces_to_tiles: data_tiles shape ', data_tiles.shape)
+    #     print ('llc_faces_to_tiles: data_tiles dtype ', data_tiles.dtype)
 
 
     # map the data from the faces format to the 13 tile arrays
@@ -410,148 +369,6 @@ def llc_faces_to_tiles(F, less_output=False):
 
     return data_tiles
 
-#%%
-def llc_ig_jg_faces_to_tiles(F, less_output=False):
-    """
-
-    Converts a dictionary, F, containing 5 lat-lon-cap faces into 13 tiles
-    of dimension nl x nk x llc+1 x llc+1 x nk.
-
-    ig_jg_faces arrays include one extra 'row' and 'column'
-    for the 'north' and 'east' points of the array.
-
-    Tiles 1-6 and 8-13 are oriented approximately lat-lon
-    while tile 7 is the Arctic 'cap'
-
-    Parameters
-    ----------
-    F : dict
-        a dictionary containing the five lat-lon-cap face arrays that include
-        one extra 'row' and 'column' for the 'north' and 'east' points
-
-        F[n] is a numpy array of face n, n in [1..5]
-
-    less_output : boolean, optional, default False
-        A debugging flag.  False = less debugging output
-
-    Returns
-    -------
-    data_tiles : ndarray
-        an array of dimension 13 x nl x nk x llc+1 x llc+1,
-
-        Each 2D slice is dimension 13 x llc+1 x llc+1
-
-    Note
-    ----
-    If dimensions nl or nk are singular, they are not included
-    as dimensions of data_tiles
-
-
-    """
-
-    # pull out the five face arrays
-    f1 = F[1]
-    f2 = F[2]
-    f3 = F[3]
-    f4 = F[4]
-    f5 = F[5]
-
-    dims = f3.shape
-    num_dims = len(dims)
-
-    # dtype of compact array
-    arr_dtype = f1.dtype
-
-    # final dimension of face 1 length llc +1
-    ni_3 = f3.shape[-1]
-
-    llc = ni_3 -1 #1 is subtracted because array has extra north and east points
-    #
-
-    if num_dims == 2: # we have a single 2D slices (y, x)
-        data_tiles = np.zeros((13, llc+1, llc+1), dtype=arr_dtype)
-
-
-    elif num_dims == 3: # we have 3D slices (time or depth, y, x)
-        nk = dims[0]
-        data_tiles = np.zeros((nk, 13, llc+1, llc+1), dtype=arr_dtype)
-
-
-    elif num_dims == 4: # we have a 4D slice (time or depth, time or depth, y, x)
-        nl = dims[0]
-        nk = dims[1]
-
-        data_tiles = np.zeros((nl, nk, 13, llc+1, llc+1), dtype=arr_dtype)
-
-    else:
-        print ('llc_faces_to_tiles: can only handle face arrays that have 2, 3, or 4 dimensions!')
-        return []
-
-    # llc is the length of the second dimension
-    if not less_output:
-        print ('llc_faces_to_tiles: data_tiles shape ', data_tiles.shape)
-        print ('llc_faces_to_tiles: data_tiles dtype ', data_tiles.dtype)
-
-
-    # map the data from the faces format to the 13 tile arrays
-
-    # -- 2D case
-    if num_dims == 2:
-        data_tiles[0,:]  = f1[llc*0:llc*1+1,:]
-        data_tiles[1,:]  = f1[llc*1:llc*2+1,:]
-        data_tiles[2,:]  = f1[llc*2:,:]
-        data_tiles[3,:]  = f2[llc*0:llc*1+1,:]
-        data_tiles[4,:]  = f2[llc*1:llc*2+1,:]
-        data_tiles[5,:]  = f2[llc*2:,:]
-        data_tiles[6,:]  = f3
-        data_tiles[7,:]  = f4[:,llc*0:llc*1+1]
-        data_tiles[8,:]  = f4[:,llc*1:llc*2+1]
-        data_tiles[9,:]  = f4[:,llc*2:]
-        data_tiles[10,:] = f5[:,llc*0:llc*1+1]
-        data_tiles[11,:] = f5[:,llc*1:llc*2+1]
-        data_tiles[12,:] = f5[:,llc*2:]
-
-    # -- 3D case
-    if num_dims == 3:
-        # loop over k
-        for k in range(nk):
-            data_tiles[k,0,:]  = f1[k,llc*0:llc*1+1,:]
-            data_tiles[k,1,:]  = f1[k,llc*1:llc*2+1,:]
-            data_tiles[k,2,:]  = f1[k,llc*2:,:]
-            data_tiles[k,3,:]  = f2[k,llc*0:llc*1+1,:]
-            data_tiles[k,4,:]  = f2[k,llc*1:llc*2+1,:]
-            data_tiles[k,5,:]  = f2[k,llc*2:,:]
-            data_tiles[k,6,:]  = f3[k,:]
-            data_tiles[k,7,:]  = f4[k,:,llc*0:llc*1+1]
-            data_tiles[k,8,:]  = f4[k,:,llc*1:llc*2+1]
-            data_tiles[k,9,:]  = f4[k,:,llc*2:]
-            data_tiles[k,10,:] = f5[k,:,llc*0:llc*1+1]
-            data_tiles[k,11,:] = f5[k,:,llc*1:llc*2+1]
-            data_tiles[k,12,:] = f5[k,:,llc*2:]
-
-    # -- 4D case
-    if num_dims == 4:
-        #loop over l and k
-        for l in range(nl):
-            for k in range(nk):
-                data_tiles[l,k,0,:]  = f1[l,k,llc*0:llc*1+1,:]
-                data_tiles[l,k,1,:]  = f1[l,k,llc*1:llc*2+1,:]
-                data_tiles[l,k,2,:]  = f1[l,k,llc*2:,:]
-                data_tiles[l,k,3,:]  = f2[l,k,llc*0:llc*1+1,:]
-                data_tiles[l,k,4,:]  = f2[l,k,llc*1:llc*2+1,:]
-                data_tiles[l,k,5,:]  = f2[l,k,llc*2:,:]
-                data_tiles[l,k,6,:]  = f3[l,k,:]
-                data_tiles[l,k,7,:]  = f4[l,k,:,llc*0:llc*1+1]
-                data_tiles[l,k,8,:]  = f4[l,k,:,llc*1:llc*2+1]
-                data_tiles[l,k,9,:]  = f4[l,k,:,llc*2:]
-                data_tiles[l,k,10,:] = f5[l,k,:,llc*0:llc*1+1]
-                data_tiles[l,k,11,:] = f5[l,k,:,llc*1:llc*2+1]
-                data_tiles[l,k,12,:] = f5[l,k,:,llc*2:]
-
-    return data_tiles
-
-
-
 
 def llc_tiles_to_faces(data_tiles, less_output=False):
     """
@@ -600,8 +417,8 @@ def llc_tiles_to_faces(data_tiles, less_output=False):
     # data type of original data_tiles
     arr_dtype = data_tiles.dtype
 
-    if not less_output:
-        print('llc_tiles_to_faces: num_tiles, ', num_tiles)
+    # if not less_output:
+    #     print('llc_tiles_to_faces: num_tiles, ', num_tiles)
 
     if num_dims == 3: # we have a 13 2D slices (tile, y, x)
         f1 = np.zeros((3*llc, llc), dtype=arr_dtype)
@@ -785,8 +602,8 @@ def llc_faces_to_compact(F, less_output=True):
         print ('llc_faces_to_compact: can only handle faces that have 2, 3, or 4 dimensions!')
         return []
 
-    if not less_output:
-        print ('llc_faces_to_compact: face 3 shape', f3.shape)
+    # if not less_output:
+    #     print ('llc_faces_to_compact: face 3 shape', f3.shape)
 
     if num_dims == 2:
 
@@ -806,7 +623,7 @@ def llc_faces_to_compact(F, less_output=True):
 
     elif num_dims == 3:
         # loop through k indicies
-        print ('llc_faces_to_compact: data_compact array shape', data_compact.shape)
+        # print ('llc_faces_to_compact: data_compact array shape', data_compact.shape)
 
         for k in range(nk):
             data_compact[k,:3*llc,:]      = f1[k,:]
@@ -846,13 +663,13 @@ def llc_faces_to_compact(F, less_output=True):
                     data_compact[l,k,i2,:]      = f5[l,k,:,i1].T
 
 
-    if not less_output:
-        print ('llc_faces_to_compact: data_compact array shape', data_compact.shape)
-        print ('llc_faces_to_compact: data_compact array dtype', data_compact.dtype)
+    # if not less_output:
+    #     print ('llc_faces_to_compact: data_compact array shape', data_compact.shape)
+    #     print ('llc_faces_to_compact: data_compact array dtype', data_compact.dtype)
 
     return data_compact
 
-#%%
+
 def llc_tiles_to_xda(data_tiles, var_type=None, grid_da=None, less_output=True,
                      dim4=None,dim5=None):
     """
@@ -925,8 +742,8 @@ def llc_tiles_to_xda(data_tiles, var_type=None, grid_da=None, less_output=True,
         if grid_da is None:
             raise TypeError('If converting 1D array, must specify grid_da as template')
 
-        if not less_output:
-            print('Found 1D array, will use grid_da input to shape it')
+        # if not less_output:
+        #     print('Found 1D array, will use grid_da input to shape it')
     elif len(data_tiles.shape)>5:
         raise TypeError('Found unfamiliar array shape: ', data_tiles.shape)
 
@@ -964,7 +781,7 @@ def llc_tiles_to_xda(data_tiles, var_type=None, grid_da=None, less_output=True,
 
     return da
 
-#%%
+
 def _make_data_array(data_tiles, iVar, jVar, kVar, less_output=False,dim4=None,dim5=None):
     """Non user facing function to make a data array from tiled numpy/dask array
     and strings denoting grid location

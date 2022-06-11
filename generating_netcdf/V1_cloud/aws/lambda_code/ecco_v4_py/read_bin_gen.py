@@ -7,13 +7,10 @@ not necessarily in the lat-lon-cap layout. For LLC type data, see read_bin_llc.
    https://github.com/ECCO-GROUP/ECCOv4-py
 """
 
-from __future__ import division,print_function
 import numpy as np
-import glob
-import os
 from pathlib import Path
 
-#%%
+
 def load_binary_array(fdir, fname, ni, nj, nk=1, nl=1, skip=0,
                       filetype = '>f', less_output = False ):
     """
@@ -70,8 +67,8 @@ def load_binary_array(fdir, fname, ni, nj, nk=1, nl=1, skip=0,
     datafile = data_folder / fname
 
     #datafile = os.path.join(fdir, fname)
-    if not less_output:
-        print('load_binary_array: loading file', datafile)
+    # if not less_output:
+    #     print('load_binary_array: loading file', datafile)
 
     # check to see if file exists.
     if datafile.exists() == False:
@@ -99,8 +96,8 @@ def load_binary_array(fdir, fname, ni, nj, nk=1, nl=1, skip=0,
         # length of each 2D slice is ni * nj
         nk = int(length_arr_k / (ni*nj))
 
-        if not less_output:
-            print('load_binary_array: loading all 2D records.  nk =',nk)
+        # if not less_output:
+        #     print('load_binary_array: loading all 2D records.  nk =',nk)
 
         # reshape the array to 2D records
         if nk > 1: # we have more than one 2D record, make 3D field
@@ -132,8 +129,8 @@ def load_binary_array(fdir, fname, ni, nj, nk=1, nl=1, skip=0,
 
     f.close()
 
-    if not less_output:
-        print('load_binary_array: data array shape ', data.shape)
-        print('load_binary_array: data array type ', data.dtype)
+    # if not less_output:
+    #     print('load_binary_array: data array shape ', data.shape)
+    #     print('load_binary_array: data array type ', data.dtype)
 
     return data
