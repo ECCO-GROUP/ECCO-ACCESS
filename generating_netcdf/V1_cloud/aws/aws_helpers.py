@@ -31,17 +31,17 @@ def get_logs(log_client, log_group_name, log_stream_names, start_time=0, end_tim
     return ret_logs
 
 
-def save_logs(job_logs, ms_to_sec, MB_to_GB, estimated_jobs, fn_extra=''):
+def save_logs(job_logs, MB_to_GB, estimated_jobs, start_time, ctr, fn_extra=''):
     for job in job_logs.keys():
-        if job != 'Cost Information':
+        if job != 'Cost Information' and job != 'Total Time (s)':
             if job not in estimated_jobs:
                 if (fn_extra != 'INITIAL') and (job_logs[job]['end']):
                     estimated_jobs.append(job)
                 if job_logs[job]['report'] != []:
                     job_reports = job_logs[job]['report']
                     for job_report in job_reports:
-                        request_duration_time = job_report["Duration (ms)"] * ms_to_sec
-                        request_time = job_report["Billed Duration (ms)"] * ms_to_sec
+                        request_duration_time = job_report["Duration (s)"]
+                        request_time = job_report["Billed Duration (s)"]
                         request_memory = job_report["Memory Size (MB)"]
                         cost_estimate = job_report["Cost Estimate (USD)"]
                         job_logs['Cost Information'][f'{job_report["Memory Size (MB)"]} MB Total Time (s)'] += request_duration_time
@@ -51,20 +51,16 @@ def save_logs(job_logs, ms_to_sec, MB_to_GB, estimated_jobs, fn_extra=''):
                         job_logs['Cost Information']['Total Cost'] += cost_estimate
 
     if fn_extra != '' and fn_extra[0] != '_':
-        fn_extra = f'_{fn_extra}'
+        fn_extra = f'{fn_extra}'
     time_str = time.strftime('%Y%m%d:%H%M%S', time.localtime())
-    with open(f'./logs/job_logs_{time_str}{fn_extra}.json', 'w') as f:
+    with open(f'./logs/job_logs_{start_time}_{ctr}_{time_str}_{fn_extra}.json', 'w') as f:
         json.dump(job_logs, f, indent=4)
     
     return job_logs, estimated_jobs
 
 
-def upload_S3(source_path, bucket, credentials, check_list=True):
+def upload_S3(s3, source_path, bucket, check_list=True):
     # Upload provided file to the provided bucket via the provided credentials.
-
-    # Setup S3 bucket client via boto3
-    boto3.setup_default_session(profile_name=credentials['profile_name'])
-    s3 = boto3.client('s3')
 
     # Collect list of files within source_path
     data_files = glob.glob(f'{source_path}/**/*.data', recursive=True)

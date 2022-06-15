@@ -26,7 +26,7 @@
      },
      {
         "name": "image_uri",
-        "type": "s",
+        "type": "s", 
         "value": "448078824696.dkr.ecr.us-west-2.amazonaws.com/ecco_processing:latest"
      },
      {

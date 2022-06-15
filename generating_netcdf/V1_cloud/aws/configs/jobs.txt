@@ -4,7 +4,7 @@
 0,latlon,AVG_MON,all
 0,latlon,AVG_MON,all
 0,latlon,AVG_MON,all
-#0,latlon,AVG_MON,BAD
+0,latlon,AVG_MON,BAD
 #0,native,AVG_MON,all
 #11,latlon,AVG_MON,all
 #0,latlon,AVG_DAY,all

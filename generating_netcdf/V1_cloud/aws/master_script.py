@@ -5,6 +5,7 @@ Author: Duncan Bark
 
 """
 
+from email.policy import default
 import os
 import sys
 import copy
@@ -15,6 +16,8 @@ import argparse
 import platform
 from pathlib import Path
 from collections import defaultdict
+
+from numpy import product
 
 sys.path.append(f'{Path(__file__).parent.resolve()}')
 from aws_helpers import get_credentials_helper, upload_S3, create_lambda_function, get_aws_credentials, save_logs, get_logs
@@ -137,7 +140,8 @@ if __name__ == "__main__":
             aws_config_metadata['source_bucket'] = model_granule_bucket_default
         if aws_config_metadata['output_bucket'] == '':
             aws_config_metadata['output_bucket'] = processed_data_bucket_default
-        
+
+        source_bucket = aws_config_metadata['source_bucket']
         function_name = aws_config_metadata['function_name']
         image_uri = aws_config_metadata['image_uri']
         role = aws_config_metadata['role']
@@ -175,78 +179,168 @@ if __name__ == "__main__":
         prefix = 'aws'
         arn = f'arn:{prefix}:iam::{account_id}:role/{role}'
 
+        # Setup AWS session and S3 client
+        boto3.setup_default_session(profile_name=credentials['profile_name'])
+        s3 = boto3.client('s3')
+
         # Upload data to S3 bucket
         if upload_to_S3:
-            status = upload_S3(config_metadata['model_data_dir'], aws_config_metadata['source_bucket'], credentials)
+            status = upload_S3(s3, config_metadata['model_data_dir'], aws_config_metadata['source_bucket'])
             if not status:
                 print(f'Uploading to S3 failed. Exiting')
                 sys.exit()
 
         # setup AWS Lambda
         if use_lambda:
-            # Create AWS session, and lambda client
-            boto3.setup_default_session(profile_name=credentials['profile_name'])
+            # Create lambda client
             lambda_client = boto3.client('lambda')
 
             # create lambda function
             create_lambda_function(lambda_client, function_name, arn, memory_size, image_uri)
+            lambda_start_time = time.strftime('%Y%m%d:%H%M%S', time.localtime())
 
-    # values for cost estimation
-    ms_to_sec = 0.001
-    MB_to_GB = 0.0009765625
-    USD_per_GBsec = 0.0000166667
+            # values for cost estimation
+            ms_to_sec = 0.001
+            MB_to_GB = 0.0009765625
+            USD_per_GBsec = 0.0000166667
 
-    # loop through all jobs
-    # this is where each lambda job is created and executed
-    job_logs = {}
-    job_logs['Cost Information'] = defaultdict(float)
-    num_jobs = 0
+            # job information
+            num_jobs = 0
+            job_logs = {}
+            job_logs['Total Time (s)'] = 0
+            job_logs['Cost Information'] = defaultdict(float)
+    
+            start_time = int(time.time()/ms_to_sec)
+
+    # Get grouping information
+    metadata_fields = ['ECCOv4r4_groupings_for_1D_datasets',
+        'ECCOv4r4_groupings_for_latlon_datasets',
+        'ECCOv4r4_groupings_for_native_datasets']
+
+    # load METADATA
+    metadata = {}
+
+    for mf in metadata_fields:
+        mf_e = mf + '.json'
+        with open(str(Path(config_metadata['metadata_dir']) / mf_e), 'r') as fp:
+            metadata[mf] = json.load(fp)
+
+    groupings_for_1D_datasets = metadata['ECCOv4r4_groupings_for_1D_datasets']
+    groupings_for_latlon_datasets = metadata['ECCOv4r4_groupings_for_latlon_datasets']
+    groupings_for_native_datasets = metadata['ECCOv4r4_groupings_for_native_datasets']
+
+    # loop through all jobs and either process them locally
+    # or invoke the created lambda function
     if process_data:
         for (grouping_to_process, product_type, output_freq_code, time_steps_to_process) in all_jobs:
 
-            # **********
-            # TODO: Verify data in S3 bucket for current lambda job
-            # **********
+            # Reorganize model output in S3 to be structured by grouping, grid, and frequency
+            # i.e. ecco_group_0_avg_mon_latlon, ecco_group_11_snap, etc.
+            # buckets_list = s3.list_buckets()
+
+            if product_type == 'latlon':
+                curr_grouping = groupings_for_latlon_datasets[grouping_to_process]
+            elif product_type == 'native':
+                curr_grouping = groupings_for_native_datasets[grouping_to_process]
+
+            fields = curr_grouping['fields'].split(', ')
+            dimension = curr_grouping['dimension']
+            filename = curr_grouping['filename']
+
+            if output_freq_code == 'AVG_DAY':
+                s3_dir_prefix = 'diags_all/diags_daily'
+                period_suffix = 'day_mean'
+
+            elif output_freq_code == 'AVG_MON':
+                s3_dir_prefix = 'diags_all/diags_monthly'
+                period_suffix = 'mon_mean'
+
+            elif output_freq_code == 'SNAPSHOT':
+                s3_dir_prefix = 'diags_all/diags_inst'
+                period_suffix = 'day_inst'
+            else:
+                print('valid options are AVG_DAY, AVG_MON, SNAPSHOT')
+                print('you provided ', output_freq_code)
+                sys.exit()        
+
+            s3_field_paths = []
+            for field in fields:
+                s3_field_paths.append(f'{s3_dir_prefix}/{field}_{period_suffix}')
+
+            field_files = defaultdict(list)
+            field_time_steps = defaultdict(list)
+            for s3_field_path in s3_field_paths:
+                start_after = ''
+                field = s3_field_path.split('/')[-1]
+                while True:
+                    source_objects = s3.list_objects_v2(Bucket=source_bucket, Prefix=s3_field_path, StartAfter=start_after)
+
+                    if 'Contents' not in source_objects:
+                        break
+
+                    data_keys = [key['Key'] for key in source_objects['Contents'] if '.data' in key['Key']]
+                    field_files[field].extend(data_keys)
+                    start_after = data_keys[-1]
+
+                    time_steps = [key.split('.')[-2] for key in data_keys]
+                    field_time_steps[field].extend(time_steps)
+
+                    if product_type == 'native':
+                        meta_keys = [key['Key'] for key in source_objects['Contents'] if '.meta' in key['Key']]
+                        field_files[field].extend(meta_keys)
+                        start_after = meta_keys[-1]
+
+            # group number of time steps and files to process based on time to execute
+            
+            import pdb; pdb.set_trace()
+
 
             # **********
             # CREATE LAMBDA REQUEST FOR EACH "JOB"
             # **********
-            # create payload for current lambda job
-            payload = {
-                'grouping_to_process': grouping_to_process,
-                'product_type': product_type,
-                'output_freq_code': output_freq_code,
-                'time_steps_to_process': time_steps_to_process,
-                'config_metadata': config_metadata,
-                'aws_metadata': aws_config_metadata,
-                'debug_mode': debug_mode,
-                'local': local,
-                'credentials': credentials
-            }
+            if use_lambda:
+                # create payload for current lambda job
+                payload = {
+                    'grouping_to_process': grouping_to_process,
+                    'product_type': product_type,
+                    'output_freq_code': output_freq_code,
+                    'time_steps_to_process': time_steps_to_process,
+                    'config_metadata': config_metadata,
+                    'aws_metadata': aws_config_metadata,
+                    'debug_mode': debug_mode,
+                    'local': local,
+                    'credentials': credentials
+                }
 
-            data_to_process= {
-                'grouping_to_process': grouping_to_process,
-                'product_type': product_type,
-                'output_freq_code': output_freq_code,
-                'time_steps_to_process': time_steps_to_process
-            }
+                data_to_process= {
+                    'grouping_to_process': grouping_to_process,
+                    'product_type': product_type,
+                    'output_freq_code': output_freq_code,
+                    'time_steps_to_process': time_steps_to_process
+                }
 
-            # invoke lambda job
-            try:
-                if use_lambda:
-                    start_time = int(time.time()/ms_to_sec)
-                    invoke_response = lambda_client.invoke(
-                        FunctionName=function_name,
-                        InvocationType='Event',
-                        Payload=json.dumps(payload),   
-                    )
+                # invoke lambda job
+                try:
+                    if use_lambda:
+                        invoke_response = lambda_client.invoke(
+                            FunctionName=function_name,
+                            InvocationType='Event',
+                            Payload=json.dumps(payload),   
+                        )
 
-                    job_logs[invoke_response['ResponseMetadata']['RequestId'].strip()] = {'date':invoke_response['ResponseMetadata']['HTTPHeaders']['date'], 'status': invoke_response['StatusCode'], 'data': data_to_process, 'report': [], 'error': [],'end': False}
+                        job_logs[invoke_response['ResponseMetadata']['RequestId'].strip()] = {
+                            'date':invoke_response['ResponseMetadata']['HTTPHeaders']['date'], 
+                            'status': invoke_response['StatusCode'], 
+                            'data': data_to_process, 
+                            'report': [], 
+                            'error': [],
+                            'end': False
+                        }
+                
+                        num_jobs += 1
             
-                    num_jobs += 1
-            
-            except Exception as e:
-                print(f'Lambda invoke error: {e}')
+                except Exception as e:
+                    print(f'Lambda invoke error: {e}')
 
             # print(f'time_steps_to_process: {time_steps_to_process} ({type(time_steps_to_process)})')
             # print(f'grouping_to_process: {grouping_to_process} ({type(grouping_to_process)})')
@@ -263,21 +357,24 @@ if __name__ == "__main__":
             #                     local,
             #                     credentials)
         
-        if use_lambda or True:        
+        if use_lambda:
             log_client = boto3.client('logs')
             log_group_name = '/aws/lambda/ecco_processing'
             ended_log_stream_names = []
             num_jobs_ended = 0
             log_save_time = time.time()
             estimated_jobs = []
-            last_job_logs = job_logs
+            last_job_logs = copy.deepcopy(job_logs)
+            end_jobs_list = []
             ctr = -1
             try:
                 while True:
                     # intital log
                     if ctr == -1:
-                        job_logs, estimated_jobs = save_logs(job_logs, ms_to_sec, MB_to_GB, estimated_jobs, fn_extra='INITIAL')
-                        ctr = 0
+                        ctr += 1
+                        total_time = (int(time.time()/ms_to_sec)-start_time) * ms_to_sec
+                        job_logs['Total Time (s)'] = total_time
+                        job_logs, estimated_jobs = save_logs(job_logs, MB_to_GB, estimated_jobs, lambda_start_time, ctr, fn_extra='INITIAL')
 
                     print(f'Processing job logs -- {num_jobs_ended}/{num_jobs}')
                     time.sleep(2)
@@ -292,14 +389,15 @@ if __name__ == "__main__":
                             log_stream_names.append(ls['logStreamName'])
 
                     if log_stream_names != []:
-                        # get logs for ERRROR, REPORT, START, and END
+                        # get logs for SUCCESS, DURATION, FILES, ERROR, REPORT, START, and END
+                        success_jobs = []
+                        extra_logs = {}
                         error_logs = defaultdict(list)
                         report_logs = defaultdict(list)
                         job_id_report_name = {}
                         start_logs = defaultdict(int)
                         end_logs = defaultdict(int)
-                        end_jobs_list = []
-                        key_logs = get_logs(log_client, log_group_name, log_stream_names, start_time=start_time, end_time=end_time, filter_pattern='?ERROR ?REPORT ?START ?END', type='event')
+                        key_logs = get_logs(log_client, log_group_name, log_stream_names, start_time=start_time, end_time=end_time, filter_pattern='?SUCCESS ?DURATION ?FILES ?ERROR ?REPORT ?START ?END', type='event')
 
                         # find start logs, count number for each ID
                         # Job is only considered ended if it has the same number of start logs and end logs to a maximum of 3
@@ -309,22 +407,48 @@ if __name__ == "__main__":
                                 start_logs[job_id] += 1
 
                         for log in key_logs:
+                            logStreamName = log['logStreamName']
+
+                            # get SUCCESS logs
+                            if 'SUCCESS' in log['message']:
+                                if logStreamName not in success_jobs:
+                                    success_jobs.append(logStreamName)
+
+                            # get TIME logs
+                            if 'DURATION' in log['message']:
+                                if logStreamName not in extra_logs.keys():
+                                    extra_logs[logStreamName] = {}
+                                if 'Duration (s)' not in extra_logs[logStreamName].keys():
+                                    extra_logs[logStreamName]['Duration (s)'] = defaultdict(float)
+                                _, duration_type, duration, _ = log['message'].split('\t')
+                                extra_logs[logStreamName]['Duration (s)']['TOTAL'] += float(duration)
+                                extra_logs[logStreamName]['Duration (s)'][duration_type] += float(duration)
+                            
+                            # get COUNT logs
+                            if 'FILES' in log['message']:
+                                if logStreamName not in extra_logs.keys():
+                                    extra_logs[logStreamName] = {}
+                                if 'Files (#)' not in extra_logs[logStreamName].keys():
+                                    extra_logs[logStreamName]['Files (#)'] = defaultdict(int)
+                                _, file_type, file_count = log['message'].split('\t')
+                                extra_logs[logStreamName]['Files (#)'][file_type] += int(file_count)
+
                             # get ERROR logs
                             if 'ERROR' in log['message']:
-                                error_logs[log['logStreamName']].append(log['message'])
+                                error_logs[logStreamName].append(log['message'])
 
                             # get REPORT logs
                             if 'REPORT' in log['message']:
                                 report_job_id = ''
-                                report = {'logStreamName':log['logStreamName']}
+                                report = {'logStreamName':logStreamName}
                                 report_message = log['message'].split('\t')[:-1]
                                 for rm in report_message:
                                     if 'REPORT' in rm:
                                         rm = rm[7:]
                                     rm = rm.split(': ')
                                     if ' ms' in rm[-1]:
-                                        rm[-1] = float(rm[-1].replace(' ms', '').strip())
-                                        rm[0] = f'{rm[0].strip()} (ms)'
+                                        rm[-1] = float(rm[-1].replace(' ms', '').strip()) * ms_to_sec
+                                        rm[0] = f'{rm[0].strip()} (s)'
                                     elif ' MB' in rm[-1]:
                                         rm[-1] = int(rm[-1].replace(' MB', '').strip())
                                         rm[0] = f'{rm[0].strip()} (MB)'
@@ -334,7 +458,7 @@ if __name__ == "__main__":
                                     report[rm[0]] = rm[-1]
 
                                 # estimate cost
-                                request_time = report['Billed Duration (ms)'] * ms_to_sec
+                                request_time = report['Billed Duration (s)']
                                 request_memory = report['Memory Size (MB)'] * MB_to_GB
                                 cost_estimate = request_memory * request_time * USD_per_GBsec
                                 report['Cost Estimate (USD)'] = cost_estimate
@@ -351,24 +475,35 @@ if __name__ == "__main__":
 
                     for job_id in end_jobs_list:
                         if (job_id in job_logs.keys()) and (not job_logs[job_id]['end']):
+                            logStreamName = job_id_report_name[job_id]['logStreamName']
                             num_jobs_ended += 1
                             job_logs[job_id]['report'] = report_logs[job_id]
+                            job_logs[job_id]['extra'] = extra_logs[logStreamName]
                             job_logs[job_id]['end'] = True
+                            job_logs[job_id]['success'] = logStreamName in success_jobs
                             if job_id in job_id_report_name.keys() and job_id_report_name[job_id]['logStreamName'] in error_logs.keys():
                                 job_logs[job_id]['error'] = error_logs[job_id_report_name[job_id]['logStreamName']]
 
                     # print('pre-ended_log')
-                    ended_log_stream_names.extend([job_id_report_name[jid]['logStreamName'] for jid in end_logs if jid in job_id_report_name.keys()])
+                    ended_log_stream_names.extend([job_id_report_name[jid]['logStreamName'] for jid in end_jobs_list if jid in job_id_report_name.keys()])
                     ended_log_stream_names = list(set(ended_log_stream_names))
 
                     if (num_jobs_ended == num_jobs):
+                        ctr += 1
+                        print(f'Processing job logs -- {num_jobs_ended}/{num_jobs}')
+                        total_time = (int(time.time()/ms_to_sec)-start_time) * ms_to_sec
+                        job_logs['Total Time (s)'] = total_time
                         # write final job_log to file
-                        job_logs, estimated_jobs = save_logs(job_logs, ms_to_sec, MB_to_GB, estimated_jobs, fn_extra='FINAL')
+                        job_logs, estimated_jobs = save_logs(job_logs, MB_to_GB, estimated_jobs, lambda_start_time, ctr, fn_extra='FINAL')
                         break
 
                     # write job_log to file every >~10 seconds
                     if (time.time() - log_save_time >= 10) and (job_logs != last_job_logs):
-                        last_job_logs, estimated_jobs = save_logs(job_logs, ms_to_sec, MB_to_GB, estimated_jobs)
+                        ctr += 1
+                        log_save_time = time.time()
+                        total_time = (int(time.time()/ms_to_sec)-start_time) * ms_to_sec
+                        job_logs['Total Time (s)'] = total_time
+                        last_job_logs, estimated_jobs = save_logs(job_logs, MB_to_GB, estimated_jobs, lambda_start_time, ctr)
                         job_logs = copy.deepcopy(last_job_logs)
             except Exception as e:
                 print(f'Error processing logs for lambda jobs')
@@ -379,8 +514,7 @@ if __name__ == "__main__":
 
 
             # Delete lambda function
-            if use_lambda:
-                lambda_client.delete_function(FunctionName=function_name)
+            lambda_client.delete_function(FunctionName=function_name)
 
         # **********
         # TODO: Check output S3 bucket for data

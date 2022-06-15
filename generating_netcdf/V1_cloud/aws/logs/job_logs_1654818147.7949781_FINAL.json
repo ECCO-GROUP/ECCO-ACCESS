@@ -1,0 +1,77 @@
+{
+    "7d811965-e2f5-44f4-8031-e0ce40646f93": {
+        "date": "Thu, 09 Jun 2022 23:27:25 GMT",
+        "status": 202,
+        "data": {
+            "grouping_to_process": 0,
+            "product_type": "latlon",
+            "output_freq_code": "AVG_MON",
+            "time_steps_to_process": "all"
+        },
+        "report": [
+            {
+                "logStreamName": "2022/06/09/[$LATEST]b91090308c054bbdab241c8c9198e49b",
+                "Duration (ms)": 27486.87,
+                "Billed Duration (ms)": 27782.0,
+                "Memory Size (MB)": 1024,
+                "Max Memory Used (MB)": 276,
+                "Init Duration (ms)": 294.57,
+                "Cost Estimate (USD)": 0.00045811541622900004
+            }
+        ],
+        "end": true
+    },
+    "742a68d9-2d81-41a2-9d95-a3ece916238a": {
+        "date": "Thu, 09 Jun 2022 23:27:25 GMT",
+        "status": 202,
+        "data": {
+            "grouping_to_process": 0,
+            "product_type": "latlon",
+            "output_freq_code": "AVG_MON",
+            "time_steps_to_process": "BAD"
+        },
+        "report": [
+            {
+                "logStreamName": "2022/06/09/[$LATEST]c051e54aa0bb4d2dbcf60e1d22d2e82d",
+                "Duration (ms)": 2875.46,
+                "Billed Duration (ms)": 3248.0,
+                "Memory Size (MB)": 1024,
+                "Max Memory Used (MB)": 232,
+                "Init Duration (ms)": 372.15,
+                "Cost Estimate (USD)": 4.7924429182e-05
+            }
+        ],
+        "end": true,
+        "error": [
+            "[ERROR] ValueError: Could not convert object to NumPy timedelta\rTraceback (most recent call last):\r\u00a0\u00a0File \"/home/app/app.py\", line 35, in handler\r\u00a0\u00a0\u00a0\u00a0run_script(event, context)\r\u00a0\u00a0File \"/home/app/app.py\", line 17, in run_script\r\u00a0\u00a0\u00a0\u00a0script.generate_netcdfs(\r\u00a0\u00a0File \"/home/app/eccov4r4_gen_for_podaac_cloud.py\", line 334, in generate_netcdfs\r\u00a0\u00a0\u00a0\u00a0time_delta = np.timedelta64(cur_ts, 'h')\n"
+        ]
+    },
+    "515495b7-d963-4460-bc65-8ee877c52dd3": {
+        "date": "Thu, 09 Jun 2022 23:27:25 GMT",
+        "status": 202,
+        "data": {
+            "grouping_to_process": 11,
+            "product_type": "latlon",
+            "output_freq_code": "AVG_MON",
+            "time_steps_to_process": "all"
+        },
+        "report": [
+            {
+                "logStreamName": "2022/06/09/[$LATEST]3419b69001df45d5b247fb7ef6801b3b",
+                "Duration (ms)": 900117.82,
+                "Billed Duration (ms)": 900531.0,
+                "Memory Size (MB)": 1024,
+                "Max Memory Used (MB)": 770,
+                "Init Duration (ms)": 412.41,
+                "Cost Estimate (USD)": 0.015001993670594
+            }
+        ],
+        "end": true
+    },
+    "Cost Information": {
+        "1024 MB Total Time (s)": 10130.266140000009,
+        "1024 MB Total GB*s": 10130.266140000009,
+        "1024 MB Total Cost (USD)": 0.16883810667553878,
+        "Total Cost": 0.16883810667553878
+    }
+}

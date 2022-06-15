@@ -1,7 +1,8 @@
 {
+    "Total Time (s)": 0.993,
     "Cost Information": {},
-    "b68a1587-be49-49f9-ac31-2c2b87a2c56c": {
-        "date": "Sat, 11 Jun 2022 00:16:24 GMT",
+    "a138214b-5cfc-40d2-9a87-3c2456b44e51": {
+        "date": "Tue, 14 Jun 2022 00:27:17 GMT",
         "status": 202,
         "data": {
             "grouping_to_process": 0,
@@ -13,8 +14,8 @@
         "error": [],
         "end": false
     },
-    "ca6b528c-fa35-4ba8-ad6f-661e1c95850a": {
-        "date": "Sat, 11 Jun 2022 00:16:24 GMT",
+    "597bc152-5a68-4030-9131-2bf2eddb570a": {
+        "date": "Tue, 14 Jun 2022 00:27:17 GMT",
         "status": 202,
         "data": {
             "grouping_to_process": 0,
@@ -26,8 +27,8 @@
         "error": [],
         "end": false
     },
-    "0655b29a-e281-43cb-8cb0-1c45427b35cd": {
-        "date": "Sat, 11 Jun 2022 00:16:24 GMT",
+    "cb94b14a-8215-4284-9698-b4506b48ae1a": {
+        "date": "Tue, 14 Jun 2022 00:27:17 GMT",
         "status": 202,
         "data": {
             "grouping_to_process": 0,
@@ -39,8 +40,8 @@
         "error": [],
         "end": false
     },
-    "3aa018ba-bead-47f6-903e-ca2098adaf21": {
-        "date": "Sat, 11 Jun 2022 00:16:25 GMT",
+    "2481600d-66bd-4aac-9285-1d409f27a430": {
+        "date": "Tue, 14 Jun 2022 00:27:18 GMT",
         "status": 202,
         "data": {
             "grouping_to_process": 0,
@@ -52,14 +53,27 @@
         "error": [],
         "end": false
     },
-    "a2cde691-3ded-4be4-85a7-823e19bbd54a": {
-        "date": "Sat, 11 Jun 2022 00:16:25 GMT",
+    "4627f951-d743-4464-afc2-c7389337ad31": {
+        "date": "Tue, 14 Jun 2022 00:27:18 GMT",
         "status": 202,
         "data": {
             "grouping_to_process": 0,
             "product_type": "latlon",
             "output_freq_code": "AVG_MON",
             "time_steps_to_process": "all"
+        },
+        "report": [],
+        "error": [],
+        "end": false
+    },
+    "57075cca-b399-484d-bf02-d5d8dadef821": {
+        "date": "Tue, 14 Jun 2022 00:27:18 GMT",
+        "status": 202,
+        "data": {
+            "grouping_to_process": 0,
+            "product_type": "latlon",
+            "output_freq_code": "AVG_MON",
+            "time_steps_to_process": "BAD"
         },
         "report": [],
         "error": [],

@@ -103,5 +103,25 @@
        "name": "dims",
        "type": "l",
        "value": [360, 180]
+    },
+    {
+       "name": "max_latlon_exec_2D",
+       "type": "i",
+       "value": 10
+    },
+    {
+       "name": "max_latlon_exec_3D",
+       "type": "i",
+       "value": 2
+    },
+    {
+       "name": "max_native_exec_2D",
+       "type": "i",
+       "value": 10
+    },
+    {
+       "name": "max_native_exec_3D",
+       "type": "l",
+       "value": 2
     }
  ]

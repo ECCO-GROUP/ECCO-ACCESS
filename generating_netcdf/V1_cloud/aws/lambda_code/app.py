@@ -1,3 +1,4 @@
+import time
 import importlib
 
 def run_script(event, context):
@@ -13,7 +14,6 @@ def run_script(event, context):
     local = event['local']
     credentials = event['credentials']
 
-    print('Running generate_netcdfs')
     script.generate_netcdfs(
         output_freq_code,
         product_type,
@@ -33,5 +33,5 @@ def handler(event, context):
     print('Inside handler')
 
     run_script(event, context)
-
+    
     return
