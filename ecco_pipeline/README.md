@@ -1,5 +1,7 @@
 # ecco-preprocessing
 
+_note: Documentation is for an older pipeline structure and is in the process of being updated._
+
 ## Preprocessing Pipeline 
 The general workflow for preprocessing a dataset to be added to the ECCO model is: [1] harvest the dataset, [2] run preprocessing on each file, and [3] aggregate data into yearly files. Currently the pipeline works on a local machine, although in the future it will be able to run on the cloud using AWS. 
 
