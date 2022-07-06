@@ -5,7 +5,8 @@
     "comment": "SSH (dynamic sea surface height) = SSHNOIBC (dynamic sea surface without the inverse barometer correction) - SSHIBC (inverse barometer correction). The inverted barometer correction accounts for variations in sea surface height due to atmospheric pressure variations. Note: ETAN is model sea level anomaly and should not be compared with satellite altimetery products, see SSH and ETAN for more details.",
     "product": "native",
     "filename" : "SEA_SURFACE_HEIGHT",
-    "dimension" : "2D"
+    "dimension" : "2D",
+    "frequency" : "AVG_DAY, AVG_MON, SNAP"
    },
    {
     "name" : "ocean bottom pressure and model ocean bottom pressure anomaly",
@@ -13,7 +14,8 @@
     "comment": "Ocean bottom pressure excluding (OBP) and including (OBPGMAP) the contribution from global mean atmospheric pressure. Note: PHIBOT is model hydrostatic bottom pressure anomaly and should not be compared with satellite bottom pressure products (e.g., from GRACE and GRACE-FO), see OBP and PHIBOT for more details. OBPAnoma and OBPGMAPA are OBP and OBPGMAP anomalies referenced to the respective 2005-2010 means.",
     "product": "native",
     "filename" : "OCEAN_BOTTOM_PRESSURE",
-    "dimension" : "2D"
+    "dimension" : "2D",
+    "frequency" : "AVG_DAY, AVG_MON, SNAP"
    },
    {
     "name": "ocean and sea-ice surface freshwater fluxes",
@@ -21,6 +23,7 @@
     "product": "native",
     "filename" : "OCEAN_AND_ICE_SURFACE_FW_FLUX",
     "dimension" : "2D"
+    "frequency" : "AVG_DAY, AVG_MON"
    },
    {
     "name": "ocean and sea-ice surface heat fluxes",
