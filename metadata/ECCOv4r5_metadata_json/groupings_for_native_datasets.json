@@ -1,16 +1,16 @@
 [
    {
-    "name" : "dynamic sea surface height and model sea level anomaly",
+    "name" : "sea surface height",
     "fields" : "SSH, SSHIBC, SSHNOIBC, ETAN",
-    "comment": "SSH (dynamic sea surface height) = SSHNOIBC (dynamic sea surface without the inverse barometer correction) - SSHIBC (inverse barometer correction). The inverted barometer correction accounts for variations in sea surface height due to atmospheric pressure variations. Note: ETAN is model sea level anomaly and should not be compared with satellite altimetery products, see SSH and ETAN for more details.",
+    "dataset_description": "Fields include dynamic sea surface height [SSH], sea surface height above the geoid [SSHNOIBC], model sea level [ETAN], and the inverse barometer (IB) correction to sea level from atmosphere pressure. Both SSH and SSHNOIBC account for global mean steric sea level changes due to density changes in the Boussinesq volume-conserving model (Greatbatch correction) and the IB correction from sea-ice pressure loading.",
     "product": "native",
     "filename" : "SEA_SURFACE_HEIGHT",
     "dimension" : "2D"
    },
    {
-    "name" : "ocean bottom pressure and model ocean bottom pressure anomaly",
+    "name" : "ocean bottom pressure",
     "fields": "OBP, OBPGMAP, PHIBOT, OBPAnoma, OBPGMAPA",
-    "comment": "Ocean bottom pressure excluding (OBP) and including (OBPGMAP) the contribution from global mean atmospheric pressure. Note: PHIBOT is model hydrostatic bottom pressure anomaly and should not be compared with satellite bottom pressure products (e.g., from GRACE and GRACE-FO), see OBP and PHIBOT for more details. OBPAnoma and OBPGMAPA are OBP and OBPGMAP anomalies referenced to the respective 2005-2010 means.",
+    "dataset_description": "Fields include ocean bottom pressure with and without the contribution from atmosphere pressure [OBPGMAP, OBP], anomalies of OBP and OBPGMAP with respect to their 2005-2010 means [OBPAnoma, OBPGMAPA], and model hydrostatic bottom pressure anomaly [PHIBOT]. Ocean bottom pressure fields are provided in terms of equivalent water height.",
     "product": "native",
     "filename" : "OCEAN_BOTTOM_PRESSURE",
     "dimension" : "2D"
@@ -111,7 +111,7 @@
     "dimension" : "2D"
    },
    {
-    "name" : "ocean potential temperature and salinity",
+    "name" : "ocean temperature and salinity",
     "fields": "THETA, SALT",
     "product": "native",
     "filename" : "OCEAN_TEMPERATURE_SALINITY",
@@ -141,42 +141,42 @@
     "dimension" : "3D"
    },
    {
-    "name": "ocean three-dimensional momentum tendency along model x-direction",
+    "name": "ocean three-dimensional momentum tendencies in the model x-direction",
     "fields": "TOTUTEND, Um_Cori, Um_Advec, Um_Diss, Um_Ext, Um_dPhiX, AB_gU, Um_ImplD",
     "product": "native",
     "filename" : "OCEAN_3D_MOMENTUM_TEND_U",
     "dimension" : "3D"
    },
    {
-    "name": "ocean three-dimensional advective momentum tendency components along model x-direction",
+    "name": "ocean three-dimensional advective momentum tendencies in the model x-direction",
     "fields": "Um_AdvZ3, Um_AdvRe, Um_dKEdx",
     "product": "native",
     "filename" : "OCEAN_3D_MOMENTUM_TEND_U_ADV_COMPONENTS",
     "dimension" : "3D"
    },
    {
-    "name": "ocean three-dimensional dissipative momentum tendency components along model x-direction",
+    "name": "ocean three-dimensional dissipative momentum tendencies in the model x-direction",
     "fields": "Um_Diss2, Um_Diss4, UBotDrag, USidDrag, UShIDrag",
     "product": "native",
     "filename" : "OCEAN_3D_MOMENTUM_TEND_U_DISS_COMPONENTS",
     "dimension" : "3D"
    },
    {
-    "name": "ocean three-dimensional momentum tendency along model y-direction",
+    "name": "ocean three-dimensional momentum tendencies in the model y-direction",
     "fields": "TOTVTEND, Vm_Cori, Vm_Advec, Vm_Diss, Vm_Ext, Vm_dPhiY, AB_gV, Vm_ImplD",
     "product": "native",
     "filename" : "OCEAN_3D_MOMENTUM_TEND_V",
     "dimension" : "3D"
    },
    {
-    "name": "ocean three-dimensional advective momentum tendency components along model y-direction",
+    "name": "ocean three-dimensional advective momentum tendencies in the model y-direction",
     "fields": "Vm_AdvZ3, Vm_AdvRe, Vm_dKEdy",
     "product": "native",
     "filename" : "OCEAN_3D_MOMENTUM_TEND_V_ADV_COMPONENTS",
     "dimension" : "3D"
    },
    {
-    "name": "ocean three-dimensional dissipative momentum tendency components along model y-direction",
+    "name": "ocean three-dimensional dissipative momentum tendencies in the model y-direction",
     "fields": "Vm_Diss2, Vm_Diss4, VBotDrag, VSidDrag, VShIDrag",
     "product": "native",
     "filename" : "OCEAN_3D_MOMENTUM_TEND_V_DISS_COMPONENTS",
@@ -197,14 +197,14 @@
     "dimension" : "3D"
    },
    {
-    "name": "sea-ice thermo budget",
+    "name": "sea-ice thermodynamic budget",
     "fields": "SIFao, SIFionet, SIFianet, SIFmi, SIFFlood, SIsnAccR, SIsnmltS, SIgamma",
     "product": "native",
     "filename" : "SEA_ICE_THERMO_BUDG",
     "dimension" : "2D"
    },
    {
-    "name": "ocean three-dimensional Gent-Mcwilliams, Redi, and background vertical diffusivity coefficients",
+    "name": "ocean three-dimensional parameterized mixing coefficients",
     "fields": "DIFFKR, KAPGM, KAPREDI",
     "product": "native",
     "filename" : "OCEAN_3D_MIXING_COEFFS",

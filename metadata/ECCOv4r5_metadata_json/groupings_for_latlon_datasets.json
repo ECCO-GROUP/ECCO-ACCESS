@@ -1,8 +1,8 @@
 [
    {
-    "name" : "dynamic sea surface height",
+    "name" : "sea surface height",
     "fields" : "SSH, SSHIBC, SSHNOIBC",
-    "comment": "SSH (dynamic sea surface height) = SSHNOIBC (dynamic sea surface without the inverse barometer correction) - SSHIBC (inverse barometer correction). The inverted barometer correction accounts for variations in sea surface height due to atmospheric pressure variations.",
+    "comment": "Fields include dynamic sea surface height [SSH], sea surface height above the geoid [SSHNOIBC], and the inverse barometer (IB) correction to sea level from atmosphere pressure. Both SSH and SSHNOIBC account for global mean steric sea level changes due to density changes in the Boussinesq volume-conserving model (Greatbatch correction) and the IB correction from sea-ice pressure loading.",
     "product": "latlon",
     "filename" : "SEA_SURFACE_HEIGHT",
     "dimension" : "2D"
@@ -10,7 +10,7 @@
    {
     "name": "ocean bottom pressure",
     "fields": "OBP, OBPGMAP, OBPAnoma, OBPGMAPA",
-    "comment": "Ocean bottom pressure given in equivalent water thickness excluding (OBP) and including (OBPGMAP) the contribution from global mean atmospheric pressure. OBPAnoma and OBPGMAPA are OBP and OBPGMAP anomalies referenced to the respective 2005-2010 means",
+    "comment": "Fields include ocean bottom pressure with and without the contribution from atmosphere pressure [OBPGMAP, OBP], anomalies of OBP and OBPGMAP with respect to their 2005-2010 means [OBPAnoma, OBPGMAPA], and model hydrostatic bottom pressure anomaly [PHIBOT]. Ocean bottom pressure fields are provided in terms of equivalent water height.",
     "product": "latlon",
     "filename" : "OCEAN_BOTTOM_PRESSURE",
     "dimension" : "2D"
@@ -65,7 +65,7 @@
     "dimension" : "2D"
    },
    {
-    "name" : "ocean potential temperature and salinity",
+    "name" : "ocean temperature and salinity",
     "fields": "THETA, SALT",
     "product": "latlon",
     "filename" : "OCEAN_TEMPERATURE_SALINITY",
@@ -92,5 +92,12 @@
     "product": "latlon",
     "filename" : "OCEAN_BOLUS_VELOCITY",
     "dimension" : "3D"
+   },
+   {
+    "name": "ocean three-dimensional parameterized mixing coefficients",
+    "fields": "DIFFKR, KAPGM, KAPREDI",
+    "product": "latlon",
+    "filename" : "OCEAN_3D_MIXING_COEFFS",
+    "dimension" : "3D-TI"
    }
 ]
