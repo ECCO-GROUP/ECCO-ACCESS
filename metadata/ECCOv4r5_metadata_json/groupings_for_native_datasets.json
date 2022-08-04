@@ -5,7 +5,8 @@
     "dataset_description":"Parameters include dynamic sea surface height, sea surface height without the inverse barometer (IB) correction from atmospheric pressure loading, the IB correction from atmospheric pressure loading itself, and model sea level. The sea surface height fields include corrections for global mean steric height associated with global mean density changes in the Boussinesq volume-conserving model (i.e., the Greatbatch correction) and for sea-ice pressure loading.",
     "product": "native",
     "filename" : "SEA_SURFACE_HEIGHT",
-    "dimension" : "2D"
+    "dimension" : "2D",
+    "frequency" : "AVG_DAY, AVG_MON, SNAP"
    },
    {
     "name" : "ocean bottom pressure",
@@ -13,7 +14,8 @@
     "dataset_description": "Parameters include ocean bottom pressure with and without the contribution from atmospheric pressure loading, ocean bottom pressure anomalies with respect to their 2005-2010 means, and hydrostatic ocean bottom pressure anomaly. Note: ocean bottom pressure fields are provided in terms of equivalent water height.",
     "product": "native",
     "filename" : "OCEAN_BOTTOM_PRESSURE",
-    "dimension" : "2D"
+    "dimension" : "2D",
+    "frequency" : "AVG_DAY, AVG_MON, SNAP"
    },
    {
     "name": "ocean and sea-ice surface freshwater fluxes",
@@ -22,6 +24,7 @@
     "product": "native",
     "filename" : "OCEAN_AND_ICE_SURFACE_FW_FLUX",
     "dimension" : "2D"
+    "frequency" : "AVG_DAY, AVG_MON"
    },
    {
     "name": "ocean and sea-ice surface heat fluxes",
