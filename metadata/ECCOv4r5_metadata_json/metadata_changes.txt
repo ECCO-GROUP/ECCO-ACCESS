@@ -18,3 +18,4 @@
 * removed time related metadata from spatial_coordinate_metadata_for_native_datasets
 * cleaned up some of the descriptions of the geometry metadata for latlon and native
 
+Gregory, J. M., and Coauthors, 2019: Concepts and Terminology for Sea Level: Mean, Variability and Change, Both Local and Global. Surv Geophys, 40, 1251–1289, https://doi.org/10.1007/s10712-019-09525-z.

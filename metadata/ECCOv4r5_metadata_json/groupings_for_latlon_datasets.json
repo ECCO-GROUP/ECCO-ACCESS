@@ -2,7 +2,8 @@
    {
     "name" : "sea surface height",
     "fields" : "SSH, SSHIBC, SSHNOIBC",
-    "comment": "Fields include dynamic sea surface height [SSH], sea surface height above the geoid [SSHNOIBC], and the inverse barometer (IB) correction to sea level from atmosphere pressure. Both SSH and SSHNOIBC account for global mean steric sea level changes due to density changes in the Boussinesq volume-conserving model (Greatbatch correction) and the IB correction from sea-ice pressure loading.",
+    "description": "sea surface height",
+    "dataset_parameters": "SSH: dynamic sea surface height; SSHNOIBC: sea surface height above the geoid without the inverse barometer correction from atmospheric pressure; SSHIBC: the inverse barometer correction from atmospheric pressure; and ETAN: model sea level. Note, both SSH and SSHNOIBC are corrected for global mean density changes in the volume-conserving Boussinesq model (the so-called Greatbatch correction) and sea-ice pressure loading.",
     "product": "latlon",
     "filename" : "SEA_SURFACE_HEIGHT",
     "dimension" : "2D"
@@ -10,7 +11,7 @@
    {
     "name": "ocean bottom pressure",
     "fields": "OBP, OBPGMAP, OBPAnoma, OBPGMAPA",
-    "comment": "Fields include ocean bottom pressure with and without the contribution from atmosphere pressure [OBPGMAP, OBP], anomalies of OBP and OBPGMAP with respect to their 2005-2010 means [OBPAnoma, OBPGMAPA], and model hydrostatic bottom pressure anomaly [PHIBOT]. Ocean bottom pressure fields are provided in terms of equivalent water height.",
+    "description": "Parameters include ocean bottom pressure, with and without the contribution from atmospheric pressure loading, and ocean bottom pressure anomalies with respect to 2005-2010 means. Note: ocean bottom pressure fields are provided in terms of equivalent water height.",
     "product": "latlon",
     "filename" : "OCEAN_BOTTOM_PRESSURE",
     "dimension" : "2D"
@@ -18,6 +19,7 @@
    {
     "name": "ocean and sea-ice surface freshwater fluxes",
     "fields": "EXFpreci, EXFevap, EXFroff, SIsnPrcp, EXFempmr, oceFWflx, SIatmFW, SFLUX, SIacSubl, SIrsSubl, SIfwThru",
+    "dataset_description": "Parameters include freshwater flxues from precipitation, evaporation, runoff, and sublimation across the air/ocean and air/sea-ice/snow interfaces.",
     "product": "latlon",
     "filename" : "OCEAN_AND_ICE_SURFACE_FW_FLUX",
     "dimension" : "2D"
@@ -25,14 +27,16 @@
    {
     "name": "ocean and sea-ice surface heat fluxes",
     "fields": "EXFhl, EXFhs, EXFlwdn, EXFswdn, EXFqnet, oceQnet, SIatmQnt, TFLUX, EXFswnet, EXFlwnet, oceQsw, SIaaflux",
+    "dataset_description": "Parameters include latent, sensible, and short- and longwave radiative heat fluxes across the air/ocean and air/sea-ice/snow interfaces.",
     "product": "latlon",
     "filename" : "OCEAN_AND_ICE_SURFACE_HEAT_FLUX",
     "dimension" : "2D"
    },
    {
-    "name": "atmosphere surface temperature, humidity, wind, and pressure",
-    "fields": "EXFatemp, EXFaqh, EXFewind, EXFnwind, EXFwspee, EXFpress",
-    "product": "latlon",
+    "name": "atmosphere surface state",
+    "fields": "EXFatemp, EXFaqh, EXFpress, EXFewind, EXFnwind, EXFwspee",
+    "dataset_description": "Parameters include atmosphere temperature, humidity, pressure, winds in the zonal and meridional directions, and total wind speed.",
+        "product": "latlon",
     "filename" : "ATM_SURFACE_TEMP_HUM_WIND_PRES",
     "dimension" : "2D"
    },
@@ -46,6 +50,7 @@
    {
     "name" : "ocean and sea-ice surface stress",
     "fields" : "EXFtaue, EXFtaun, oceTAUE, oceTAUN",
+    "dataset_description": "Parameters include surface wind stress on the ocean and sea-ice surfaces in the meridional and zonal directions, and total ocean surface stress including contributions from sea-ice drag.",
     "product": "latlon",
     "filename" : "OCEAN_AND_ICE_SURFACE_STRESS",
     "dimension" : "2D"
@@ -53,6 +58,7 @@
    {
     "name": "sea-ice and snow concentration and thickness",
     "fields":"SIarea, SIheff, SIhsnow, sIceLoad",
+    "dataset_description": "Parameters include sea-ice concentration, mean sea-ice and snow thickness, and sea-ice pressure loading.",    
     "product": "latlon",
     "filename" : "SEA_ICE_CONC_THICKNESS",
     "dimension" : "2D"
@@ -60,6 +66,7 @@
    {
     "name": "sea-ice velocity",
     "fields":"SIeice, SInice",
+    "dataset_description": "Parameters include sea-ice velocity in the zonal and meridional directions.",
     "product": "latlon",
     "filename" : "SEA_ICE_VELOCITY",
     "dimension" : "2D"
@@ -67,6 +74,7 @@
    {
     "name" : "ocean temperature and salinity",
     "fields": "THETA, SALT",
+    "dataset_description": "Parameters include seawater potential temperature and salinity.",    
     "product": "latlon",
     "filename" : "OCEAN_TEMPERATURE_SALINITY",
     "dimension" : "3D"
@@ -74,6 +82,7 @@
    {
     "name": "ocean density, stratification, and hydrostatic pressure",
     "fields": "RHOAnoma, DRHODR, PHIHYD",
+    "dataset_description" : "Parameters include seawater density, vertical stratification, and hydrostatic pressure accounting.",
     "product": "latlon",
     "filename" : "OCEAN_DENS_STRAT_PRESS",
     "dimension" : "3D"
@@ -81,6 +90,7 @@
    {
     "name": "ocean velocity",
     "fields": "EVEL, NVEL, WVELMASS",
+    "dataset_description" : "Parameters include ocean velocity in the zonal, meridional, and vertical directions.",    
     "product": "latlon",
     "variable_rename" : "WVELMASS:WVEL",
     "filename" : "OCEAN_VELOCITY",
@@ -89,6 +99,7 @@
    {
     "name": "Gent-McWilliams ocean bolus velocity",
     "fields": "EVELSTAR, NVELSTAR, WVELSTAR",
+    "dataset_description" : "Parameters include the Gent-McWilliams ocean bolus velocity in the zonal, meridional, and vertical directions.",
     "product": "latlon",
     "filename" : "OCEAN_BOLUS_VELOCITY",
     "dimension" : "3D"
@@ -96,6 +107,7 @@
    {
     "name": "ocean three-dimensional parameterized mixing coefficients",
     "fields": "DIFFKR, KAPGM, KAPREDI",
+    "dataset_description" : "Parameters include the time-invariant three-dimensional coefficients for vertical diffusivity, Gent-McWilliams cross-isopycnal diffusivity, and Redi along-isopycnal diffusivity.",    
     "product": "latlon",
     "filename" : "OCEAN_3D_MIXING_COEFFS",
     "dimension" : "3D-TI"
