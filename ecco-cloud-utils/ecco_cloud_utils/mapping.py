@@ -265,8 +265,6 @@ def transform_to_target_grid_for_processing(source_indices_within_target_radius_
         land_mask = np.ones(len(tmp_r))
 
     # loop through every VALID (wet) target grid point
-    import time
-    lp_st = time.time()
     for i in np.where(~np.isnan(land_mask))[0]:
 
         # if the number of source_field points at target grid cell i > 0
@@ -305,8 +303,6 @@ def transform_to_target_grid_for_processing(source_indices_within_target_radius_
             # there is a nearest neighbor within range
             if nearest_source_index_to_target_index_i[i] != -1:
                 tmp_r[i] = source_field_r[nearest_source_index_to_target_index_i[i]]
-
-    print(f'Loop time: {time.time() - lp_st}')
 
     return source_on_target_grid
 
