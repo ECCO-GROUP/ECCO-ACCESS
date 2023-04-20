@@ -1275,7 +1275,7 @@ def generate_netcdfs(output_freq_code, job_id:int, num_jobs:int, \
 
             # add one final comment (PODAAC request)
             G.attrs["coordinates_comment"] = \
-                "Note: the global 'coordinates' attribute describes auxillary coordinates."
+                "Note: the global 'coordinates' attribute describes auxiliary coordinates."
 
             # SAVE
             print('\n... saving to netcdf ', netcdf_output_filename)
