@@ -250,7 +250,7 @@ def apply_fixes(ecco_filename, minmax, comment_fix, summary_fix, qc_prob):
 
             # fix coordinate comment typo
             print ('\n>> fixing coordinates comment')
-            tmp_ds.setncattr('coordinates_comment', "Note: the global 'coordinates' attribute describes auxillary coordinates.")
+            tmp_ds.setncattr('coordinates_comment', "Note: the global 'coordinates' attribute describes auxiliary coordinates.")
 
 
             # update date of modified metadata

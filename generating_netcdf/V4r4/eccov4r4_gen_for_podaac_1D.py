@@ -31,7 +31,7 @@ from pandas import read_csv
 def meta_fixes(G):
     G.attrs['references'] ='ECCO Consortium, Fukumori, I., Wang, O., Fenty, I., Forget, G., Heimbach, P., & Ponte, R. M. 2020. Synopsis of the ECCO Central Production Global Ocean and Sea-Ice State Estimate (Version 4 Release 4). doi:10.5281/zenodo.3765928'
     G.attrs['source'] ='The ECCO V4r4 state estimate was produced by fitting a free-running solution of the MITgcm (checkpoint 66g) to satellite and in situ observational data in a least squares sense using the adjoint method'
-    G.attrs['coordinates_comment'] = "Note: the global 'coordinates' attribute describes auxillary coordinates."
+    G.attrs['coordinates_comment'] = "Note: the global 'coordinates' attribute describes auxiliary coordinates."
     return G
 
 
