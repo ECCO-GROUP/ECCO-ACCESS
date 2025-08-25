@@ -343,7 +343,9 @@ def download_files_wrapper(urls, download_dir, version, n_workers, force_redownl
         for u in urls:
             u_name = u.split('/')[-1]
             print(f'downloading {u_name}')
-            result = download_file(url=u, output_dir=download_dir, force=force_redownload, show_noredownload_msg=show_noredownload_msg)
+            result = download_file(url=u, output_dir=download_dir, version=version,\
+                                   force=force_redownload, show_noredownload_msg=show_noredownload_msg)
+
             downloaded_files.append(result[0])
             total_download_size_in_bytes += result[-1]
         
@@ -1102,10 +1104,10 @@ def ecco_podaac_download_subset(ShortName,StartDate=None,EndDate=None,snapshot_i
     
     # set default download parent directory
     if download_root_dir==None:
-        if version == 'v4r4':
-            download_root_dir = join(expanduser('~'),'Downloads','ECCO_V4r4_PODAAC')
-        elif version == 'v4r5':
-            download_root_dir = join(expanduser('~'),'Downloads','ECCO_V4r5_PODAAC')
+#         if version == 'v4r4':
+        download_root_dir = join(expanduser('~'),'Downloads','ECCO_V4r4_PODAAC')
+#         elif version == 'v4r5':
+#             download_root_dir = join(expanduser('~'),'Downloads','ECCO_V4r5_PODAAC')
     
     # define the directory where the downloaded files will be saved
     download_dir = Path(download_root_dir) / ShortName
