@@ -1,0 +1,12 @@
+dask[complete]
+fsspec
+future
+netCDF4
+numpy
+pandas
+python-dateutil
+requests
+s3fs
+tqdm
+xarray
+zarr
