@@ -212,7 +212,7 @@ def ecco_podaac_varlist_query(query,version,grid=None,time_res='all'):
         raise ValueError('ECCO '+version+' is not currently available from PO.DAAC')
     
     # paths to variable list files
-    varlist_url_root = 'https://raw.githubusercontent.com/ECCO-GROUP/ECCOv4-py/refs/heads/master/ecco_v4_py/varlist/'
+    varlist_url_root = 'https://raw.githubusercontent.com/ECCO-GROUP/ECCO-ACCESS/refs/heads/main/varlist/'
     if version == 'v4r4':
         varlist_url_ids = {'native,monthly':'v4r4/v4r4_nctiles_monthly_varlist.txt',\
                            'native,daily':'v4r4/v4r4_nctiles_daily_varlist.txt',\
