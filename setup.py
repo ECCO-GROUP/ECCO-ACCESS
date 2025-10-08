@@ -5,11 +5,11 @@ def README():
         return f.read()
 
 setup(
-  name = 'ecco_access',
-  packages = ['ecco_access'], # this must be the same as the name above
+  name = 'ecco-access',
+  packages = ['ecco-access'], # this must be the same as the name above
   version = '0.1.0',
   description = 'Access utilities for ECCO state estimate output hosted on PO.DAAC and in the AWS cloud',
-  author = 'Andrew Delman, Ian Fenty, Jack McNelis, Marie Zahn, and others',
+  author = 'Andrew Delman, Ian Fenty, Jack McNelis, Jinbo Wang, Marie Zahn, and others',
   author_email = 'andrewdelman@ucla.edu',
   url = 'https://github.com/ECCO-GROUP/ECCO-ACCESS',
   keywords = ['ecco','climate','mitgcm','estimate','circulation','climate'],
