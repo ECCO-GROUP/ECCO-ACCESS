@@ -30,6 +30,9 @@ license = "MIT"
 license-files = ["LICENSE"]
 keywords = ['ecco','climate','mitgcm','estimate','circulation','climate']
 
+[tool.setuptools]
+packages = ["ecco_access"]
+
 dependencies = [
     "numpy",
     "future",
