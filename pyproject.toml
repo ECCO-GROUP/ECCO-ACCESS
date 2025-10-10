@@ -1,0 +1,55 @@
+# pyproject.toml
+[build-system]
+requires = ["setuptools>=61", "wheel", "setuptools_scm[toml]>=6.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ecco-access"
+dynamic = ["version"]
+requires-python = ">=3.7"
+description = "Access utilities for ECCO state estimate output hosted on PO.DAAC and in the AWS cloud"
+readme = { file = "README.md", content-type = "text/markdown" }
+authors = [
+  { name = "ecco-access Developers", email = "andrewdelman@ucla.edu" }
+]
+classifiers = [
+        "Development Status :: 5 - Production/Stable",
+        "Intended Audience :: Science/Research",
+        "Topic :: Scientific/Engineering",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
+        "Programming Language :: Python",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
+]
+license = { text = "MIT" }
+keywords = ['ecco','climate','mitgcm','estimate','circulation','climate']
+
+dependencies = [
+    "numpy",
+    "future",
+    "dask[complete]",
+    "fsspec >= 2024.12.0",
+    "netCDF4",
+    "pandas",
+    "python-dateutil",
+    "requests",
+    "s3fs >= 2024.12.0",
+    "tqdm",
+    "xarray",
+    "zarr >= 3.0.7"]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "coverage"
+]
+
+[project.urls]
+Homepage =  "https://github.com/ECCO-GROUP/ECCO-ACCESS"
+Tracker =  "https://github.com/ECCO-GROUP/ECCO-ACCESS/issues"
