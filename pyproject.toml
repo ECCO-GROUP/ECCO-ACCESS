@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=80", "wheel", "setuptools_scm[toml]>=8.0"]
-build-backend = "setuptools.build_meta"
+requires = ["setuptools>=80", "wheel", "setuptools-scm[simple]>=8.0"]
+# build-backend = "setuptools.build_meta"
 
 [project]
 name = "ecco_access"
@@ -48,8 +48,8 @@ dev = [
     "coverage"
 ]
 
-[tool.setuptools_scm.dynamic]
-version = { attr = "setuptools_scm.get_version" }
+# [tool.setuptools_scm.dynamic]
+# version = { attr = "setuptools_scm.get_version" }
 
 [tool.setuptools.packages.find]
 where = ["."]
