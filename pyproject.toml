@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ecco_access"
-version = "dynamic"
+dynamic = ["version"]
 requires-python = ">=3.7"
 description = "Access utilities for ECCO state estimate output hosted on PO.DAAC and in the AWS cloud"
 readme = { file = "README.md", content-type = "text/markdown" }
