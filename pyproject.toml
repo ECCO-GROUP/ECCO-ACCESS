@@ -52,5 +52,5 @@ dev = [
 Homepage =  "https://github.com/ECCO-GROUP/ECCO-ACCESS"
 Tracker =  "https://github.com/ECCO-GROUP/ECCO-ACCESS/issues"
 
-[tools.setuptools]
+[tool.setuptools]
 packages = ["ecco_access"]
