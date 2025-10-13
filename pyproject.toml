@@ -1,9 +1,10 @@
 [build-system]
-requires = ["setuptools>=80", "wheel", "setuptools-scm>=8.0"]
+requires = ["setuptools>=80", "wheel", "setuptools_scm[toml]>=8.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "ecco_access"
+version = ["dynamic"]
 requires-python = ">=3.7"
 description = "Access utilities for ECCO state estimate output hosted on PO.DAAC and in the AWS cloud"
 readme = { file = "README.md", content-type = "text/markdown" }
@@ -47,14 +48,14 @@ dev = [
     "coverage"
 ]
 
-[project.urls]
-Homepage =  "https://github.com/ECCO-GROUP/ECCO-ACCESS"
-Tracker =  "https://github.com/ECCO-GROUP/ECCO-ACCESS/issues"
-
-[tool.setuptools.dynamic]
+[tool.setuptools_scm.dynamic]
 version = { attr = "setuptools_scm.get_version" }
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["ecco_access"]
 exclude = ["demo_grids","ecco-cloud-utils","generating_netcdf","PODAAC","tests"]
+
+[project.urls]
+Homepage =  "https://github.com/ECCO-GROUP/ECCO-ACCESS"
+Tracker =  "https://github.com/ECCO-GROUP/ECCO-ACCESS/issues"
