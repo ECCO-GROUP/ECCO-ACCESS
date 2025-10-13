@@ -52,5 +52,9 @@ dev = [
 Homepage =  "https://github.com/ECCO-GROUP/ECCO-ACCESS"
 Tracker =  "https://github.com/ECCO-GROUP/ECCO-ACCESS/issues"
 
+[tool.setuptools.dynamic]
+version = { attr = "setuptools_scm.get_version" }
+
 [tool.setuptools.packages.find]
+where = ["."]
 include = ["ecco_access"]
