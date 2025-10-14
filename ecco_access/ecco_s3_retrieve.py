@@ -185,7 +185,7 @@ def ecco_podaac_s3_query(ShortName,StartDate,EndDate,version,snapshot_interval='
                              s3_files_all_dates >= np.datetime64(StartDate,'D'),\
                              s3_files_all_dates < np.datetime64(EndDate,'D') + np.timedelta64(1,'D'))\
                              .nonzero()[0]
-        s3_files_list = [s3_files_all[sorted_ind[ind]] for ind in in_range_ind]
+        s3_files_list = ["s3://"+s3_files_all[sorted_ind[ind]] for ind in in_range_ind]
 
         # reduce granule list to single day if only one day in requested range
         if (('MONTHLY' in ShortName) or ('DAILY' in ShortName)):
@@ -205,7 +205,7 @@ def ecco_podaac_s3_query(ShortName,StartDate,EndDate,version,snapshot_interval='
         EndDate = '2099-12-31'
     
     # # Adjust StartDate and EndDate to CMR query values
-    StartDate,EndDate,SingleDay_flag = date_adjustment(ShortName,\
+    StartDate_CMR,EndDate,SingleDay_flag = date_adjustment(ShortName,\
                                          StartDate,EndDate,CMR_query=True)
     
     if version == 'v4r5':
@@ -221,7 +221,7 @@ def ecco_podaac_s3_query(ShortName,StartDate,EndDate,version,snapshot_interval='
         
         # create a Python dictionary with our search criteria:  `ShortName` and `temporal`
         input_search_params = {'ShortName': ShortName,
-                               'temporal': ",".join([StartDate, EndDate])}
+                               'temporal': ",".join([StartDate_CMR, EndDate])}
         
         print(input_search_params)
         
