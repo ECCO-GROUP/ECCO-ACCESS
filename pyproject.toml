@@ -24,8 +24,8 @@ classifiers = [
         "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: 3.13",
 ]
-license = "MIT"
-license-files = ["LICENSE"]
+# license-expression = "MIT"
+# license-files = ["LICENSE"]
 keywords = ['ecco','climate','mitgcm','estimate','circulation','climate']
 dependencies = [
     "numpy",
