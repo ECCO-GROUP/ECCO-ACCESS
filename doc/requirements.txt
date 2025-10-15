@@ -51,5 +51,5 @@ sphinxcontrib-serializinghtml==1.1.5
     # via sphinx
 sphinx-rtd-theme==0.4.3
     # from readthedocs log file
-urllib3==1.26.13
+urllib3==2.5.0
     # via requests
