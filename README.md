@@ -4,7 +4,7 @@
 
 Currently access to ECCO version 4, releases 4 and 5 are supported. Additional versions will be made available as they are released through the Physical Oceanography Distributed Active Archive Center (PO.DAAC), or made available on the ECCO S3 bucket in the AWS Cloud (s3://ecco-model-granules).
 
-There is some overlap in functionality with the [earthaccess](https://earthaccess.readthedocs.io/en/stable/) Python package for accessing NASA Earth science data, and datasets on PO.DAAC/NASA Earthdata can be accessed with both packages. `ecco_access` has some features that enable:
+There is some overlap in functionality with the [earthaccess](https://earthaccess.readthedocs.io/en/stable/) Python package for accessing NASA Earth science data, and datasets on PO.DAAC/NASA Earthdata can be accessed with both packages. However, `ecco_access` has some ECCO-specific features that enable:
 
 - querying of the variables in ECCO datasets
 - spatial subsetting of ECCO output in the 13-tile Lat-Lon-Cap (LLC) native grid
