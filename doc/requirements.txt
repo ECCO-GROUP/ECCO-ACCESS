@@ -15,7 +15,7 @@ imagesize==1.4.1
     # via sphinx
 ipykernel==6.23.0
     # from readthedocs log file
-jinja2==3.1.2
+jinja2==3.1.6
     # via sphinx
 markupsafe==2.1.1
     # via jinja2
