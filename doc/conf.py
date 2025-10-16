@@ -21,7 +21,31 @@ import sys
 sys.path.insert(0, os.path.abspath('.'))
 sys.path.insert(0, os.path.abspath('../'))
 
-import ecco_access as ea
+# # mock modules (so that ecco_access can be imported, 
+# # even though sphinx can not access these dependencies)
+# class Mock(object):
+#     def __init__(self, *args, **kwargs):
+#         pass
+# 
+#     def __call__(self, *args, **kwargs):
+#         return Mock()
+# 
+#     @classmethod
+#     def __getattr__(cls, name):
+#         if name in ('__file__', '__path__'):
+#             return '/dev/null'
+#         elif name[0] == name[0].upper():
+#             return type(name, (), {})
+#         else:
+#             return Mock()
+# 
+# MOCK_MODULES = ['requests','zarr','numpy','xarray','pandas','tqdm','s3fs','fsspec']
+# for mod_name in MOCK_MODULES:
+#     sys.modules[mod_name] = Mock()
+# 
+# import ecco_access as ea
+
+import subprocess
 
 #import cloud_sptheme as csp
 import sphinx_rtd_theme
@@ -95,8 +119,12 @@ srclink_src_path = "doc/"
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 #
-# The full version, including alpha/beta/rc tags.
-release = ea.__version__
+# The full version, including alpha/beta/rc tags
+# Get release/version info from latest git tag
+release_tag = subprocess.run(
+                 ['git','describe','--tags','--always'],
+                 capture_output=True,text=True,check=True).stdout.strip()
+release = release_tag[1:].split("-")[0]
 # The short X.Y version.
 version = ".".join(release.split(".")[:2])
 
