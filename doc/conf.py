@@ -23,10 +23,25 @@ sys.path.insert(0, os.path.abspath('../'))
 
 # mock modules (so that ecco_access can be imported, 
 # even though sphinx can not access these dependencies)
-import mock
+class Mock(object):
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def __call__(self, *args, **kwargs):
+        return Mock()
+
+    @classmethod
+    def __getattr__(cls, name):
+        if name in ('__file__', '__path__'):
+            return '/dev/null'
+        elif name[0] == name[0].upper():
+            return type(name, (), {})
+        else:
+            return Mock()
+
 MOCK_MODULES = ['requests','zarr','numpy','xarray','pandas','tqdm','s3fs','fsspec']
 for mod_name in MOCK_MODULES:
-    sys.modules[mod_name] = mock.Mock()
+    sys.modules[mod_name] = Mock()
 
 import ecco_access as ea
 
