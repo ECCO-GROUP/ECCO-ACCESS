@@ -21,6 +21,13 @@ import sys
 sys.path.insert(0, os.path.abspath('.'))
 sys.path.insert(0, os.path.abspath('../'))
 
+# mock modules (so that ecco_access can be imported, 
+# even though sphinx can not access these dependencies)
+import mock
+MOCK_MODULES = ['requests','zarr','numpy','xarray','pandas','tqdm','s3fs','fsspec']
+for mod_name in MOCK_MODULES:
+    sys.modules[mod_name] = mock.Mock()
+
 import ecco_access as ea
 
 #import cloud_sptheme as csp
