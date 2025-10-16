@@ -45,7 +45,7 @@ sys.path.insert(0, os.path.abspath('../'))
 # 
 # import ecco_access as ea
 
-import toml
+import subprocess
 
 #import cloud_sptheme as csp
 import sphinx_rtd_theme
@@ -119,9 +119,12 @@ srclink_src_path = "doc/"
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 #
-# The full version, including alpha/beta/rc tags.
-data = toml.load("pyproject.toml")
-release = data['project']['version']
+# The full version, including alpha/beta/rc tags
+# Get release/version info from latest git tag
+release_tag = subprocess.run(
+                 ['git','describe','--tags','--always'],
+                 capture_output=True,text=True,check=True).stdout.strip()
+release = release_tag[1:].split("-")[0]
 # The short X.Y version.
 version = ".".join(release.split(".")[:2])
 
