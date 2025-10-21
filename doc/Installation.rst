@@ -57,3 +57,9 @@ Then to clone your fork of the ``ecco_access`` code repository to your local mac
 .. code-block:: bash
 
     git clone https://github.com/{your_username}/ECCO-ACCESS.git
+
+or using an SSH key:
+
+.. code-block:: bash
+    
+    git clone git@github.com:{your_username}/ECCO-ACCESS.git
