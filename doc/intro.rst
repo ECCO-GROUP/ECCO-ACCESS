@@ -9,9 +9,9 @@ Why use *ecco_access*?
 
 Some features that ``ecco_access`` supports, specific to ECCO output, include:
 
-- querying of the variables in ECCO datasets
-- spatial subsetting of ECCO output in the 13-tile Lat-Lon-Cap (LLC) native grid
-- access on the AWS Cloud to ECCO release(s) not yet available through NASA Earthdata
+* Querying of the variables in ECCO datasets
+* Spatial subsetting of ECCO output in the 13-tile Lat-Lon-Cap (LLC) native grid
+* Access on the AWS Cloud to ECCO release(s) not yet available through NASA Earthdata
 
 What versions of ECCO are currently supported?
 ==============================================

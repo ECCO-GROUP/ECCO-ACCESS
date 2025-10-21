@@ -5,10 +5,10 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to ecco_access!
+Welcome to *ecco_access*!
 ======================================
 
-`ecco_access` is a Python package with utilities for accessing output from the Estimating the Circulation and Climate of the Ocean (ECCO) state estimate. These tools enable the user to query and download ECCO output to their local machine, or directly access the ECCO output when working in the AWS Cloud.
+*ecco_access* is a Python package with utilities for accessing output from the Estimating the Circulation and Climate of the Ocean (ECCO) state estimate. These tools enable the user to query and download ECCO output to their local machine, or directly access the ECCO output when working in the AWS Cloud.
 
 If you have any questions, suggestions, or would like to contribute to `ecco_access`, please reach out to andrewdelman@ucla.edu. Thank you!
 
