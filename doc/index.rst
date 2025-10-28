@@ -20,7 +20,8 @@ If you have any questions, suggestions, or would like to contribute to `ecco_acc
    intro
    Installation
    ECCO_output_on_NASA_Earthdata.ipynb
-   Using_ECCO_access.ipynb
+   Using_ECCO_access_1.ipynb
+   Using_ECCO_access_2.ipynb
    ECCO_access_modes.ipynb
    Querying_ECCO_variables.ipynb
    ECCO_access_subsets.ipynb
