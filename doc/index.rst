@@ -19,11 +19,18 @@ If you have any questions, suggestions, or would like to contribute to `ecco_acc
 
    intro
    Installation
-   ECCO_access_intro.ipynb
+   ECCO_output_on_NASA_Earthdata.ipynb
+   Using_ECCO_access.ipynb
    ECCO_access_modes.ipynb
-   Downloading_Subsets_of_ECCO_Datasets.ipynb
-   Tutorial_wget_Command_Line_HTTPS_Downloading_ECCO_Datasets_from_PODAAC
-   AWS_Cloud_getting_started.ipynb
+   Querying_ECCO_variables.ipynb
+   ECCO_access_subsets.ipynb
+   ECCO_access_v4r5.ipynb
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Miscellaneous
+   
+   Downloading_ECCO_Datasets_with_wget.md
 
 .. toctree::
    :maxdepth: 2
