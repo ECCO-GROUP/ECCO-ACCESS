@@ -110,6 +110,7 @@ def ecco_podaac_s3_query(ShortName,StartDate,EndDate,version,snapshot_interval='
                                 headers=headers).json()
         return response    
     
+    
     def get_granules(params: dict, ShortName: str, SingleDay_flag: bool):
         time_start = np.array([]).astype('datetime64[ns]')
         s3_files_list = []
@@ -139,7 +140,32 @@ def ecco_podaac_s3_query(ShortName,StartDate,EndDate,version,snapshot_interval='
             if ((SingleDay_flag == True) and (len(s3_files_list) > 1)):
                 day_index = np.argmin(np.abs(time_start - np.datetime64(StartDate,'D')))
                 s3_files_list = s3_files_list[day_index:(day_index+1)]
-
+        
+        # fill in any granules that the CMR search might have missed
+            if 'MONTHLY' in ShortName:
+                dates_in_range = np.arange(np.datetime64(StartDate,'M'),\
+                                           np.datetime64(EndDate,'M') + np.timedelta64(1,'M'),\
+                                           np.timedelta64(1,'M'))
+            else:
+                dates_in_range = np.arange(np.datetime64(StartDate,'D'),\
+                                           np.datetime64(EndDate,'D') + np.timedelta64(1,'D'),\
+                                           np.timedelta64(1,'D'))
+            if version == 'v4r4':
+                dates_in_range = dates_in_range[np.logical_and(dates_in_range >= np.datetime64('1992-01-01','D'),\
+                                                               dates_in_range < np.datetime64('2018-01-01','D'))]
+            elif version == 'v4r5':
+                dates_in_range = dates_in_range[np.logical_and(dates_in_range >= np.datetime64('1992-01-01','D'),\
+                                                               dates_in_range < np.datetime64('2020-01-01','D'))]
+            if len(s3_files_list) < len(dates_in_range):
+                file_form_split = s3_files_list[0].split("_")
+                first_part = file_form_split[:-5]
+                last_part = file_form_split[-4:]
+                s3_files_list_filled_in = []
+                for curr_date in dates_in_range:
+                    curr_file = "_".join(first_part+[str(curr_date)]+last_part)
+                    s3_files_list_filled_in.append(curr_file)
+                s3_files_list = s3_files_list_filled_in
+        
         return s3_files_list
     
     
