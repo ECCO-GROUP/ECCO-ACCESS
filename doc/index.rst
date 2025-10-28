@@ -14,11 +14,11 @@ If you have any questions, suggestions, or would like to contribute to `ecco_acc
 
 .. toctree::
    :maxdepth: 2
-   :caption: Preliminaries
+   :caption: Introduction and Setup
 
    intro
-   Installation
    ECCO_output_on_NASA_Earthdata.ipynb
+   Installation
 
 .. toctree::
    :maxdepth: 2
