@@ -12,16 +12,19 @@ Welcome to ecco_access!
 
 If you have any questions, suggestions, or would like to contribute to `ecco_access`, please reach out to andrewdelman@ucla.edu. Thank you!
 
-
 .. toctree::
    :maxdepth: 2
-   :caption: Getting Started
+   :caption: Preliminaries
 
    intro
    Installation
    ECCO_output_on_NASA_Earthdata.ipynb
-   Using_ECCO_access_1.ipynb
-   Using_ECCO_access_2.ipynb
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Notebook Tutorials
+
+   Using_ECCO_access.ipynb
    ECCO_access_modes.ipynb
    Querying_ECCO_variables.ipynb
    ECCO_access_subsets.ipynb
