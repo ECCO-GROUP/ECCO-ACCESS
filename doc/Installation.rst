@@ -7,6 +7,12 @@ Preliminaries
 
 The ``ecco_access`` package runs Python code, so you will first need a `Python <https://www.python.org/>`_ setup on your machine. Python is an open-source programming language, so no commercial software or licenses are necessary to run it. `Miniforge <https://conda-forge.org/download/>`_ is preferred for many users as it is a no-frills conda/mamba installation that defaults to the ``conda-forge`` channel of Python packages, where ``ecco_access`` is distributed. ``ecco_access`` can also be downloaded by users of other Python installers such as `Anaconda <https://www.anaconda.com/download/>`_ or `PyPI <https://pypi.org>`_, see below.
 
+.. note::
+   Currently ``ecco_access`` requires Python >= 3.11 to run correctly; 
+   this is due to the requirements of Zarr 3 which ``ecco_access`` depends on.
+   If this becomes an impediment to users, we will add compatibility 
+   with earlier versions of Python.
+
 Installing with conda/mamba
 ---------------------------
 
