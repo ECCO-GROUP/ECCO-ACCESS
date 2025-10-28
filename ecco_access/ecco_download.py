@@ -123,6 +123,7 @@ def ecco_podaac_query(ShortName,StartDate,EndDate,version,snapshot_interval='mon
 #             df = pd.concat([df, data])
 #         return df
     
+    
     def get_granules(params: dict, ShortName: str, SingleDay_flag: bool):
         time_start = np.array([]).astype('datetime64[ns]')
         urls = []
@@ -154,7 +155,44 @@ def ecco_podaac_query(ShortName,StartDate,EndDate,version,snapshot_interval='mon
             if ((SingleDay_flag == True) and (len(urls) > 1)):
                 day_index = np.argmin(np.abs(time_start - np.datetime64(StartDate,'D')))
                 urls = urls[day_index:(day_index+1)]
-
+        
+        # fill in any granules that the CMR search might have missed
+        if 'MONTHLY' in ShortName:
+            dates_in_range = np.arange(np.datetime64(StartDate,'M'),\
+                                       np.datetime64(EndDate,'M') + np.timedelta64(1,'M'),\
+                                       np.timedelta64(1,'M'))
+        else:
+            dates_in_range = np.arange(np.datetime64(StartDate,'D'),\
+                                       np.datetime64(EndDate,'D') + np.timedelta64(1,'D'),\
+                                       np.timedelta64(1,'D'))
+        if version == 'v4r4':
+            dates_in_range = dates_in_range[np.logical_and(dates_in_range >= np.datetime64('1992-01-01','D'),\
+                                                           dates_in_range < np.datetime64('2018-01-01','D'))]
+        elif version == 'v4r5':
+            dates_in_range = dates_in_range[np.logical_and(dates_in_range >= np.datetime64('1992-01-01','D'),\
+                                                           dates_in_range < np.datetime64('2020-01-01','D'))]
+        if len(urls) < len(dates_in_range):
+            url_form_split = urls[0].split("_")
+            first_part = url_form_split[:-5]
+            last_part = url_form_split[-4:]
+            urls_filled_in = []
+            sizes_filled_in = []
+            file_size_max = np.nanmax(np.asarray([np.float64(size) for size in sizes]))
+            for curr_date in dates_in_range:
+                curr_url = "_".join(first_part+[str(curr_date)]+last_part)
+                urls_filled_in.append(curr_url)
+                # if CMR query's file size is suspect, use maximum file size in query
+                if curr_url in urls:
+                    match_ind = [count for count,url_ in enumerate(urls) if url_ == curr_url][0]
+                    if np.float64(sizes[match_ind]) >= (0.1*file_size_max):
+                        sizes_filled_in.append(sizes[match_ind])
+                    else:
+                        sizes_filled_in.append(str(file_size_max))
+                else:
+                    sizes_filled_in.append(str(file_size_max))
+            urls = urls_filled_in
+            sizes = sizes_filled_in
+        
         return urls,sizes
     
     

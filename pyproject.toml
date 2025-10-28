@@ -4,7 +4,7 @@ requires = ["setuptools>=80", "wheel", "setuptools-scm[simple]>=8.0"]
 [project]
 name = "ecco_access"
 dynamic = ["version"]
-requires-python = ">=3.7"
+requires-python = ">=3.11"
 description = "Access utilities for ECCO state estimate output hosted on PO.DAAC and in the AWS cloud"
 readme = { file = "README.md", content-type = "text/markdown" }
 authors = [
@@ -16,10 +16,6 @@ classifiers = [
         "Topic :: Scientific/Engineering",
         "Operating System :: OS Independent",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
-        "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: 3.13",
