@@ -30,7 +30,7 @@ def ecco_podaac_access(query,version='v4r4',grid=None,time_res='all',\
     This function queries and accesses ECCO datasets from PO.DAAC. The core query and download functions 
     are adapted from Jupyter notebooks created by Jack McNelis and Ian Fenty 
     (https://github.com/ECCO-GROUP/ECCO-ACCESS/blob/master/PODAAC/Downloading_ECCO_datasets_from_PODAAC/README.md)
-    and modified by Andrew Delman (https://ecco-v4-python-tutorial.readthedocs.io).
+    and modified by Andrew Delman (https://ecco-access.readthedocs.io).
     
     Parameters
     ----------    
@@ -344,7 +344,7 @@ def ecco_podaac_to_xrdataset(query,version='v4r4',grid=None,time_res='all',\
     This function queries and accesses ECCO datasets from PO.DAAC. The core query and download functions 
     are adapted from Jupyter notebooks created by Jack McNelis and Ian Fenty 
     (https://github.com/ECCO-GROUP/ECCO-ACCESS/blob/master/PODAAC/Downloading_ECCO_datasets_from_PODAAC/README.md)
-    and modified by Andrew Delman (https://ecco-v4-python-tutorial.readthedocs.io).
+    and modified by Andrew Delman (https://ecco-access.readthedocs.io).
     It is similar to ecco_podaac_access, except instead of a list of URLs or files, 
     an xarray Dataset with all of the queried ECCO datasets is returned.
 
