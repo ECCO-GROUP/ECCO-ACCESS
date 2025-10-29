@@ -27,6 +27,7 @@ dependencies = [
     "dask[complete]",
     "fsspec >= 2024.12.0",
     "netCDF4",
+    "numcodecs >= 0.14.0",
     "pandas",
     "python-dateutil",
     "requests",
