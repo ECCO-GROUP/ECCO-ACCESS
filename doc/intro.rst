@@ -16,7 +16,9 @@ Some features that ``ecco_access`` supports, specific to ECCO output, include:
 What versions of ECCO are currently supported?
 ==============================================
 
-Currently access to ECCO version 4, releases 4 and 5 are supported. Additional versions will be made available as they are released through [NASA Earthdata](https://search.earthdata.nasa.gov) by the Physical Oceanography Distributed Active Archive Center (PO.DAAC), or made available on the ECCO S3 bucket in the AWS Cloud (s3://ecco-model-granules).
+Currently access to ECCO version 4, releases 4 and 5 are supported. Additional versions will be made available as they are released through `NASA Earthdata`_ by the Physical Oceanography Distributed Active Archive Center (PO.DAAC), or made available on the ECCO S3 bucket in the AWS Cloud (s3://ecco-model-granules).
+
+.. _NASA Earthdata : https://search.earthdata.nasa.gov
 
 What is the ECCO state estimate?
 ================================
