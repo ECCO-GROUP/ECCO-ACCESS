@@ -45,7 +45,7 @@ If you do not have a conda/mamba installation or prefer to work with the Python 
 
 .. code-block:: bash
 	
-    pip install ecco_v4_py
+    pip install ecco-access
 
 
 Cloning the GitHub repository

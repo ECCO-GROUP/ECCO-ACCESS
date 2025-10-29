@@ -18,6 +18,7 @@ If you have any questions, suggestions, or would like to contribute to `ecco_acc
 
    intro
    ECCO_output_on_NASA_Earthdata.ipynb
+   Setup_Earthdata_credentials.ipynb
    Installation
 
 .. toctree::
