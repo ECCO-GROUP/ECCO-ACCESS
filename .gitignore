@@ -2,7 +2,6 @@
 *.pyc
 *.log
 
-*.nc
 *.bz2
 
 __pycache__/
